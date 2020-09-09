@@ -3,3 +3,6 @@ cartosphere-*.tar.gz
 **/*.dSYM
 **/*.dSYM.zip
 **/*.DS_Store
+**/.vs/
+bin/
+obj/

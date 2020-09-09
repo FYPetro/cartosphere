@@ -75,12 +75,14 @@
     <OutDir>$(SolutionDir)..\bin\$(Configuration)\$(PlatformTarget)\</OutDir>
     <TargetName>cartosphere</TargetName>
     <IncludePath>$(SolutionDir)..\include;$(SolutionDIr)..\include\$(TargetName);$(IncludePath)</IncludePath>
+    <IntDir>$(SolutionDir)..\obj\$(Configuration)\$(PlatformTarget)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)..\bin\$(Configuration)\$(PlatformTarget)\</OutDir>
     <TargetName>cartosphere</TargetName>
     <IncludePath>$(SolutionDir)..\include;$(SolutionDIr)..\include\$(TargetName);$(IncludePath)</IncludePath>
+    <IntDir>$(SolutionDir)..\obj\$(Configuration)\$(PlatformTarget)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
