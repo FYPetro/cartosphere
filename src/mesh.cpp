@@ -111,7 +111,7 @@ Cartosphere::TriangularMesh::load(std::string const &path)
 
 		// Skip comment lines and strip inline comments
 		if (line[0] == '#') continue;
-		unsigned indexofPound = line.find_first_of('#');
+		auto indexofPound = line.find_first_of('#');
 		if (indexofPound != std::string::npos)
 		{
 			line.erase(indexofPound);

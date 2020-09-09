@@ -2,7 +2,7 @@ CC = g++
 
 incldir=../include
 
-CFLAGS = -g -O0 -I$(incldir) -std=c++11
+CFLAGS = -g -O0 -I$(incldir) -std=c++14
 
 all: cartosphere
 
