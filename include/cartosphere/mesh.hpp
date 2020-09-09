@@ -2,8 +2,8 @@
 #ifndef __MESH_HPP__
 #define __MESH_HPP__
 
-#include <vector>
 #include <utility>
+#include <vector>
 #include <string>
 
 #include "cartosphere/utility.hpp"
@@ -24,6 +24,8 @@ namespace Cartosphere
 	public:
 		// Default constructor
 		Preimage() : p(0), a(0) {}
+		// Constructor from two angles
+		Preimage(FLP polar, FLP azimuthal) : p(polar), a(azimuthal) {}
 		// Copy constructor
 		Preimage(Preimage const &that) = default;
 		// Copy assignment
@@ -48,6 +50,8 @@ namespace Cartosphere
 	public:
 		// Default Constructor
 		Image() {}
+		// Constructor from coordinates
+		Image(FLP x, FLP y, FLP z) : FL3(x, y, z) {}
 		// Copy constructor
 		Image(Image const &that) = default;
 
@@ -150,17 +154,37 @@ namespace Cartosphere
 		// Default Constructor
 		TriangularMesh() = default;
 		// Construct triangular mesh from file
-		TriangularMesh(std::string const &path) {}
+		TriangularMesh(std::string const &path) { load(path); }
+
+	public:
+		// Get file load state
+		bool isLoaded() const { return flagofLoading; }
+		// Get file load messages
+		std::vector<std::string> getMessages() const { return listofMessages; }
+
+	public:
+		// Clear file
+		void clear();
+		// Load file from path
+		bool load(std::string const &path);
+		// Refine the mesh
+		TriangularMesh refine(unsigned level = 1) const;
+		// Report the area of each triangle
+		void reportAreas();
 
 	protected:
 		// List of points
 		std::vector<Point> listofPoints;
-		// Point membership of triangles
-		std::vector<UI3> listofMembers;
+		// List of edges
+		std::vector<std::pair<unsigned, unsigned>> listofEdges;
 		// List of triangles
 		std::vector<Triangle> listofTriangles;
 
-		TriangularMesh refine(unsigned level = 1) const;
+	private:
+		// File load flag
+		bool flagofLoading = false;
+		// File load message
+		std::vector<std::string> listofMessages;
 	};
 }
 

@@ -150,6 +150,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\cartosphere\mesh.hpp" />
+    <ClInclude Include="..\include\cartosphere\predicates.hpp" />
     <ClInclude Include="..\include\cartosphere\utility.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

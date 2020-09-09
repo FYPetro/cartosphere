@@ -32,5 +32,8 @@
     <ClInclude Include="..\include\cartosphere\utility.hpp">
       <Filter>include\cartosphere</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\cartosphere\predicates.hpp">
+      <Filter>include\cartosphere</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

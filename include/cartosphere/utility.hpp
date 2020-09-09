@@ -2,26 +2,11 @@
 #ifndef __UTILITY_HPP__
 #define __UTILITY_HPP__
 
-#ifndef _USE_MATH_DEFINES
-#define _USE_MATH_DEFINES
-#endif //!_USE_MATH_DEFINES
-
-#include <cmath>
-#include <limits>
-
-#define FLP double
-
-static const FLP EPS = std::numeric_limits<FLP>::epsilon();
-
-// double deg2rad(double degree)
-// {
-// 	return degree * M_PI / 180;
-// }
-
-// double rad2deg(double radian)
-// {
-// 	return radian / M_PI * 180;
-// }
+#ifndef _DISABLE_PREDICATES
+#define _DISABLE_PREDICATES
+#include "cartosphere/predicates.hpp"
+#undef _DISABLE_PREDICATES
+#endif //!_DISABLE_PREDICATES
 
 class FL3
 {
