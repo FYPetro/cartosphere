@@ -2,7 +2,10 @@
 #ifndef __UTILITY_HPP__
 #define __UTILITY_HPP__
 
+#ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
+#endif //!_USE_MATH_DEFINES
+
 #include <cmath>
 #include <limits>
 
