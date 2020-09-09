@@ -1,12 +1,14 @@
 package = cartosphere
 
-version = 1.0.0
+version = 0.1.0
 
 tarname = $(package)
 
 distdir = $(tarname)-$(version)
 
 export prefix=/usr/local
+
+incldir=/include
 
 all clean install uninstall cartosphere:
 	$(MAKE) -C src $@

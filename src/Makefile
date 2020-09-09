@@ -1,11 +1,14 @@
-CC = gcc
+CC = g++
 
-CFLAGS = -g -O0
+incldir=../include
+
+CFLAGS = -g -O0 -I$(incldir) -std=c++11
 
 all: cartosphere
 
-cartosphere: main.c spherical.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $+
+cartosphere: main.cpp mesh.cpp
+	pwd
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $+ -L/usr/local/lib -largp
 
 clean:
 	-rm cartosphere
