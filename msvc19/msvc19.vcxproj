@@ -73,13 +73,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)..\bin\$(Configuration)\$(PlatformTarget)\</OutDir>
-    <TargetName>$(SolutionName)</TargetName>
+    <TargetName>cartosphere</TargetName>
     <IncludePath>$(SolutionDir)..\include;$(SolutionDIr)..\include\$(TargetName);$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)..\bin\$(Configuration)\$(PlatformTarget)\</OutDir>
-    <TargetName>$(SolutionName)</TargetName>
+    <TargetName>cartosphere</TargetName>
     <IncludePath>$(SolutionDir)..\include;$(SolutionDIr)..\include\$(TargetName);$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
