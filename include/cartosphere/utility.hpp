@@ -34,10 +34,28 @@ public:
 	}
 
 public:
-	// Vector subtraction
+	// Component-wise division by constant
+	FL3 &operator/=(FLP b)
+	{
+		x /= b;
+		y /= b;
+		z /= b;
+		return *this;
+	}
+	// Component-wise addition
+	friend FL3 operator+(FL3 const &a, FL3 const &b)
+	{
+		return FL3(a.x + b.x, a.y + b.y, a.z + b.z);
+	}
+	// Component-wise subtraction
 	friend FL3 operator-(FL3 const &a, FL3 const &b)
 	{
 		return FL3(a.x - b.x, a.y - b.y, a.z - b.z);
+	}
+	// Component-wise division by constant
+	friend FL3 operator/(FL3 const &a, FLP b)
+	{
+		return FL3(a.x / b, a.y / b, a.z / b);
 	}
 	// Cross product
 	friend FL3 cross(FL3 const &a, FL3 const &b)
@@ -53,6 +71,8 @@ public:
 	FLP norm2sq() const { return pow(x,2) + pow(y,2) + pow(z,2); }
 	// Returns the 2-norm
 	FLP norm2() const { return sqrt(norm2sq()); }
+	// Normalizes the vector
+	FL3 &normalize() { (*this) /= norm2(); return *this; }
 };
 
 class UI3

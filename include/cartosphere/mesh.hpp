@@ -50,6 +50,8 @@ namespace Cartosphere
 	public:
 		// Default Constructor
 		Image() {}
+		// Construct from FL3
+		Image(FL3 const &f) : FL3(f) {}
 		// Constructor from coordinates
 		Image(FLP x, FLP y, FLP z) : FL3(x, y, z) {}
 		// Copy constructor
@@ -85,6 +87,31 @@ namespace Cartosphere
 		Preimage const &preimage() const { return pi; }
 		// Get image
 		Image const &image() const { return im; }
+		// Obtain polar angle
+		FLP p() const { return pi.p; }
+		// Obtain azimuthal angle
+		FLP a() const { return pi.a; }
+		// Obtain x-coordinate
+		FLP x() const { return im.x; }
+		// Obtain y-coordinate
+		FLP y() const { return im.y; }
+		// Obtain z-coordinate
+		FLP z() const { return im.z; }
+
+	public:
+		// Check if point is antipodal to another point
+		bool isAntipodalTo(Point const &p) const
+		{
+			return this != &p
+				&& this->x() + p.x() == 0
+				&& this->y() + p.y() == 0
+				&& this->z() + p.z() == 0;
+		}
+		// Check if point is valid
+		bool isValid() const
+		{
+			return p() == 0 && a() == 0 && x() == 0 && y() == 0 && z() == 0;
+		}
 		// Set preimage and fill image
 		void set(Preimage const &preimage)
 		{
@@ -99,18 +126,12 @@ namespace Cartosphere
 		}
 
 	public:
+		// Set preimage and fill image
 		Point &operator=(Preimage const &that) { set(that); return *this; }
+		// Set image and fill preimage
 		Point &operator=(Image const &that) { set(that); return *this; }
-		// Obtain polar angle
-		// FLP p() const { return pi.p; }
-		// Obtain azimuthal angle
-		// FLP a() const { return im.a; }
-		// Obtain x-coordinate
-		// FLP x() const { return im.x; }
-		// Obtain y-coordinate
-		// FLP y() const { return im.y; }
-		// Obtain z-coordinate
-		// FLP z() const { return im.z; }
+		// Obtain midpoint
+		friend Point midpoint(Point const &a, Point const &b);
 
 	private:
 		// The preimage

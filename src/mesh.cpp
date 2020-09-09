@@ -41,6 +41,21 @@ Cartosphere::Image::toPreimage() const
 	return preimage;
 }
 
+Cartosphere::Point
+Cartosphere::midpoint(Point const &a, Point const &b)
+{
+	if (a.isAntipodalTo(b))
+	{
+		return Point();
+	}
+
+	FL3 middleofChord = (FL3)a.image() + (FL3)b.image();
+	middleofChord /= 2;
+	middleofChord.normalize();
+	
+	return Point(Image(middleofChord));
+}
+
 FLP
 Cartosphere::Triangle::area() const
 {
