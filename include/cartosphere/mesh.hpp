@@ -3,6 +3,7 @@
 #define __MESH_HPP__
 
 #include <utility>
+#include <tuple>
 #include <vector>
 #include <string>
 
@@ -172,6 +173,10 @@ namespace Cartosphere
 	class TriangularMesh
 	{
 	public:
+		typedef std::pair<unsigned, unsigned> PointIndexPair;
+		typedef std::pair<unsigned, bool> EdgeIndex;
+		typedef std::tuple<EdgeIndex, EdgeIndex, EdgeIndex> EdgeIndexTriplet;
+	public:
 		// Default Constructor
 		TriangularMesh() = default;
 		// Construct triangular mesh from file
@@ -179,32 +184,44 @@ namespace Cartosphere
 
 	public:
 		// Get file load state
-		bool isLoaded() const { return flagofLoading; }
+		bool isReady() const { return flagofParsing; }
 		// Get file load messages
 		std::vector<std::string> getMessages() const { return listofMessages; }
+		// Get total area (Euclidean)
+		FLP areaEuclidean() const;
 
 	public:
 		// Clear file
 		void clear();
 		// Load file from path
 		bool load(std::string const &path);
+		// Save mesh to file
+		bool save(std::string const &path) const;
 		// Refine the mesh
-		TriangularMesh refine(unsigned level = 1) const;
+		void refine();
 		// Report the area of each triangle
 		void reportAreas();
 
-	protected:
+	private:
+		// Fill simplicial complex
+		void fillSimplices();
+
+	private:
 		// List of points
 		std::vector<Point> listofPoints;
-		// List of edges
-		std::vector<std::pair<unsigned, unsigned>> listofEdges;
-		// List of triangles
-		std::vector<Triangle> listofTriangles;
+		// List of edges (using point indices)
+		std::vector<PointIndexPair> listofEdges;
+		// List of triangles (using edge indices)
+		std::vector<EdgeIndexTriplet> listofTriangles;
+		// List of triangles (owning coordinates)
+		std::vector<Triangle> listofSimplices;
 
 	private:
 		// File load flag
 		bool flagofLoading = false;
-		// File load message
+		// File parse flag
+		bool flagofParsing = false;
+		// Messages
 		std::vector<std::string> listofMessages;
 	};
 }

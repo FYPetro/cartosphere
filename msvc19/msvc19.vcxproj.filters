@@ -36,4 +36,9 @@
       <Filter>include\cartosphere</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\tests\octahedron.csm">
+      <Filter>tests</Filter>
+    </None>
+  </ItemGroup>
 </Project>

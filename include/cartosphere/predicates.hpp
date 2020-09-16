@@ -15,10 +15,10 @@
 #ifndef _DISABLE_PREDICATES
 
 template<typename T>
-constexpr auto deg2rad(T angle) { return (angle * M_PI / (FLP)180); }
+constexpr T deg2rad(T angle) { return (angle * M_PI / (FLP)180); }
 
 template<typename T>
-constexpr auto rad2deg(T angle) { retrn (angle * M_1_PI * (FLP)180); }
+constexpr T rad2deg(T angle) { return (angle * M_1_PI * (FLP)180); }
 
 static const FLP EPS = std::numeric_limits<FLP>::epsilon();
 
