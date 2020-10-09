@@ -59,6 +59,17 @@ namespace Cartosphere
 		Image(Image const &that) = default;
 
 	public:
+		// Calculate the spherical distance between two points
+		friend FLP distance(Image const &a, Image const &b)
+		{
+			Preimage pa = a.toPreimage();
+			Preimage pb = b.toPreimage();
+			FLP value = cos(pa.p) * cos(pb.p) +
+				sin(pa.p) * sin(pb.p) * cos(pa.a - pb.a);
+			return acos(value);
+		}
+
+	public:
 		// Obtain preimage
 		Preimage toPreimage() const;
 		// Assignment constructor
@@ -147,6 +158,49 @@ namespace Cartosphere
 		void populateImage() { im = pi.toImage(); }
 	};
 
+	// Representation of a directional minor arc and its local coordinate system
+	class Arc
+	{
+	public:
+		// Default Constructor
+		Arc() {}
+		// Constructor from two points
+		Arc(Point const &A, Point const &B) : a(A), b(B) { fill(); }
+
+	public:
+		// Return the angle spanned by the arc
+		FLP span() const { return distance(a.image(), b.image()); }
+		// Return the length of the arc
+		FLP length() const { return distance(a.image(), b.image()); }
+		// Return the (t,0) local coordinates
+		Point local(FLP u) const
+		{
+			return Point(a.image() * cos(u) + c * sin(u));
+		}
+		// Return the (t,n) local coordinates
+		Point local(FLP u, FLP v) const
+		{
+			Arc arc(local(u), Point(Image(n)));
+			return arc.local(v);
+		}
+
+	protected:
+		// Populate the auxiliary vectors
+		void fill()
+		{
+			n = normalize(cross(a.image(), b.image()));
+			c = cross(n, a.image());
+		}
+
+	protected:
+		// Start and end points for the arc
+		Point a, b;
+		// The normal vector
+		FL3 n;
+		// The point pi/2 radians away in the direction of the arc
+		FL3 c;
+	};
+
 	// A (spherical) triangle
 	class Triangle
 	{
@@ -197,6 +251,8 @@ namespace Cartosphere
 		bool load(std::string const &path);
 		// Save mesh to file
 		bool save(std::string const &path) const;
+		// Export mesh to OBJ format
+		bool format(std::string const &path) const;
 		// Refine the mesh
 		void refine();
 		// Report the area of each triangle

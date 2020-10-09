@@ -34,6 +34,10 @@ public:
 	}
 
 public:
+	// Scalar multiplication
+	FL3 operator*(FLP c) const { return FL3(x * c, y * c, z * c); }
+	// Negation
+	FL3 operator-() const { return FL3(-x, -y, -z); }
 	// Component-wise division by constant
 	FL3 &operator/=(FLP b)
 	{
@@ -52,6 +56,11 @@ public:
 	{
 		return FL3(a.x - b.x, a.y - b.y, a.z - b.z);
 	}
+	// Scalar multiplication
+	friend FL3 operator*(FLP c, FL3 const &b)
+	{
+		return b * c;
+	}
 	// Component-wise division by constant
 	friend FL3 operator/(FL3 const &a, FLP b)
 	{
@@ -64,6 +73,12 @@ public:
 		FLP y = a.z * b.x - a.x * b.z;
 		FLP z = a.x * b.y - a.y * b.x;
 		return FL3(x, y, z);
+	}
+	// Normalize
+	friend FL3 normalize(FL3 const &a)
+	{
+		FL3 unit = a;
+		return unit.normalize();
 	}
 
 public:
