@@ -227,9 +227,23 @@ namespace Cartosphere
 	class TriangularMesh
 	{
 	public:
+		// Pair of indices to points
 		typedef std::pair<unsigned, unsigned> PointIndexPair;
+		// Edge index and its orientation
 		typedef std::pair<unsigned, bool> EdgeIndex;
+		// Triplet of indices with their orientations
 		typedef std::tuple<EdgeIndex, EdgeIndex, EdgeIndex> EdgeIndexTriplet;
+		// Memory statistics
+		typedef struct
+		{
+			unsigned nPoint;
+			unsigned nEdge;
+			unsigned nTriangle;
+			FLP areaElementMax;
+			FLP areaElementMin;
+			FLP areaElementDisparity;
+		} Stats;
+
 	public:
 		// Default Constructor
 		TriangularMesh() = default;
@@ -241,6 +255,8 @@ namespace Cartosphere
 		bool isReady() const { return flagofParsing; }
 		// Get file load messages
 		std::vector<std::string> getMessages() const { return listofMessages; }
+		// Get total area (spherical)
+		FLP area() const;
 		// Get total area (Euclidean)
 		FLP areaEuclidean() const;
 
@@ -257,6 +273,8 @@ namespace Cartosphere
 		void refine();
 		// Report the area of each triangle
 		void reportAreas();
+		// Generate statistics
+		Stats statistics() const;
 
 	private:
 		// Fill simplicial complex

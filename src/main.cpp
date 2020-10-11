@@ -31,8 +31,9 @@ main(int argc, char **argv)
 	unsigned const total = 5;
 	for (unsigned i = 0; i <= total; ++i)
 	{
-		std::cout << "Refinement Level " << i << " "
-			"Euclidean Area = " << mesh.areaEuclidean() << "\n";
+		std::cout << "\nRefinement Level " << i << "\n"
+			"Euclidean Area = " << mesh.areaEuclidean() << "\n"
+			"Spherical Area = " << mesh.area() << "\n";
 
 		if (i > 0)
 		{
@@ -47,11 +48,19 @@ main(int argc, char **argv)
 			mesh.format(name + ".obj");
 
 			mesh.save(name);
-
 		}
+
+		// Print statistics about the mesh
+		auto stats = mesh.statistics();
+		unsigned euler = stats.nPoint + stats.nTriangle - stats.nEdge;
+		std::cout << "V - E + F = " << stats.nPoint << " - " << stats.nEdge << " + "
+			<< stats.nTriangle << " = " << euler << "\n";
+		std::cout << "Area ratio = " << stats.areaElementDisparity
+			<< " (max " << stats.areaElementMax
+			<< ", min " << stats.areaElementMin << ")\n";
 	}
 
-	std::cout << "Limit = 4*pi = " << (4 * M_PI) << "\n";
+	std::cout << "\nLimit = 4*pi = " << (4 * M_PI) << "\n";
 
 	return 0;
 }

@@ -3,6 +3,7 @@
 #include "cartosphere/mesh.hpp"
 
 #include <algorithm>
+#include <numeric>
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -60,7 +61,20 @@ Cartosphere::midpoint(Point const &a, Point const &b)
 FLP
 Cartosphere::Triangle::area() const
 {
-	return 4;
+	// Form three arcs
+	Arc BC(B, C), CA(C, A), AB(A, B);
+	// Extract length of each arc
+	FLP a = BC.length();
+	FLP b = CA.length();
+	FLP c = AB.length();
+	// Use the spherical law of cosines to calculate three angles
+	FLP A = acos((cos(a) - cos(b) * cos(c)) / (sin(b) * sin(c)));
+	FLP B = acos((cos(b) - cos(c) * cos(a)) / (sin(c) * sin(a)));
+	FLP C = acos((cos(c) - cos(a) * cos(b)) / (sin(a) * sin(b)));
+	// Calculate the spherical excess
+	FLP excess = A + B + C - M_PI;
+	// Area is equal to the spherical excess
+	return excess;
 }
 
 FLP
@@ -87,6 +101,17 @@ Cartosphere::TriangularMesh::clear()
 	// Reset state flags
 	flagofLoading = false;
 	flagofParsing = false;
+}
+
+FLP
+Cartosphere::TriangularMesh::area() const
+{
+	FLP area = (FLP)0.0;
+	for (auto &simplex : listofSimplices)
+	{
+		area += simplex.area();
+	}
+	return area;
 }
 
 FLP
@@ -729,6 +754,32 @@ Cartosphere::TriangularMesh::reportAreas()
 	listofMessages.push_back(message);
 }
 
+Cartosphere::TriangularMesh::Stats
+Cartosphere::TriangularMesh::statistics() const
+{
+	Stats s;
+
+	// Report basic enentiy count
+	s.nPoint = listofPoints.size();
+	s.nEdge = listofEdges.size();
+	s.nTriangle = listofTriangles.size();
+
+	// Report max and min triangle size
+	s.areaElementMax = std::numeric_limits<FLP>::min();
+	s.areaElementMin = std::numeric_limits<FLP>::max();
+
+	FLP area;
+	for (auto &triangle : listofSimplices)
+	{
+		area = triangle.area();
+		s.areaElementMax = std::max(s.areaElementMax, area);
+		s.areaElementMin = std::min(s.areaElementMin, area);
+	}
+	s.areaElementDisparity = s.areaElementMax / s.areaElementMin;
+
+	return s;
+}
+
 void
 Cartosphere::TriangularMesh::fillSimplices()
 {
@@ -737,7 +788,7 @@ Cartosphere::TriangularMesh::fillSimplices()
 	unsigned pointIndex[6];
 	for (unsigned index = 0; index < listofTriangles.size(); ++index)
 	{
-		auto& triplet = listofTriangles[index];
+		auto &triplet = listofTriangles[index];
 		// Extract the 3 vertices with duplication
 		pointIndex[0] = listofEdges[std::get<0>(triplet).first].first;
 		pointIndex[1] = listofEdges[std::get<0>(triplet).first].second;

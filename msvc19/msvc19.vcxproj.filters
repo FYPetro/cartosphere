@@ -46,5 +46,6 @@
     <None Include="..\tests\cartosphere.mtl">
       <Filter>tests</Filter>
     </None>
+    <None Include="cpp.hint" />
   </ItemGroup>
 </Project>
