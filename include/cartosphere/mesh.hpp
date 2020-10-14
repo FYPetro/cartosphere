@@ -212,7 +212,8 @@ namespace Cartosphere
 		// Default constructor
 		Triangle() : A(), B(), C() {}
 		// Construct with three points
-		Triangle(Point const &P, Point const &Q, Point const &R) : A(P), B(Q), C(R) {}
+		Triangle(Point const &P, Point const &Q, Point const &R) :
+			A(P), B(Q), C(R) {}
 		// Copy constructor
 		Triangle(Triangle const &that) = default;
 
@@ -228,17 +229,17 @@ namespace Cartosphere
 	{
 	public:
 		// Pair of indices to points
-		typedef std::pair<unsigned, unsigned> PointIndexPair;
+		typedef std::pair<size_t, size_t> PointIndexPair;
 		// Edge index and its orientation
-		typedef std::pair<unsigned, bool> EdgeIndex;
+		typedef std::pair<size_t, bool> EdgeIndex;
 		// Triplet of indices with their orientations
 		typedef std::tuple<EdgeIndex, EdgeIndex, EdgeIndex> EdgeIndexTriplet;
 		// Memory statistics
 		typedef struct
 		{
-			unsigned nPoint;
-			unsigned nEdge;
-			unsigned nTriangle;
+			size_t nPoint;
+			size_t nEdge;
+			size_t nTriangle;
 			FLP areaElementMax;
 			FLP areaElementMin;
 			FLP areaElementDisparity;

@@ -74,21 +74,27 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)..\bin\$(Configuration)\$(PlatformTarget)\</OutDir>
     <TargetName>cartosphere</TargetName>
-    <IncludePath>$(SolutionDir)..\include;$(SolutionDIr)..\include\$(TargetName);$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)..\include;$(SolutionDIr)..\include\$(TargetName);$(SolutionDir)..\include\LAPACK;$(IncludePath)</IncludePath>
     <IntDir>$(SolutionDir)..\obj\$(Configuration)\$(PlatformTarget)\</IntDir>
+    <LibraryPath>$(SolutionDir)..\lib\msvc19\$(PlatformTarget);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)..\bin\$(Configuration)\$(PlatformTarget)\</OutDir>
     <TargetName>cartosphere</TargetName>
-    <IncludePath>$(SolutionDir)..\include;$(SolutionDIr)..\include\$(TargetName);$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)..\include;$(SolutionDIr)..\include\$(TargetName);$(SolutionDir)..\include\LAPACK;$(IncludePath)</IncludePath>
     <IntDir>$(SolutionDir)..\obj\$(Configuration)\$(PlatformTarget)\</IntDir>
+    <LibraryPath>$(SolutionDir)..\lib\msvc19\$(PlatformTarget);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>$(SolutionDir)..\include;$(SolutionDIr)..\include\$(TargetName);$(SolutionDir)..\include\LAPACK;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)..\lib\msvc19\$(PlatformTarget);$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>$(SolutionDir)..\include;$(SolutionDIr)..\include\$(TargetName);$(SolutionDir)..\include\LAPACK;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)..\lib\msvc19\$(PlatformTarget);$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -100,7 +106,11 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>libblas.lib;liblapack.lib;liblapacke.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>copy "$(SolutionDir)..\lib\msvc19\$(PlatformTarget)\*.dll" "$(SolutionDir)..\bin\$(Configuration)\$(PlatformTarget)\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -116,19 +126,27 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>libblas.lib;liblapack.lib;liblapacke.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>copy "$(SolutionDir)..\lib\msvc19\$(PlatformTarget)\*.dll" "$(SolutionDir)..\bin\$(Configuration)\$(PlatformTarget)\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_USE_MATH_DEFINES;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>libblas.lib;liblapack.lib;liblapacke.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>copy "$(SolutionDir)..\lib\msvc19\$(PlatformTarget)\*.dll" "$(SolutionDir)..\bin\$(Configuration)\$(PlatformTarget)\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -136,7 +154,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_USE_MATH_DEFINES;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
     <Link>
@@ -144,16 +162,26 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>libblas.lib;liblapack.lib;liblapacke.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>copy "$(SolutionDir)..\lib\msvc19\$(PlatformTarget)\*.dll" "$(SolutionDir)..\bin\$(Configuration)\$(PlatformTarget)\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\mesh.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\cartosphere\algebra.hpp" />
     <ClInclude Include="..\include\cartosphere\mesh.hpp" />
     <ClInclude Include="..\include\cartosphere\predicates.hpp" />
     <ClInclude Include="..\include\cartosphere\utility.hpp" />
+    <ClInclude Include="..\include\LAPACK\lapack.h" />
+    <ClInclude Include="..\include\LAPACK\lapacke.h" />
+    <ClInclude Include="..\include\LAPACK\lapacke_config.h" />
+    <ClInclude Include="..\include\LAPACK\lapacke_mangling.h" />
+    <ClInclude Include="..\include\LAPACK\lapacke_utils.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\tests\cartosphere.mtl">

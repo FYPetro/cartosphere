@@ -4,6 +4,24 @@
 
 #include "cartosphere/mesh.hpp"
 
+// Tests the matrix
+#include "cartosphere/algebra.hpp"
+
+void test_matrix()
+{
+	Cartosphere::Matrix A(5, 3, Cartosphere::Matrix::Tridiagonal);
+	A = { 1, 2, 3, 4, 5, 1, 3, 5, 2, 4, 1, 4, 2, 5, 3 };
+
+	std::vector<FLP> b = { -10, 12, 14, 16, 18 };
+	std::vector<FLP> x;
+	A.solve(x, b);
+
+	for (size_t i = 0; i < x.size(); ++i)
+	{
+		std::cout << x[i] << "\n";
+	}
+}
+
 /* **************************** MAIN ENTRY POINT **************************** */
 int
 main(int argc, char **argv)
@@ -28,8 +46,8 @@ main(int argc, char **argv)
 	mesh.format(std::string(argv[1]) + ".obj");
 
 	// Iterative refinement
-	unsigned const total = 5;
-	for (unsigned i = 0; i <= total; ++i)
+	size_t const total = 3;
+	for (size_t i = 0; i <= total; ++i)
 	{
 		std::cout << "\nRefinement Level " << i << "\n"
 			"Euclidean Area = " << mesh.areaEuclidean() << "\n"
@@ -52,15 +70,17 @@ main(int argc, char **argv)
 
 		// Print statistics about the mesh
 		auto stats = mesh.statistics();
-		unsigned euler = stats.nPoint + stats.nTriangle - stats.nEdge;
-		std::cout << "V - E + F = " << stats.nPoint << " - " << stats.nEdge << " + "
-			<< stats.nTriangle << " = " << euler << "\n";
+		size_t euler = stats.nPoint + stats.nTriangle - stats.nEdge;
+		std::cout << "V - E + F = " << stats.nPoint << " - " << stats.nEdge
+			<< " + " << stats.nTriangle << " = " << euler << "\n";
 		std::cout << "Area ratio = " << stats.areaElementDisparity
 			<< " (max " << stats.areaElementMax
 			<< ", min " << stats.areaElementMin << ")\n";
 	}
 
 	std::cout << "\nLimit = 4*pi = " << (4 * M_PI) << "\n";
+
+	test_matrix();
 
 	return 0;
 }

@@ -145,12 +145,12 @@ Cartosphere::TriangularMesh::load(std::string const &path)
 	}
 
 	// Temporary state variables
-	unsigned lineNumber = 0;
-	unsigned lineParsed = 0;
-	std::vector<unsigned> specs;
+	size_t lineNumber = 0;
+	size_t lineParsed = 0;
+	std::vector<size_t> specs;
 	FLP coords[4];
 	// Temporary state flags
-	unsigned format = 0;
+	size_t format = 0;
 
 	// Start parsing file line by line
 	std::string line;
@@ -174,7 +174,7 @@ Cartosphere::TriangularMesh::load(std::string const &path)
 		if (lineParsed == 0)
 		{
 			// Section 0: Size specifications
-			unsigned size;
+			size_t size;
 			
 			iss >> size;
 			if (iss.fail() || size == 0)
@@ -243,7 +243,7 @@ Cartosphere::TriangularMesh::load(std::string const &path)
 		else if (lineParsed <= specs[0])
 		{
 			// Section 1: List of points
-			for (unsigned pos = 0; pos < 2; ++pos)
+			for (size_t pos = 0; pos < 2; ++pos)
 			{
 				iss >> coords[pos];
 				if (iss.fail())
@@ -323,10 +323,10 @@ Cartosphere::TriangularMesh::load(std::string const &path)
 		else if (lineParsed <= specs[0] + specs[1] + specs[2])
 		{
 			// Section 3: List of triangles
-			unsigned indices[3];
+			size_t indices[3];
 			char orientation[3] = { '\0', '\0', '\0' };
 
-			for (unsigned pos = 0; pos < 3; ++pos)
+			for (size_t pos = 0; pos < 3; ++pos)
 			{
 				iss >> orientation[pos];
 				if (iss.fail() || orientation[0] == '\0')
@@ -335,7 +335,8 @@ Cartosphere::TriangularMesh::load(std::string const &path)
 					{
 						std::stringstream sst;
 						sst << "Error in Line " << lineNumber
-							<< ": Argument " << pos << " is missing an orientation";
+							<< ": Argument " << pos
+							<< " is missing an orientation";
 						message = sst.str();
 					}
 					listofMessages.push_back(message);
@@ -347,7 +348,8 @@ Cartosphere::TriangularMesh::load(std::string const &path)
 					{
 						std::stringstream sst;
 						sst << "Error in Line " << lineNumber
-							<< ": Argument " << pos << " is not formatted correctly";
+							<< ": Argument " << pos
+							<< " is not formatted correctly";
 						message = sst.str();
 					}
 					listofMessages.push_back(message);
@@ -454,23 +456,23 @@ Cartosphere::TriangularMesh::format(std::string const &path) const
 
 	// Initialize container for vertices and smoothing groups
 	std::vector<Image> vs;
-	std::vector<std::vector<std::vector<unsigned>>> sgs;
+	std::vector<std::vector<std::vector<size_t>>> sgs;
 	std::vector<std::string> materials;
 
 	// Push vertices and edges for a globe
 	{
 		// Preparation for vertices at certain UV detail level
-		unsigned const uv = 64;
+		size_t const uv = 64;
 		FLP const radius = 0.999;
 		// Vertex: north pole
 		vs.emplace_back(0, 0, radius);
 		// Vertex: all points but the poles
 		FLP x, y, z, a, p;
-		for (unsigned k = 1; k < uv; ++k)
+		for (size_t k = 1; k < uv; ++k)
 		{
 			p = M_PI * k / uv;
 			z = radius * cos(p);
-			for (unsigned j = 0; j < uv; ++j)
+			for (size_t j = 0; j < uv; ++j)
 			{
 				x = y = radius * sin(p);
 				a = 2 * M_PI * j / uv;
@@ -487,7 +489,7 @@ Cartosphere::TriangularMesh::format(std::string const &path) const
 		sgs.emplace_back();
 		auto &sg = sgs.back();
 		// Face: cap at north pole
-		for (unsigned j = 0; j < uv; ++j)
+		for (size_t j = 0; j < uv; ++j)
 		{
 			sg.push_back({
 				1,
@@ -496,9 +498,9 @@ Cartosphere::TriangularMesh::format(std::string const &path) const
 			});
 		}
 		// Face: quad strips
-		for (unsigned k = 1; k < uv - 1; ++k)
+		for (size_t k = 1; k < uv - 1; ++k)
 		{
-			for (unsigned j = 0; j < uv; ++j)
+			for (size_t j = 0; j < uv; ++j)
 			{
 				sg.push_back({
 					2 + uv * (k - 1) + j,
@@ -509,7 +511,7 @@ Cartosphere::TriangularMesh::format(std::string const &path) const
 			}
 		}
 		// Face: cap at south pole
-		for (unsigned j = 0; j < uv; ++j)
+		for (size_t j = 0; j < uv; ++j)
 		{
 			sg.push_back({
 				2 + uv * (uv - 2) + j,
@@ -526,7 +528,7 @@ Cartosphere::TriangularMesh::format(std::string const &path) const
 		FLP const width = 0.001;
 
 		// Loop through all edges
-		for (unsigned i = 0; i < listofEdges.size(); ++i)
+		for (size_t i = 0; i < listofEdges.size(); ++i)
 		{
 			// Skip edge if not used
 			if (!edgeUsages[i]) continue;
@@ -539,12 +541,12 @@ Cartosphere::TriangularMesh::format(std::string const &path) const
 
 			// Calculate optimal number of segments to divide into
 			FLP span = arc.span();
-			unsigned segments =
-				static_cast<unsigned>(std::ceil(span / length));
+			size_t segments =
+				static_cast<size_t>(std::ceil(span / length));
 
 			// Generate vertices
-			unsigned offset = vs.size();
-			for (unsigned s = 0; s <= segments; ++s)
+			size_t offset = vs.size();
+			for (size_t s = 0; s <= segments; ++s)
 			{
 				FLP u = span * (1.0 * s / segments);
 				vs.push_back(arc.local(u, -width).image());
@@ -556,7 +558,7 @@ Cartosphere::TriangularMesh::format(std::string const &path) const
 			sgs.emplace_back();
 			auto &sg = sgs.back();
 			// Generate strips
-			for (unsigned s = 0; s < segments; ++s)
+			for (size_t s = 0; s < segments; ++s)
 			{
 				sg.push_back({
 					offset + 2 * s + 1,
@@ -578,7 +580,7 @@ Cartosphere::TriangularMesh::format(std::string const &path) const
 	/////////////////////////////////////
 	ofs << "# Wavefront OBJ File Format\n"
 		<< "# This file is generated by Cartosphere\n"
-		<< "# Make sure the following cartosphere.mtl exists in the same folder\n"
+		<< "# Please ensure that cartosphere.mtl exists in the same folder\n"
 		<< "mtllib cartosphere.mtl\n";
 
 	// Outputs V, N, T count
@@ -586,7 +588,7 @@ Cartosphere::TriangularMesh::format(std::string const &path) const
 
 	ofs << "# Normal: " << vs.size() << "\n";
 
-	unsigned polygonCount = 0;
+	size_t polygonCount = 0;
 	for (auto &sg : sgs)
 	{
 		polygonCount += sg.size();
@@ -601,7 +603,7 @@ Cartosphere::TriangularMesh::format(std::string const &path) const
 	}
 
 	// Print all smoothing groups
-	for (unsigned i = 0; i < sgs.size(); ++i)
+	for (size_t i = 0; i < sgs.size(); ++i)
 	{
 		// Start a smoothing group
 		ofs << "s " << i + 1 << "\n"
@@ -642,7 +644,7 @@ Cartosphere::TriangularMesh::refine()
 		Point const &A = listofPoints[pair.first];
 		Point const &B = listofPoints[pair.second];
 
-		unsigned midpointIndex = listofPoints.size();
+		size_t midpointIndex = listofPoints.size();
 		listofPoints.push_back(midpoint(A, B));
 
 		// Each new midpoint will bisect the old edge into two new edges
@@ -651,7 +653,7 @@ Cartosphere::TriangularMesh::refine()
 	}
 
 	// Assemble new list of triangles
-	unsigned myMidpoints[3];
+	size_t myMidpoints[3];
 	std::vector<EdgeIndex> myEdges;
 	std::vector<EdgeIndexTriplet> myTriangles;
 	myEdges.reserve(12);
@@ -785,8 +787,8 @@ Cartosphere::TriangularMesh::fillSimplices()
 {
 	listofSimplices.clear();
 
-	unsigned pointIndex[6];
-	for (unsigned index = 0; index < listofTriangles.size(); ++index)
+	size_t pointIndex[6];
+	for (size_t index = 0; index < listofTriangles.size(); ++index)
 	{
 		auto &triplet = listofTriangles[index];
 		// Extract the 3 vertices with duplication

@@ -94,7 +94,7 @@ class UI3
 {
 public:
 	// Components
-	unsigned a, b, c;
+	size_t a, b, c;
 };
 
 #endif // !__UTILITY_HPP__
