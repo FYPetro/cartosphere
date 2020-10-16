@@ -1,14 +1,16 @@
 CC = g++
 
-incldir=../include
+INCLUDE = -I../include -I../include/LAPACK
 
-CFLAGS = -g -O0 -I$(incldir) -std=c++14
+CFLAGS = -g $(INCLUDE) -std=c++14
+
+CPPFLAGS = -O3
 
 all: cartosphere
 
 cartosphere: main.cpp mesh.cpp
 	pwd
-	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $+ -L/usr/local/lib -largp
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $+ -L/usr/local/lib -L/usr/local/lib/gcc/10 -lgfortran -lblas -llapack -llapacke -largp
 
 clean:
 	-rm cartosphere

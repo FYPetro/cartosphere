@@ -9,7 +9,7 @@
 
 void test_matrix()
 {
-	Cartosphere::Matrix A(5, 3, Cartosphere::Matrix::Tridiagonal);
+	Cartosphere::Matrix A(5, 3);
 	A = { 1, 2, 3, 4, 5, 1, 3, 5, 2, 4, 1, 4, 2, 5, 3 };
 
 	std::vector<FLP> b = { -10, 12, 14, 16, 18 };

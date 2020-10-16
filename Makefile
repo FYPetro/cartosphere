@@ -8,8 +8,6 @@ distdir = $(tarname)-$(version)
 
 export prefix=/usr/local
 
-incldir=/include
-
 all clean install uninstall cartosphere:
 	$(MAKE) -C src $@
 

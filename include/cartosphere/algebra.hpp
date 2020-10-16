@@ -2,19 +2,22 @@
 #ifndef __ALGEBRA_HPP__
 #define __ALGEBRA_HPP__
 
-#include <vector>
-
-#include "cartosphere/predicates.hpp"
-
-#ifdef _WIN32
 // Reference: https://stackoverflow.com/a/24853652/1377770
+// Remedy for disabling the reserved keyword _Complex for MSVC
+#ifdef _WIN32
 #include <complex>
 #define lapack_complex_float std::complex<float>
 #define lapack_complex_double std::complex<double>
 #pragma warning(disable: 4190)
-#include "lapacke.h"
 #pragma warning(default: 4190)
-#endif
+#else
+#include <complex>
+#include "lapacke.h"
+#endif // !ifdef _WIN32
+
+#include <vector>
+
+#include "cartosphere/predicates.hpp"
 
 namespace Cartosphere
 {
