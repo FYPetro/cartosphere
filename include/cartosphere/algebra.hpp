@@ -9,6 +9,7 @@
 #define lapack_complex_float std::complex<float>
 #define lapack_complex_double std::complex<double>
 #pragma warning(disable: 4190)
+#include "lapacke.h"
 #pragma warning(default: 4190)
 #else
 #include <complex>
