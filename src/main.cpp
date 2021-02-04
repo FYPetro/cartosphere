@@ -1,86 +1,103 @@
 
 #include <iostream>
-#include <sstream>
+
+#include <Eigen/Core>
+#include <Eigen/Sparse>
+#include <Eigen/SparseCore>
+#include <Eigen/IterativeLinearSolvers>
 
 #include "cartosphere/mesh.hpp"
 
-// Tests the matrix
-#include "cartosphere/algebra.hpp"
+typedef Eigen::SparseMatrix<FLP, Eigen::RowMajor> CSR;
+typedef Eigen::Triplet<FLP> Entry;
+typedef std::vector<Entry> Entries;
+typedef Eigen::Matrix<FLP, Eigen::Dynamic, 1> VEC;
+typedef Eigen::BiCGSTAB<CSR> Solver;
 
-void test_matrix()
+void build_system(const Cartosphere::TriangularMesh& mesh, CSR& A, VEC& b)
 {
-	Cartosphere::Matrix A(5, 3);
-	A = { 1, 2, 3, 4, 5, 1, 3, 5, 2, 4, 1, 4, 2, 5, 3 };
+	// Temporarily use this as a testing ground for solving matrix systems
+	int N = 100;
+	A.resize(N, N);
+	b.resize(N);
 
-	std::vector<FLP> b = { -10, 12, 14, 16, 18 };
-	std::vector<FLP> x;
-	A.solve(x, b);
+	Entries e;
 
-	for (size_t i = 0; i < x.size(); ++i)
-	{
-		std::cout << x[i] << "\n";
-	}
+	for (int i = 0; i < N; ++i)
+		e.emplace_back(i, i, -2);
+
+	for (int i = 0; i < N - 1; ++i)
+		e.emplace_back(i, i + 1, 1);
+
+	for (int i = 0; i < N - 1; ++i)
+		e.emplace_back(i + 1, i, 1);
+
+	A.setFromTriplets(e.begin(), e.end());
+	b[0] = -1;
+	for (size_t i = 1; i < N - 1; ++i)
+		b[i] = 0;
+	b[N - 1] = -1;
 }
 
-/* **************************** MAIN ENTRY POINT **************************** */
-int
-main(int argc, char **argv)
-{
-	// The parsing of arguments
-	if (argc < 2)
-	{
-		return 0;
-	}
 
-	std::cout << "Input file: " << argv[1] << "\n";
-	Cartosphere::TriangularMesh mesh(argv[1]);
-	if (!mesh.isReady())
+/* Demo with no arguments */
+int demo()
+{
+	std::string file = "icosahedron.5.csm";
+
+	// Load mesh from file
+	Cartosphere::TriangularMesh mesh(file);
+	if (mesh.isReady())
 	{
-		for (auto &msg : mesh.getMessages())
+		std::cout << "Loaded mesh from file: " << file << "\n\n";
+
+		// Print statistics about the mesh
+		auto stats = mesh.statistics();
+		size_t euler = stats.nPoint + stats.nTriangle - stats.nEdge;
+
+		std::cout << "Statistics:\n"
+			<< "    Euler: V - E + F = " << stats.nPoint << " - " << stats.nEdge
+			<< " + " << stats.nTriangle << " = " << euler << "\n"
+			<< "    Area ratio: " << stats.areaElementDisparity
+			<< " (max " << stats.areaElementMax
+			<< ", min " << stats.areaElementMin << ")\n";
+	}
+	else
+	{
+		// Print error messages
+		for (auto& msg : mesh.getMessages())
 		{
 			std::cout << msg << "\n";
 		}
 		return 0;
 	}
 
-	mesh.format(std::string(argv[1]) + ".obj");
+	CSR A;
+	VEC b;
+	build_system(mesh, A, b);
 
-	// Iterative refinement
-	size_t const total = 3;
-	for (size_t i = 0; i <= total; ++i)
+	Solver s(A);
+	auto x = s.solve(b);
+
+	std::cout << "# Iterations:    " << s.iterations() << std::endl;
+	std::cout << "Estimated Error: " << s.error() << std::endl;
+	for (int i = 0; i < x.size(); ++i)
+		std::cout << x[i] << "\n";
+
+	// Eigen::SimplicialCholesky<Eigen::SparseMatrix<double>> chol(A);
+	// Eigen::VectorXd x = chol.solve(b);
+
+	return 0;
+}
+
+/* **************************** MAIN ENTRY POINT **************************** */
+int main(int argc, char** argv)
+{
+	// The parsing of arguments
+	if (argc < 2)
 	{
-		std::cout << "\nRefinement Level " << i << "\n"
-			"Euclidean Area = " << mesh.areaEuclidean() << "\n"
-			"Spherical Area = " << mesh.area() << "\n";
-
-		if (i > 0)
-		{
-			mesh.refine();
-
-			std::string name;
-			{
-				std::stringstream sst;
-				sst << argv[1] << ".r" << i;
-				name = sst.str();
-			}
-			mesh.format(name + ".obj");
-
-			mesh.save(name);
-		}
-
-		// Print statistics about the mesh
-		auto stats = mesh.statistics();
-		size_t euler = stats.nPoint + stats.nTriangle - stats.nEdge;
-		std::cout << "V - E + F = " << stats.nPoint << " - " << stats.nEdge
-			<< " + " << stats.nTriangle << " = " << euler << "\n";
-		std::cout << "Area ratio = " << stats.areaElementDisparity
-			<< " (max " << stats.areaElementMax
-			<< ", min " << stats.areaElementMin << ")\n";
+		return demo();
 	}
-
-	std::cout << "\nLimit = 4*pi = " << (4 * M_PI) << "\n";
-
-	test_matrix();
 
 	return 0;
 }

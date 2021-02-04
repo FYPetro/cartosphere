@@ -1,5 +1,4 @@
 
-#include "cartosphere/predicates.hpp"
 #include "cartosphere/mesh.hpp"
 
 #include <algorithm>
@@ -7,8 +6,6 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
-
-using namespace Cartosphere::Predicates;
 
 Cartosphere::Image
 Cartosphere::Preimage::toImage() const
@@ -44,7 +41,7 @@ Cartosphere::Image::toPreimage() const
 }
 
 Cartosphere::Point
-Cartosphere::midpoint(Point const &a, Point const &b)
+Cartosphere::midpoint(Point const& a, Point const& b)
 {
 	if (a.isAntipodalTo(b))
 	{
@@ -54,7 +51,7 @@ Cartosphere::midpoint(Point const &a, Point const &b)
 	FL3 middleofChord = (FL3)a.image() + (FL3)b.image();
 	middleofChord /= 2;
 	middleofChord.normalize();
-	
+
 	return Point(Image(middleofChord));
 }
 
@@ -107,7 +104,7 @@ FLP
 Cartosphere::TriangularMesh::area() const
 {
 	FLP area = (FLP)0.0;
-	for (auto &simplex : listofSimplices)
+	for (auto& simplex : listofSimplices)
 	{
 		area += simplex.area();
 	}
@@ -118,7 +115,7 @@ FLP
 Cartosphere::TriangularMesh::areaEuclidean() const
 {
 	FLP area = (FLP)0.0;
-	for (auto &simplex : listofSimplices)
+	for (auto& simplex : listofSimplices)
 	{
 		area += simplex.areaEuclidean();
 	}
@@ -126,7 +123,7 @@ Cartosphere::TriangularMesh::areaEuclidean() const
 }
 
 bool
-Cartosphere::TriangularMesh::load(std::string const &path)
+Cartosphere::TriangularMesh::load(std::string const& path)
 {
 	if (flagofLoading || flagofParsing) clear();
 
@@ -175,7 +172,7 @@ Cartosphere::TriangularMesh::load(std::string const &path)
 		{
 			// Section 0: Size specifications
 			size_t size;
-			
+
 			iss >> size;
 			if (iss.fail() || size == 0)
 			{
@@ -385,7 +382,7 @@ Cartosphere::TriangularMesh::load(std::string const &path)
 }
 
 bool
-Cartosphere::TriangularMesh::save(std::string const &path) const
+Cartosphere::TriangularMesh::save(std::string const& path) const
 {
 	std::ofstream ofs(path);
 
@@ -401,7 +398,7 @@ Cartosphere::TriangularMesh::save(std::string const &path) const
 		<< listofTriangles.size() << "\n\n"
 		<< "#V List\n";
 
-	for (auto &point : listofPoints)
+	for (auto& point : listofPoints)
 	{
 		ofs << rad2deg(point.p()) << " "
 			<< rad2deg(point.a()) << "\n";
@@ -410,7 +407,7 @@ Cartosphere::TriangularMesh::save(std::string const &path) const
 	ofs << "\n"
 		<< "#E List\n";
 
-	for (auto &edge : listofEdges)
+	for (auto& edge : listofEdges)
 	{
 		ofs << edge.first << " " << edge.second << "\n";
 	}
@@ -418,11 +415,11 @@ Cartosphere::TriangularMesh::save(std::string const &path) const
 	ofs << "\n"
 		<< "#F List\n";
 
-	for (auto &triangle : listofTriangles)
+	for (auto& triangle : listofTriangles)
 	{
-		auto &a = std::get<0>(triangle);
-		auto &b = std::get<1>(triangle);
-		auto &c = std::get<2>(triangle);
+		auto& a = std::get<0>(triangle);
+		auto& b = std::get<1>(triangle);
+		auto& c = std::get<2>(triangle);
 
 		ofs << (a.second ? "+" : "-") << a.first << " "
 			<< (b.second ? "+" : "-") << b.first << " "
@@ -433,21 +430,21 @@ Cartosphere::TriangularMesh::save(std::string const &path) const
 }
 
 bool
-Cartosphere::TriangularMesh::format(std::string const &path) const
+Cartosphere::TriangularMesh::format(std::string const& path) const
 {
 	// Summary of Logic:
 	//   1. Mark all used edges
 	//   2. Generate UV sphere (material globe)
 	//   3. Generate Segmented Edges (material segment)
 	//   4. Format Wavefront OBJ output file
-	
+
 	// Export to specified path
 	std::ofstream ofs(path);
 	if (!ofs.is_open()) return false;
 
 	// Mark all edges that are part of some triangle
 	std::vector<bool> edgeUsages(listofEdges.size(), false);
-	for (auto &triangle : listofTriangles)
+	for (auto& triangle : listofTriangles)
 	{
 		edgeUsages[std::get<0>(triangle).first] = true;
 		edgeUsages[std::get<1>(triangle).first] = true;
@@ -458,6 +455,7 @@ Cartosphere::TriangularMesh::format(std::string const &path) const
 	std::vector<Image> vs;
 	std::vector<std::vector<std::vector<size_t>>> sgs;
 	std::vector<std::string> materials;
+	std::vector<size_t> list;
 
 	// Push vertices and edges for a globe
 	{
@@ -487,37 +485,40 @@ Cartosphere::TriangularMesh::format(std::string const &path) const
 		// Preparation for faces and smoothing group
 		materials.emplace_back("globe");
 		sgs.emplace_back();
-		auto &sg = sgs.back();
+		auto& sg = sgs.back();
 		// Face: cap at north pole
 		for (size_t j = 0; j < uv; ++j)
 		{
-			sg.push_back({
+			list = {
 				1,
 				2 + j,
 				2 + (j + 1) % uv
-			});
+			};
+			sg.push_back(list);
 		}
 		// Face: quad strips
 		for (size_t k = 1; k < uv - 1; ++k)
 		{
 			for (size_t j = 0; j < uv; ++j)
 			{
-				sg.push_back({
+				list = {
 					2 + uv * (k - 1) + j,
 					2 + uv * k + j,
 					2 + uv * k + (j + 1) % uv,
 					2 + uv * (k - 1) + (j + 1) % uv
-				});
+				};
+				sg.push_back(list);
 			}
 		}
 		// Face: cap at south pole
 		for (size_t j = 0; j < uv; ++j)
 		{
-			sg.push_back({
+			list = {
 				2 + uv * (uv - 2) + j,
 				2 + uv * (uv - 1),
 				2 + uv * (uv - 2) + (j + 1) % uv
-			});
+			};
+			sg.push_back(list);
 		}
 	}
 
@@ -534,9 +535,9 @@ Cartosphere::TriangularMesh::format(std::string const &path) const
 			if (!edgeUsages[i]) continue;
 
 			// Construct minor arc
-			auto &e = listofEdges[i];
-			auto &a = listofPoints[e.first];
-			auto &b = listofPoints[e.second];
+			auto& e = listofEdges[i];
+			auto& a = listofPoints[e.first];
+			auto& b = listofPoints[e.second];
 			Arc arc(a, b);
 
 			// Calculate optimal number of segments to divide into
@@ -556,20 +557,22 @@ Cartosphere::TriangularMesh::format(std::string const &path) const
 			// Each edge starts its own smoothing group
 			materials.emplace_back("segment");
 			sgs.emplace_back();
-			auto &sg = sgs.back();
+			auto& sg = sgs.back();
 			// Generate strips
 			for (size_t s = 0; s < segments; ++s)
 			{
-				sg.push_back({
+				list = {
 					offset + 2 * s + 1,
 					offset + 2 * s + 3,
 					offset + 2 * s + 2
-				});
-				sg.push_back({
+				};
+				sg.push_back(list);
+				list = {
 					offset + 2 * s + 2,
 					offset + 2 * s + 3,
 					offset + 2 * s + 4
-				});
+				};
+				sg.push_back(list);
 			}
 
 		}
@@ -589,14 +592,14 @@ Cartosphere::TriangularMesh::format(std::string const &path) const
 	ofs << "# Normal: " << vs.size() << "\n";
 
 	size_t polygonCount = 0;
-	for (auto &sg : sgs)
+	for (auto& sg : sgs)
 	{
 		polygonCount += sg.size();
 	}
 	ofs << "# Polygon: " << polygonCount << "\n";
 
 	// Print all vertices
-	for (auto &v : vs)
+	for (auto& v : vs)
 	{
 		ofs << "v  " << v.x << " " << v.y << " " << v.z << "\n"
 			<< "vn " << v.x << " " << v.y << " " << v.z << "\n";
@@ -610,11 +613,11 @@ Cartosphere::TriangularMesh::format(std::string const &path) const
 			<< "usemtl " << materials[i] << "\n";
 
 		// Output all polygons in this smoothing group
-		auto const &sg = sgs[i];
-		for (auto &f : sg)
+		auto const& sg = sgs[i];
+		for (auto& f : sg)
 		{
 			ofs << "f";
-			for (auto &v : f)
+			for (auto& v : f)
 			{
 				ofs << " " << v << "//" << v;
 			}
@@ -628,21 +631,23 @@ Cartosphere::TriangularMesh::format(std::string const &path) const
 void
 Cartosphere::TriangularMesh::refine()
 {
-	// Reserve space for new midpoints, edges (all), and triangles (all)
-	// - listofPoints will accept new midpoints
-	// - listofEdges will be cleared
-	// - listofTriangles will also be cleared
-	listofPoints.reserve(listofPoints.size() + listofEdges.size());
+	// Update VEF count, as a special case with division set to 2
+	size_t V = listofPoints.size() + listofEdges.size();
+	size_t E = 2 * listofEdges.size() + 3 * listofTriangles.size();
+	size_t F = 4 * listofTriangles.size();
+
 	auto edges = std::move(listofEdges);
-	listofEdges.reserve(2 * listofEdges.size() + 3 * listofTriangles.size());
 	auto triangles = std::move(listofTriangles);
-	listofTriangles.reserve(4 * listofTriangles.size());
+
+	listofPoints.reserve(V);
+	listofEdges.reserve(E);
+	listofTriangles.reserve(F);
 
 	// Each old edge will produce one new midpoint
-	for (auto &pair : edges)
+	for (auto& pair : edges)
 	{
-		Point const &A = listofPoints[pair.first];
-		Point const &B = listofPoints[pair.second];
+		Point const& A = listofPoints[pair.first];
+		Point const& B = listofPoints[pair.second];
 
 		size_t midpointIndex = listofPoints.size();
 		listofPoints.push_back(midpoint(A, B));
@@ -658,11 +663,11 @@ Cartosphere::TriangularMesh::refine()
 	std::vector<EdgeIndexTriplet> myTriangles;
 	myEdges.reserve(12);
 	myTriangles.reserve(4);
-	for (auto &triangle : triangles)
+	for (auto& triangle : triangles)
 	{
-		auto &a = std::get<0>(triangle);
-		auto &b = std::get<1>(triangle);
-		auto &c = std::get<2>(triangle);
+		auto& a = std::get<0>(triangle);
+		auto& b = std::get<1>(triangle);
+		auto& c = std::get<2>(triangle);
 		// Push 6 constructed edges and retrieve midpoints
 		myEdges.emplace_back(2 * a.first, a.second);
 		myEdges.emplace_back(2 * a.first + 1, a.second);
@@ -717,8 +722,73 @@ Cartosphere::TriangularMesh::refine()
 		myEdges.clear();
 		myTriangles.clear();
 	}
-	
+
 	// Fill the simplices
+	fillSimplices();
+}
+
+void
+Cartosphere::TriangularMesh::refine(size_t division)
+{
+	// If division is 0 or 1, quit
+	// If division is 2, delegate to the mid-point refinement
+	if (division < 2)
+	{
+		return;
+	}
+	else if (division == 2)
+	{
+		return refine();
+	}
+
+	// Update VEF count: original (V', E', F') -> refined (V, E, F)
+	// V = V' + (d-1)E' + (d-1)(d-2)/2
+	// E = d*E' + 3F'd(d-1)/2
+	// F = ddF';
+	size_t V = listofPoints.size()
+		+ (division - 1) * listofEdges.size()
+		+ (division - 1) * (division - 2) / 2;
+	size_t E = division * listofEdges.size()
+		+ 3 * listofTriangles.size() * division * (division - 1) / 2;
+	size_t F = division * division * listofTriangles.size();
+
+	// Preserve edges and triangles
+	auto edges = std::move(listofEdges);
+	auto triangles = std::move(listofTriangles);
+
+	// Reserve (perhaps more) memory
+	listofPoints.reserve(V);
+	listofEdges.reserve(E);
+	listofTriangles.reserve(F);
+
+	// Each old edge will produce (d-1) new midpoints and d new edges
+	for (auto& pair : edges)
+	{
+		Point const& A = listofPoints[pair.first];
+		Point const& B = listofPoints[pair.second];
+
+		// Add first edge
+		size_t midpointIndex = listofPoints.size();
+		listofEdges.emplace_back(std::make_pair(pair.first, midpointIndex));
+
+		// Construct midpoints and their in-between edges
+		Cartosphere::Arc arc(A, B);
+		for (size_t d = 1; d < division; ++d, ++midpointIndex)
+		{
+			double alpha = 1.0 * d / division;
+			listofPoints.push_back(arc.local(alpha));
+			listofEdges.push_back(std::make_pair(midpointIndex, midpointIndex + 1));
+		}
+
+		// Add last edge
+		listofEdges.emplace_back(std::make_pair(midpointIndex - 1, pair.second));
+	}
+
+	// TODO: construct vertices and edges in the interior of the triangle
+
+	// TODO: construct faces
+
+	// Refresh the list of simplices
 	fillSimplices();
 }
 
@@ -728,15 +798,15 @@ Cartosphere::TriangularMesh::reportAreas()
 	FLP area = 0;
 	FLP totalArea = 0;
 
-	for (auto &triangle : listofSimplices)
+	for (auto& triangle : listofSimplices)
 	{
 		area = triangle.areaEuclidean();
 		totalArea += area;
 		std::string message;
 		{
-			auto &A = triangle.A.image();
-			auto &B = triangle.B.image();
-			auto &C = triangle.C.image();
+			auto& A = triangle.A.image();
+			auto& B = triangle.B.image();
+			auto& C = triangle.C.image();
 			std::stringstream sst;
 			sst << "Area: " << area
 				<< " | A(" << A.x << ", " << A.y << ", " << A.z << ") "
@@ -771,7 +841,7 @@ Cartosphere::TriangularMesh::statistics() const
 	s.areaElementMin = std::numeric_limits<FLP>::max();
 
 	FLP area;
-	for (auto &triangle : listofSimplices)
+	for (auto& triangle : listofSimplices)
 	{
 		area = triangle.area();
 		s.areaElementMax = std::max(s.areaElementMax, area);
@@ -790,7 +860,7 @@ Cartosphere::TriangularMesh::fillSimplices()
 	size_t pointIndex[6];
 	for (size_t index = 0; index < listofTriangles.size(); ++index)
 	{
-		auto &triplet = listofTriangles[index];
+		auto& triplet = listofTriangles[index];
 		// Extract the 3 vertices with duplication
 		pointIndex[0] = listofEdges[std::get<0>(triplet).first].first;
 		pointIndex[1] = listofEdges[std::get<0>(triplet).first].second;

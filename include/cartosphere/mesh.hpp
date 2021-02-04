@@ -28,9 +28,9 @@ namespace Cartosphere
 		// Constructor from two angles
 		Preimage(FLP polar, FLP azimuthal) : p(polar), a(azimuthal) {}
 		// Copy constructor
-		Preimage(Preimage const &that) = default;
+		Preimage(Preimage const& that) = default;
 		// Copy assignment
-		Preimage &operator=(Preimage const &that)
+		Preimage& operator=(Preimage const& that)
 		{
 			if (this != &that)
 			{
@@ -52,15 +52,15 @@ namespace Cartosphere
 		// Default Constructor
 		Image() {}
 		// Construct from FL3
-		Image(FL3 const &f) : FL3(f) {}
+		Image(FL3 const& f) : FL3(f) {}
 		// Constructor from coordinates
 		Image(FLP x, FLP y, FLP z) : FL3(x, y, z) {}
 		// Copy constructor
-		Image(Image const &that) = default;
+		Image(Image const& that) = default;
 
 	public:
 		// Calculate the spherical distance between two points
-		friend FLP distance(Image const &a, Image const &b)
+		friend FLP distance(Image const& a, Image const& b)
 		{
 			Preimage pa = a.toPreimage();
 			Preimage pb = b.toPreimage();
@@ -73,7 +73,7 @@ namespace Cartosphere
 		// Obtain preimage
 		Preimage toPreimage() const;
 		// Assignment constructor
-		Image &operator=(Image const &that)
+		Image& operator=(Image const& that)
 		{
 			if (this != &that)
 				FL3::operator=(that);
@@ -88,17 +88,17 @@ namespace Cartosphere
 		// Default constructor, constructing an inconsistent point
 		Point() : pi(), im() {}
 		// Copy constructor.
-		Point(Point const &that) = default;
+		Point(Point const& that) = default;
 		// Construct from Preimage
-		Point(Preimage const &preimage) : pi(preimage), im(preimage.toImage()) {}
+		Point(Preimage const& preimage) : pi(preimage), im(preimage.toImage()) {}
 		// Construct from Image
-		Point(Image const &image) : pi(image.toPreimage()), im(image) {}
+		Point(Image const& image) : pi(image.toPreimage()), im(image) {}
 
 	public:
 		// Get preimage
-		Preimage const &preimage() const { return pi; }
+		Preimage const& preimage() const { return pi; }
 		// Get image
-		Image const &image() const { return im; }
+		Image const& image() const { return im; }
 		// Obtain polar angle
 		FLP p() const { return pi.p; }
 		// Obtain azimuthal angle
@@ -112,7 +112,7 @@ namespace Cartosphere
 
 	public:
 		// Check if point is antipodal to another point
-		bool isAntipodalTo(Point const &p) const
+		bool isAntipodalTo(Point const& p) const
 		{
 			return this != &p
 				&& this->x() + p.x() == 0
@@ -125,13 +125,13 @@ namespace Cartosphere
 			return p() == 0 && a() == 0 && x() == 0 && y() == 0 && z() == 0;
 		}
 		// Set preimage and fill image
-		void set(Preimage const &preimage)
+		void set(Preimage const& preimage)
 		{
 			pi = preimage;
 			populateImage();
 		}
 		// Set image and fill preimage
-		void set(Image const &image)
+		void set(Image const& image)
 		{
 			im = image;
 			populatePreimage();
@@ -139,11 +139,11 @@ namespace Cartosphere
 
 	public:
 		// Set preimage and fill image
-		Point &operator=(Preimage const &that) { set(that); return *this; }
+		Point& operator=(Preimage const& that) { set(that); return *this; }
 		// Set image and fill preimage
-		Point &operator=(Image const &that) { set(that); return *this; }
+		Point& operator=(Image const& that) { set(that); return *this; }
 		// Obtain midpoint
-		friend Point midpoint(Point const &a, Point const &b);
+		friend Point midpoint(Point const& a, Point const& b);
 
 	private:
 		// The preimage
@@ -153,7 +153,7 @@ namespace Cartosphere
 
 	protected:
 		// Fill preimage from image
-		void populatePreimage()	{ pi = im.toPreimage(); }
+		void populatePreimage() { pi = im.toPreimage(); }
 		// Fill image from preimage
 		void populateImage() { im = pi.toImage(); }
 	};
@@ -165,7 +165,7 @@ namespace Cartosphere
 		// Default Constructor
 		Arc() {}
 		// Constructor from two points
-		Arc(Point const &A, Point const &B) : a(A), b(B) { fill(); }
+		Arc(Point const& A, Point const& B) : a(A), b(B) { fill(); }
 
 	public:
 		// Return the angle spanned by the arc
@@ -212,10 +212,10 @@ namespace Cartosphere
 		// Default constructor
 		Triangle() : A(), B(), C() {}
 		// Construct with three points
-		Triangle(Point const &P, Point const &Q, Point const &R) :
+		Triangle(Point const& P, Point const& Q, Point const& R) :
 			A(P), B(Q), C(R) {}
 		// Copy constructor
-		Triangle(Triangle const &that) = default;
+		Triangle(Triangle const& that) = default;
 
 	public:
 		// Calculate the area as a spherical triangle
@@ -249,9 +249,19 @@ namespace Cartosphere
 		// Default Constructor
 		TriangularMesh() = default;
 		// Construct triangular mesh from file
-		TriangularMesh(std::string const &path) { load(path); }
+		TriangularMesh(std::string const& path) { load(path); }
 
 	public:
+		// Expose begin iterator to faces
+		std::vector<Triangle>::const_iterator begin() const
+		{
+			return listofSimplices.cbegin();
+		}
+		// Expose end iterator to faces
+		std::vector<Triangle>::const_iterator end() const
+		{
+			return listofSimplices.cend();
+		}
 		// Get file load state
 		bool isReady() const { return flagofParsing; }
 		// Get file load messages
@@ -265,20 +275,22 @@ namespace Cartosphere
 		// Clear file
 		void clear();
 		// Load file from path
-		bool load(std::string const &path);
+		bool load(std::string const& path);
 		// Save mesh to file
-		bool save(std::string const &path) const;
+		bool save(std::string const& path) const;
 		// Export mesh to OBJ format
-		bool format(std::string const &path) const;
-		// Refine the mesh
+		bool format(std::string const& path) const;
+		// Apply mid-point refinement to the mesh
 		void refine();
+		// Refine the mesh to a certain number of divisions
+		void refine(size_t division);
 		// Report the area of each triangle
 		void reportAreas();
 		// Generate statistics
 		Stats statistics() const;
 
 	private:
-		// Fill simplicial complex
+		// Refresh the list of simplices based on point, edge, and triangle lists
 		void fillSimplices();
 
 	private:

@@ -16,9 +16,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="include\LAPACK">
-      <UniqueIdentifier>{798e8fe5-8ca2-4ad8-9b17-b79c1b255e58}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -34,27 +31,6 @@
     </ClInclude>
     <ClInclude Include="..\include\cartosphere\utility.hpp">
       <Filter>include\cartosphere</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\cartosphere\predicates.hpp">
-      <Filter>include\cartosphere</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\cartosphere\algebra.hpp">
-      <Filter>include\cartosphere</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\LAPACK\lapacke_config.h">
-      <Filter>include\LAPACK</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\LAPACK\lapacke_mangling.h">
-      <Filter>include\LAPACK</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\LAPACK\lapacke_utils.h">
-      <Filter>include\LAPACK</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\LAPACK\lapack.h">
-      <Filter>include\LAPACK</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\LAPACK\lapacke.h">
-      <Filter>include\LAPACK</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
