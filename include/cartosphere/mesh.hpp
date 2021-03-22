@@ -3,6 +3,7 @@
 #define __MESH_HPP__
 
 #include <utility>
+#include <functional>
 #include <tuple>
 #include <vector>
 #include <string>
@@ -28,9 +29,9 @@ namespace Cartosphere
 		// Constructor from two angles
 		Preimage(FLP polar, FLP azimuthal) : p(polar), a(azimuthal) {}
 		// Copy constructor
-		Preimage(Preimage const& that) = default;
+		Preimage(const Preimage& that) = default;
 		// Copy assignment
-		Preimage& operator=(Preimage const& that)
+		Preimage& operator=(const Preimage& that)
 		{
 			if (this != &that)
 			{
@@ -52,33 +53,34 @@ namespace Cartosphere
 		// Default Constructor
 		Image() {}
 		// Construct from FL3
-		Image(FL3 const& f) : FL3(f) {}
+		Image(const FL3& f) : FL3(f) {}
 		// Constructor from coordinates
 		Image(FLP x, FLP y, FLP z) : FL3(x, y, z) {}
 		// Copy constructor
-		Image(Image const& that) = default;
-
-	public:
-		// Calculate the spherical distance between two points
-		friend FLP distance(Image const& a, Image const& b)
-		{
-			Preimage pa = a.toPreimage();
-			Preimage pb = b.toPreimage();
-			FLP value = cos(pa.p) * cos(pb.p) +
-				sin(pa.p) * sin(pb.p) * cos(pa.a - pb.a);
-			return acos(value);
-		}
-
-	public:
-		// Obtain preimage
-		Preimage toPreimage() const;
+		Image(const Image& that) = default;
 		// Assignment constructor
-		Image& operator=(Image const& that)
+		Image& operator=(const Image& that)
 		{
 			if (this != &that)
+			{
 				FL3::operator=(that);
+			}
 			return *this;
 		}
+
+	public:
+		// Convert to vector
+		FL3 toVector() const { return static_cast<FL3>(*this); }
+		// Obtain preimage
+		Preimage toPreimage() const;
+
+	public:
+		// Implicit conversion to FL3
+		operator FL3() const { return static_cast<FL3>(*this); }
+		// Calculate the spherical distance between two points
+		friend FLP distance(const Image& a, const Image& b);
+		// Calculate the angle spanned by three points
+		friend FLP angle(const Image& a, const Image& b, const Image& c);
 	};
 
 	// A point keeps track of both coordinates
@@ -86,77 +88,83 @@ namespace Cartosphere
 	{
 	public:
 		// Default constructor, constructing an inconsistent point
-		Point() : pi(), im() {}
+		Point() : _preimage(), _image() {}
 		// Copy constructor.
-		Point(Point const& that) = default;
+		Point(const Point& that) = default;
 		// Construct from Preimage
-		Point(Preimage const& preimage) : pi(preimage), im(preimage.toImage()) {}
+		Point(const Preimage& preimage) :
+			_preimage(preimage), _image(preimage.toImage()) {}
 		// Construct from Image
-		Point(Image const& image) : pi(image.toPreimage()), im(image) {}
+		Point(const Image& image) :
+			_preimage(image.toPreimage()), _image(image) {}
 
 	public:
 		// Get preimage
-		Preimage const& preimage() const { return pi; }
+		inline Preimage const& preimage() const { return _preimage; }
 		// Get image
-		Image const& image() const { return im; }
+		inline Image const& image() const { return _image; }
 		// Obtain polar angle
-		FLP p() const { return pi.p; }
+		inline FLP p() const { return _preimage.p; }
 		// Obtain azimuthal angle
-		FLP a() const { return pi.a; }
+		inline FLP a() const { return _preimage.a; }
 		// Obtain x-coordinate
-		FLP x() const { return im.x; }
+		inline FLP x() const { return _image.x; }
 		// Obtain y-coordinate
-		FLP y() const { return im.y; }
+		inline FLP y() const { return _image.y; }
 		// Obtain z-coordinate
-		FLP z() const { return im.z; }
+		inline FLP z() const { return _image.z; }
 
 	public:
+		// Flip to the antipode
+		void flip() { _image.x *= -1; _image.y *= -1; _image.z *= -1; _populate_preimage(); }
 		// Check if point is antipodal to another point
-		bool isAntipodalTo(Point const& p) const
-		{
-			return this != &p
-				&& this->x() + p.x() == 0
-				&& this->y() + p.y() == 0
-				&& this->z() + p.z() == 0;
-		}
+		bool isAntipodalTo(const Point& p) const;
 		// Check if point is valid
-		bool isValid() const
-		{
-			return p() == 0 && a() == 0 && x() == 0 && y() == 0 && z() == 0;
-		}
+		bool isValid() const;
 		// Set preimage and fill image
-		void set(Preimage const& preimage)
+		void set(const Preimage& preimage)
 		{
-			pi = preimage;
-			populateImage();
+			_preimage = preimage;
+			_populate_image();
 		}
 		// Set image and fill preimage
-		void set(Image const& image)
+		void set(const Image& image)
 		{
-			im = image;
-			populatePreimage();
+			_image = image;
+			_populate_preimage();
 		}
 
 	public:
 		// Set preimage and fill image
-		Point& operator=(Preimage const& that) { set(that); return *this; }
+		Point& operator=(const Preimage& that) { set(that); return *this; }
 		// Set image and fill preimage
-		Point& operator=(Image const& that) { set(that); return *this; }
+		Point& operator=(const Image& that) { set(that); return *this; }
+		// Implicit conversion to preimage
+		operator Preimage() const { return preimage(); }
+		// Implicit conversion to image
+		operator Image() const { return image(); }
+		// Obtain distance
+		friend FLP distance(const Point& a, const Point& b)
+		{
+			return distance(a.image(), b.image());
+		}
 		// Obtain midpoint
-		friend Point midpoint(Point const& a, Point const& b);
+		friend Point midpoint(const Point& a, const Point& b);
 
 	private:
 		// The preimage
-		Preimage pi;
+		Preimage _preimage;
 		// The image
-		Image im;
+		Image _image;
 
 	protected:
 		// Fill preimage from image
-		void populatePreimage() { pi = im.toPreimage(); }
+		void _populate_preimage() { _preimage = _image.toPreimage(); }
 		// Fill image from preimage
-		void populateImage() { im = pi.toImage(); }
+		void _populate_image() { _image = _preimage.toImage(); }
 	};
+
+	typedef std::function<FLP(const Point&)> Function;
 
 	// Representation of a directional minor arc and its local coordinate system
 	class Arc
@@ -165,45 +173,64 @@ namespace Cartosphere
 		// Default Constructor
 		Arc() {}
 		// Constructor from two points
-		Arc(Point const& A, Point const& B) : a(A), b(B) { fill(); }
+		Arc(const Point& A, const Point& B) : _a(A), _b(B) { _populate(); }
 
 	public:
 		// Return the angle spanned by the arc
-		FLP span() const { return distance(a.image(), b.image()); }
+		FLP span() const { return distance(_a.image(), _b.image()); }
 		// Return the length of the arc
-		FLP length() const { return distance(a.image(), b.image()); }
+		FLP length() const { return distance(_a.image(), _b.image()); }
+		// Return the pole of the arc
+		Image pole() const { return Image(_n); }
 		// Return the (t,0) local coordinates
-		Point local(FLP u) const
+		Image local(FLP u) const
 		{
-			return Point(a.image() * cos(u) + c * sin(u));
+			return _a.image() * cos(u) + _c * sin(u);
 		}
 		// Return the (t,n) local coordinates
-		Point local(FLP u, FLP v) const
+		Image local(FLP u, FLP v) const
 		{
-			Arc arc(local(u), Point(Image(n)));
+			Arc arc(local(u), Point(Image(_n)));
 			return arc.local(v);
 		}
 
 	protected:
 		// Populate the auxiliary vectors
-		void fill()
+		void _populate()
 		{
-			n = normalize(cross(a.image(), b.image()));
-			c = cross(n, a.image());
+			_n = normalize(cross(_a.image(), _b.image()));
+			_c = cross(_n, _a.image());
 		}
 
 	protected:
 		// Start and end points for the arc
-		Point a, b;
+		Point _a, _b;
 		// The normal vector
-		FL3 n;
+		FL3 _n;
 		// The point pi/2 radians away in the direction of the arc
-		FL3 c;
+		FL3 _c;
 	};
 
 	// A (spherical) triangle
 	class Triangle
 	{
+	public:
+		// A selection of quadrature rules for integration
+		enum class Integrator {
+			Centroid, ThreeVertices,
+			Refinement1,
+			Refinement2,
+			Refinement3,
+			Refinement4,
+			Refinement5,
+			Refinement6,
+			Refinement7,
+			Refinement8,
+			Refinement9,
+			Refinement10
+		};
+		static const Integrator DefaultIntegrator = Integrator::Refinement3;
+
 	public:
 		// Vertices
 		Point A, B, C;
@@ -212,16 +239,22 @@ namespace Cartosphere
 		// Default constructor
 		Triangle() : A(), B(), C() {}
 		// Construct with three points
-		Triangle(Point const& P, Point const& Q, Point const& R) :
+		Triangle(const Point& P, const Point& Q, const Point& R) :
 			A(P), B(Q), C(R) {}
 		// Copy constructor
-		Triangle(Triangle const& that) = default;
+		Triangle(const Triangle& that) = default;
 
 	public:
 		// Calculate the area as a spherical triangle
 		FLP area() const;
 		// Calculate the area as a Euclidean triangle
 		FLP areaEuclidean() const;
+		// Calculate the location of the center of mass
+		Point centroid() const;
+		// Obtain a finite element
+		Function element(size_t index) const;
+		// Numerically integrate a scalar function
+		FLP integrate(const Function& f, Integrator intr) const;
 	};
 
 	// A triangular mesh
@@ -229,43 +262,45 @@ namespace Cartosphere
 	{
 	public:
 		// Pair of indices to points
-		typedef std::pair<size_t, size_t> PointIndexPair;
+		typedef std::pair<size_t, size_t> UndirectedEdge;
 		// Edge index and its orientation
-		typedef std::pair<size_t, bool> EdgeIndex;
+		typedef std::pair<size_t, bool> DirectedEdge;
 		// Triplet of indices with their orientations
-		typedef std::tuple<EdgeIndex, EdgeIndex, EdgeIndex> EdgeIndexTriplet;
-		// Memory statistics
+		typedef std::tuple<DirectedEdge, DirectedEdge, DirectedEdge> DirectedEdgeTriplet;
+		// Mesh statistics
 		typedef struct
 		{
-			size_t nPoint;
-			size_t nEdge;
-			size_t nTriangle;
+			// The number of points
+			size_t V;
+			// The number of edges
+			size_t E;
+			// The number of triangles
+			size_t F;
+			// The area of the largest triangle
 			FLP areaElementMax;
+			// The area of the smallest triangle
 			FLP areaElementMin;
+			// The area ratio of the largest and smallest triangles
 			FLP areaElementDisparity;
 		} Stats;
+		// Integrator rules
+		enum class Quadrature {
+			AreaWeighted
+		};
 
 	public:
 		// Default Constructor
 		TriangularMesh() = default;
+		// Construct triangular mesh with a single triangle
+		TriangularMesh(const Triangle& t) { load(t); }
 		// Construct triangular mesh from file
-		TriangularMesh(std::string const& path) { load(path); }
+		TriangularMesh(const std::string& path) { load(path); }
 
 	public:
-		// Expose begin iterator to faces
-		std::vector<Triangle>::const_iterator begin() const
-		{
-			return listofSimplices.cbegin();
-		}
-		// Expose end iterator to faces
-		std::vector<Triangle>::const_iterator end() const
-		{
-			return listofSimplices.cend();
-		}
 		// Get file load state
-		bool isReady() const { return flagofParsing; }
+		bool isReady() const { return _bParseSuccess; }
 		// Get file load messages
-		std::vector<std::string> getMessages() const { return listofMessages; }
+		std::vector<std::string> getMessages() const { return _vInfo; }
 		// Get total area (spherical)
 		FLP area() const;
 		// Get total area (Euclidean)
@@ -274,42 +309,60 @@ namespace Cartosphere
 	public:
 		// Clear file
 		void clear();
+		// Load triangle
+		bool load(const Triangle& t);
 		// Load file from path
-		bool load(std::string const& path);
+		bool load(const std::string& path);
 		// Save mesh to file
-		bool save(std::string const& path) const;
+		bool save(const std::string& path) const;
 		// Export mesh to OBJ format
-		bool format(std::string const& path) const;
+		bool format(const std::string& path) const;
 		// Apply mid-point refinement to the mesh
 		void refine();
 		// Refine the mesh to a certain number of divisions
 		void refine(size_t division);
 		// Report the area of each triangle
 		void reportAreas();
+		// Numerically integrate a scalar function
+		FLP integrate(const Function& f,
+			Quadrature rule = Quadrature::AreaWeighted,
+			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
+		// FEM: Generate inner products of finite elements
+		void fill(Matrix& A,
+			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
+		// FEM: Discretize an external force parametrized by x, y, and z.
+		void fill(Vector& b, Function f,
+			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
 		// Generate statistics
 		Stats statistics() const;
 
 	private:
-		// Refresh the list of simplices based on point, edge, and triangle lists
-		void fillSimplices();
+		// Refresh redundant states
+		void _populate();
 
 	private:
-		// List of points
-		std::vector<Point> listofPoints;
-		// List of edges (using point indices)
-		std::vector<PointIndexPair> listofEdges;
-		// List of triangles (using edge indices)
-		std::vector<EdgeIndexTriplet> listofTriangles;
-		// List of triangles (owning coordinates)
-		std::vector<Triangle> listofSimplices;
+		// Input data: List of points
+		std::vector<Point> _V;
+		// Input data: List of edges (using point indices)
+		std::vector<UndirectedEdge> _E;
+		// Input data: List of faces (each a triplet of directed edge indices)
+		std::vector<DirectedEdgeTriplet> _F;
+		// Redundant state: List of triangles (owning coordinates)
+		std::vector<Triangle> _vt;
+		// Redundant state: List of edges sharing a vertex
+		std::vector<std::vector<size_t>> _VE;
+		// Redundant state: List of faces sharing a vertex
+		std::vector<std::vector<size_t>> _VF;
+		// Redundant state: List of vertices in each face
+		std::vector<std::vector<size_t>> _FV;
 
 	private:
 		// File load flag
-		bool flagofLoading = false;
+		bool _bLoadSuccess = false;
 		// File parse flag
-		bool flagofParsing = false;
+		bool _bParseSuccess = false;
 		// Messages
-		std::vector<std::string> listofMessages;
+		std::vector<std::string> _vInfo;
 	};
 }
 

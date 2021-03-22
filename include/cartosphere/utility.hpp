@@ -4,6 +4,19 @@
 
 using FLP = double;
 
+#pragma warning(push)
+#pragma warning(disable: 4819)
+#include <Eigen/Core>
+#include <Eigen/Sparse>
+#include <Eigen/SparseCore>
+#include <Eigen/IterativeLinearSolvers>
+#pragma warning(pop)
+
+using Matrix = Eigen::SparseMatrix<FLP, Eigen::RowMajor>;
+using Entry = Eigen::Triplet<FLP>;
+using Vector = Eigen::Matrix<FLP, Eigen::Dynamic, 1>;
+using Solver = Eigen::BiCGSTAB<Matrix>;
+
 template<typename T>
 constexpr T deg2rad(T angle) { return (angle * M_PI / (FLP)180); }
 
@@ -24,9 +37,9 @@ public:
 	// Construct from components
 	FL3(FLP a, FLP b, FLP c) : x(a), y(b), z(c) {}
 	// Copy constructor
-	FL3(FL3 const& that) = default;
+	FL3(const FL3& that) = default;
 	// Assignment operator
-	FL3& operator=(FL3 const& that)
+	FL3& operator=(const FL3& that)
 	{
 		if (this != &that)
 		{
@@ -51,27 +64,27 @@ public:
 		return *this;
 	}
 	// Component-wise addition
-	friend FL3 operator+(FL3 const& a, FL3 const& b)
+	friend FL3 operator+(const FL3& a, const FL3& b)
 	{
 		return FL3(a.x + b.x, a.y + b.y, a.z + b.z);
 	}
 	// Component-wise subtraction
-	friend FL3 operator-(FL3 const& a, FL3 const& b)
+	friend FL3 operator-(const FL3& a, const FL3& b)
 	{
 		return FL3(a.x - b.x, a.y - b.y, a.z - b.z);
 	}
 	// Scalar multiplication
-	friend FL3 operator*(FLP c, FL3 const& b)
+	friend FL3 operator*(FLP c, const FL3& b)
 	{
 		return b * c;
 	}
 	// Component-wise division by constant
-	friend FL3 operator/(FL3 const& a, FLP b)
+	friend FL3 operator/(const FL3& a, FLP b)
 	{
 		return FL3(a.x / b, a.y / b, a.z / b);
 	}
 	// Cross product
-	friend FL3 cross(FL3 const& a, FL3 const& b)
+	friend FL3 cross(const FL3& a, const FL3& b)
 	{
 		FLP x = a.y * b.z - a.z * b.y;
 		FLP y = a.z * b.x - a.x * b.z;
@@ -79,7 +92,7 @@ public:
 		return FL3(x, y, z);
 	}
 	// Normalize
-	friend FL3 normalize(FL3 const& a)
+	friend FL3 normalize(const FL3& a)
 	{
 		FL3 unit = a;
 		return unit.normalize();
