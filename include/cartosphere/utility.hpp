@@ -105,6 +105,8 @@ public:
 	FLP norm2() const { return sqrt(norm2sq()); }
 	// Normalizes the vector
 	FL3& normalize() { (*this) /= norm2(); return *this; }
+	// Normalizes the vector
+	FL3 toUnitVector() const { return *this / norm2(); }
 };
 
 class UI3

@@ -70,9 +70,13 @@ namespace Cartosphere
 
 	public:
 		// Convert to vector
-		FL3 toVector() const { return static_cast<FL3>(*this); }
+		FL3 to_vector() const { return static_cast<FL3>(*this); }
 		// Obtain preimage
-		Preimage toPreimage() const;
+		Preimage to_preimage() const;
+		// Obtain a unit vector
+		Image to_unit_vector() const {
+			return Image(static_cast<FL3>(*this).toUnitVector());
+		}
 
 	public:
 		// Implicit conversion to FL3
@@ -96,7 +100,7 @@ namespace Cartosphere
 			_preimage(preimage), _image(preimage.toImage()) {}
 		// Construct from Image
 		Point(const Image& image) :
-			_preimage(image.toPreimage()), _image(image) {}
+			_preimage(image.to_preimage()), _image(image) {}
 
 	public:
 		// Get preimage
@@ -159,7 +163,7 @@ namespace Cartosphere
 
 	protected:
 		// Fill preimage from image
-		void _populate_preimage() { _preimage = _image.toPreimage(); }
+		void _populate_preimage() { _preimage = _image.to_preimage(); }
 		// Fill image from preimage
 		void _populate_image() { _image = _preimage.toImage(); }
 	};
@@ -217,7 +221,7 @@ namespace Cartosphere
 	public:
 		// A selection of quadrature rules for integration
 		enum class Integrator {
-			Centroid, ThreeVertices,
+			Centroid, ThreeVertices, Simpsons,
 			Refinement1,
 			Refinement2,
 			Refinement3,
@@ -316,7 +320,11 @@ namespace Cartosphere
 		// Save mesh to file
 		bool save(const std::string& path) const;
 		// Export mesh to OBJ format
-		bool format(const std::string& path) const;
+		bool format(const std::string& path,
+			const std::vector<FLP> &values = std::vector<FLP>()) const;
+		// Export colored polyhedral object to OBJ format
+		bool formatPoly(const std::string& path,
+			const std::vector<FLP>& values) const;
 		// Apply mid-point refinement to the mesh
 		void refine();
 		// Refine the mesh to a certain number of divisions
@@ -327,14 +335,21 @@ namespace Cartosphere
 		FLP integrate(const Function& f,
 			Quadrature rule = Quadrature::AreaWeighted,
 			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
-		// FEM: Generate inner products of finite elements
+		// Interpolate
+		FLP interpolate(const std::vector<FLP>& values, const Point& point) const;
+		// FEM: Generate inner products of the gradients of finite elements
 		void fill(Matrix& A,
+			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
+		// FEM: Generate inner products of finite elements and their gradients
+		void fill(Matrix& A, Matrix& M,
 			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
 		// FEM: Discretize an external force parametrized by x, y, and z.
 		void fill(Vector& b, Function f,
 			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
 		// Generate statistics
 		Stats statistics() const;
+		// Return a list of vertices
+		std::vector<Point> vertices() const;
 
 	private:
 		// Refresh redundant states

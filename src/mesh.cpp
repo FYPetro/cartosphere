@@ -30,7 +30,7 @@ Cartosphere::Preimage::toImage() const
  * class Cartosphere::Image *
  * ************************ */
 Cartosphere::Preimage
-Cartosphere::Image::toPreimage() const
+Cartosphere::Image::to_preimage() const
 {
 	Preimage preimage;
 
@@ -52,8 +52,8 @@ FLP
 Cartosphere::distance(
 	const Cartosphere::Image& a, const Cartosphere::Image& b)
 {
-	Cartosphere::Preimage pa = a.toPreimage();
-	Cartosphere::Preimage pb = b.toPreimage();
+	Cartosphere::Preimage pa = a.to_preimage();
+	Cartosphere::Preimage pb = b.to_preimage();
 	FLP value = cos(pa.p) * cos(pb.p) +
 		sin(pa.p) * sin(pb.p) * cos(pa.a - pb.a);
 	return acos(value);
@@ -149,7 +149,7 @@ Cartosphere::Triangle::areaEuclidean() const
 Cartosphere::Point
 Cartosphere::Triangle::centroid() const
 {
-	FL3 c = A.image().toVector() + B.image().toVector() + C.image().toVector();
+	FL3 c = A.image().to_vector() + B.image().to_vector() + C.image().to_vector();
 	return Cartosphere::Point(Cartosphere::Image(c.normalize()));
 }
 
@@ -218,6 +218,11 @@ Cartosphere::Triangle::integrate(const Function& f, Integrator intr) const
 	{
 		// Taking the averages of the three vertices
 		integral = (f(A) + f(B) + f(C)) / 3 * area();
+	} break;
+	case Integrator::Simpsons:
+	{
+		// Analogy to Simpson's rule
+		integral = (f(A) + f(B) + f(C) + 3 * f(centroid())) / 6 * area();
 	} break;
 	case Integrator::Refinement1:
 	case Integrator::Refinement2:
@@ -636,13 +641,15 @@ Cartosphere::TriangularMesh::save(const std::string& path) const
 }
 
 bool
-Cartosphere::TriangularMesh::format(const std::string& path) const
+Cartosphere::TriangularMesh::format(const std::string& path,
+	const std::vector<FLP>& values) const
 {
 	// Summary of Logic:
 	//   1. Mark all used edges
 	//   2. Generate UV sphere (material globe)
 	//   3. Generate Segmented Edges (material segment)
-	//   4. Format Wavefront OBJ output file
+	//   4. Generate triangulated faces (material color) if values are provided
+	//   5. Format Wavefront OBJ output file
 
 	// Export to specified path
 	std::ofstream ofs(path);
@@ -657,19 +664,33 @@ Cartosphere::TriangularMesh::format(const std::string& path) const
 		edgeUsages[std::get<2>(triangle).first] = true;
 	}
 
-	// Initialize container for vertices and smoothing groups
+	// Initialize container for obj vertices and smoothing groups
 	std::vector<Image> vs;
+	std::vector<int> cs;
 	std::vector<std::vector<std::vector<size_t>>> sgs;
 	std::vector<std::string> materials;
 	std::vector<size_t> list;
+
+	// [Color] Subdivide [0,1] into 256 colors
+	std::vector<FLP> table;
+	if (!values.empty())
+	{
+		table.resize(256);
+		for (size_t k = 0; k < table.size(); ++k)
+		{
+			table[k] = FLP(1) * k / table.size();
+		}
+	}
 
 	// Push vertices and edges for a globe
 	{
 		// Preparation for vertices at certain UV detail level
 		const size_t uv = 64;
 		const FLP radius = 0.999;
+
 		// Vertex: north pole
 		vs.emplace_back(0, 0, radius);
+
 		// Vertex: all points but the poles
 		FLP x, y, z, a, p;
 		for (size_t k = 1; k < uv; ++k)
@@ -692,6 +713,7 @@ Cartosphere::TriangularMesh::format(const std::string& path) const
 		materials.emplace_back("globe");
 		sgs.emplace_back();
 		auto& sg = sgs.back();
+
 		// Face: cap at north pole
 		for (size_t j = 0; j < uv; ++j)
 		{
@@ -702,6 +724,7 @@ Cartosphere::TriangularMesh::format(const std::string& path) const
 			};
 			sg.push_back(list);
 		}
+
 		// Face: quad strips
 		for (size_t k = 1; k < uv - 1; ++k)
 		{
@@ -716,6 +739,7 @@ Cartosphere::TriangularMesh::format(const std::string& path) const
 				sg.push_back(list);
 			}
 		}
+
 		// Face: cap at south pole
 		for (size_t j = 0; j < uv; ++j)
 		{
@@ -728,11 +752,15 @@ Cartosphere::TriangularMesh::format(const std::string& path) const
 		}
 	}
 
+
+	cs.resize(vs.size());
+
 	// Push vertices and edges for each arc used
 	{
 		// Desired length and width of each segment
-		static const FLP length = 0.1;
-		static const FLP width = 0.001;
+		const FLP length = 0.1;
+		const FLP width = 0.001;
+		const FLP radius = 1.001;
 
 		// Loop through all edges
 		for (size_t i = 0; i < _E.size(); ++i)
@@ -756,14 +784,15 @@ Cartosphere::TriangularMesh::format(const std::string& path) const
 			for (size_t s = 0; s <= segments; ++s)
 			{
 				FLP u = span * (1.0 * s / segments);
-				vs.push_back(arc.local(u, -width));
-				vs.push_back(arc.local(u, width));
+				vs.push_back(arc.local(u, -width) * radius);
+				vs.push_back(arc.local(u, width) * radius);
 			}
 
 			// Each edge starts its own smoothing group
 			materials.emplace_back("segment");
 			sgs.emplace_back();
 			auto& sg = sgs.back();
+
 			// Generate strips
 			for (size_t s = 0; s < segments; ++s)
 			{
@@ -780,41 +809,77 @@ Cartosphere::TriangularMesh::format(const std::string& path) const
 				};
 				sg.push_back(list);
 			}
-
 		}
 	}
 
 	/////////////////////////////////////
 	// Outputs OBJ File Comment Header //
 	/////////////////////////////////////
+
+	// Header information
 	ofs << "# Wavefront OBJ File Format\n"
-		<< "# This file is generated by Cartosphere\n"
-		<< "# The file cartosphere.mtl must exist in the same folder\n"
-		<< "mtllib cartosphere.mtl\n";
-
+		<< "# This file is generated by Cartosphere\n";
+	
 	// Outputs V, N, T count
-	ofs << "# Vertex: " << vs.size() << "\n";
-
-	ofs << "# Normal: " << vs.size() << "\n";
+	ofs << "# .OBJ Vertex: " << vs.size() << "\n"
+		<< "# .OBJ Normal: " << vs.size() << "\n";
 
 	size_t polygonCount = 0;
 	for (auto& sg : sgs)
 	{
 		polygonCount += sg.size();
 	}
-	ofs << "# Polygon: " << polygonCount << "\n";
+	ofs << "# .OBJ Polygon: " << polygonCount << "\n";
+
+	// [Color] Outputs Vt count
+	if (!values.empty())
+	{
+		ofs << "# .OBJ Texture Coordinates: " << cs.size() << "\n";
+	}
+
+	// Outputs original mesh info
+	auto stat = statistics();
+	ofs << "# Mesh Vertex: " << stat.V << "\n"
+		<< "# Mesh Edges: " << stat.E << "\n"
+		<< "# Mesh Faces: " << stat.F << "\n";
+
+	// Directive for the mesh
+	ofs << "\n"
+		<< "# The file cartosphere.mtl must exist in the same folder\n"
+		<< "mtllib cartosphere.mtl\n";
 
 	// Print all vertices
+	ofs << "\n";
 	for (auto& v : vs)
 	{
-		ofs << "v  " << v.x << " " << v.y << " " << v.z << "\n"
-			<< "vn " << v.x << " " << v.y << " " << v.z << "\n";
+		// A normal vector for a point v on the unit sphere is equal to v
+		ofs << "v  " << v.x << " " << v.y << " " << v.z << "\n";
+	}
+
+	// Print all normal vectors
+	ofs << "\n";
+	for (auto& v : vs)
+	{
+		// A normal vector for a point v on the unit sphere is equal to v
+		auto vn = v.to_unit_vector();
+		ofs << "vn " << vn.x << " " << vn.y << " " << vn.z << "\n";
+	}
+
+	// [Color] Print 256-level texture coordinates
+	if (!values.empty())
+	{
+		ofs << "\n";
+		for (auto& c : table)
+		{
+			ofs << "vt " << c << " " << c << "\n";
+		}
 	}
 
 	// Print all smoothing groups
 	for (size_t i = 0; i < sgs.size(); ++i)
 	{
 		// Start a smoothing group
+		ofs << "\n";
 		ofs << "s " << i + 1 << "\n"
 			<< "usemtl " << materials[i] << "\n";
 
@@ -823,9 +888,160 @@ Cartosphere::TriangularMesh::format(const std::string& path) const
 		for (auto& f : sg)
 		{
 			ofs << "f";
+
 			for (auto& v : f)
 			{
-				ofs << " " << v << "//" << v;
+				ofs << " " << v << "/";
+				// [Color] Print 256-level color for the vertex
+				if (cs[v - 1] != 0)
+				{
+					ofs << cs[v - 1];
+				}
+				ofs << "/" << v;
+			}
+			ofs << "\n";
+		}
+
+		ofs << "s off\n";
+	}
+
+	return true;
+}
+
+bool
+Cartosphere::TriangularMesh::formatPoly(
+	const std::string& path, const std::vector<FLP>& values) const
+{
+	// Summary of Logic:
+	//   1. Generate polygonal faces
+	//   2. Format Wavefront OBJ output file
+
+	// Export to specified path
+	std::ofstream ofs(path);
+	if (!ofs.is_open()) return false;
+
+	// Initialize container for obj vertices and smoothing groups
+	std::vector<Image> vs;
+	std::vector<size_t> vcs;
+	std::vector<std::vector<std::vector<size_t>>> sgs;
+	std::vector<std::string> materials;
+	std::vector<size_t> list;
+
+	// [Color] Subdivide [0,1] into 256 colors
+	std::vector<FLP> cs;
+	if (!values.empty())
+	{
+		cs.resize(256);
+		for (size_t k = 0; k < cs.size(); ++k)
+		{
+			cs[k] = FLP(1) * k / (cs.size());
+		}
+	}
+
+	// Quantify the range
+	FLP min = *std::min_element(values.cbegin(), values.cend()),
+		max = *std::max_element(values.cbegin(), values.cend());
+	FLP range = max - min;
+
+	// Push new smoothing group and new material for all mesh triangles
+	sgs.emplace_back();
+	materials.push_back("color");
+
+	// Push vertices
+	auto& sg = sgs.back();
+	for (auto& fvs : _FV)
+	{
+		sg.emplace_back();
+		auto& s = sg.back();
+		for (auto& fv : fvs)
+		{
+			s.push_back(vs.size() + 1);
+			vs.push_back(_V[fv].image());
+			vcs.push_back(size_t(1 + FLP(255) * (values[fv] - min) / range));
+		}
+	}
+
+	// Header information
+	ofs << "# Wavefront OBJ File Format\n"
+		<< "# This file is generated by Cartosphere\n";
+
+	// Outputs V, N, T count
+	ofs << "# .OBJ Vertex: " << vs.size() << "\n"
+		<< "# .OBJ Normal: " << vs.size() << "\n";
+
+	size_t polygonCount = 0;
+	for (auto& sg : sgs)
+	{
+		polygonCount += sg.size();
+	}
+	ofs << "# .OBJ Polygon: " << polygonCount << "\n";
+
+	// [Color] Outputs Vt count
+	if (!values.empty())
+	{
+		ofs << "# .OBJ Texture Coordinates: " << cs.size() << "\n";
+	}
+
+	// Outputs original mesh info
+	auto stat = statistics();
+	ofs << "# Mesh Vertex: " << stat.V << "\n"
+		<< "# Mesh Edges: " << stat.E << "\n"
+		<< "# Mesh Faces: " << stat.F << "\n";
+
+	// Directive for the mesh
+	ofs << "\n"
+		<< "# The file cartosphere.mtl must exist in the same folder\n"
+		<< "mtllib cartosphere.mtl\n";
+
+	// Print all vertices
+	ofs << "\n";
+	for (auto& v : vs)
+	{
+		// A normal vector for a point v on the unit sphere is equal to v
+		ofs << "v  " << v.x << " " << v.y << " " << v.z << "\n";
+	}
+
+	// Print all normal vectors
+	ofs << "\n";
+	for (auto& v : vs)
+	{
+		// A normal vector for a point v on the unit sphere is equal to v
+		ofs << "vn " << v.x << " " << v.y << " " << v.z << "\n";
+	}
+
+	// [Color] Print 256-level texture coordinates
+	if (!values.empty())
+	{
+		ofs << "\n";
+		for (auto& c : cs)
+		{
+			ofs << "vt " << c << " " << c << "\n";
+		}
+	}
+
+	// Print all smoothing groups
+	for (size_t i = 0; i < sgs.size(); ++i)
+	{
+		// Start a smoothing group
+		ofs << "\n";
+		ofs << "s " << i + 1 << "\n"
+			<< "usemtl " << materials[i] << "\n";
+
+		// Output all polygons in this smoothing group
+		const auto& sg = sgs[i];
+		for (auto& f : sg)
+		{
+			ofs << "f";
+
+			for (auto& v : f)
+			{
+				ofs << " " << v << "/";
+				// [Color] Print 256-level color for the vertex
+				if (vcs[v - 1] != 0)
+				{
+					ofs << vcs[v - 1];
+				}
+				ofs << "/" << v;
 			}
 			ofs << "\n";
 		}
@@ -1079,10 +1295,12 @@ Cartosphere::TriangularMesh::fill(Matrix& A, Triangle::Integrator intr) const
 		const auto& triangle = _vt[k];
 
 		// Compute the diagonal entries
-		FLP area = triangle.area();
-		local[0][0] = area * pow(magnitudes[3 * k + 0], 2);
-		local[1][1] = area * pow(magnitudes[3 * k + 1], 2);
-		local[2][2] = area * pow(magnitudes[3 * k + 2], 2);
+		// FLP area = triangle.area();
+		// local[0][0] = area * pow(magnitudes[3 * k + 0], 2);
+		// local[1][1] = area * pow(magnitudes[3 * k + 1], 2);
+		// local[2][2] = area * pow(magnitudes[3 * k + 2], 2);
+		// Code above is bad because the exact solutions are inconsistent with
+		// the numerical integration used on the off-diagonal entries
 
 		// Extract poles of edges for use of the equivalent geometric problem
 		auto poleBC = poles[std::get<1>(_F[k]).first];
@@ -1096,6 +1314,17 @@ Cartosphere::TriangularMesh::fill(Matrix& A, Triangle::Integrator intr) const
 			poleAB.flip();
 		
 		// Numerically integrate the inner product of gradient of functions
+		auto unit = [](const Point& x)->FLP { return 1; };
+		local[0][0] = 
+			triangle.integrate(unit, intr) * magnitudes[3 * k + 0] * magnitudes[3 * k + 0];
+
+		local[1][1] =
+			triangle.integrate(unit, intr) * magnitudes[3 * k + 1] * magnitudes[3 * k + 1];
+
+		local[2][2] =
+			triangle.integrate(unit, intr) * magnitudes[3 * k + 2] * magnitudes[3 * k + 2];
+
+		// Off-diagonal entries
 		auto iAB = [&poleBC, &poleCA](const Point &x)->FLP {
 			return cos(angle(poleCA.image(), x.image(), poleBC.image()));
 		};
@@ -1164,15 +1393,103 @@ Cartosphere::TriangularMesh::fill(Matrix& A, Triangle::Integrator intr) const
 		FLP v = e.value();
 		// Unfortunately, the value() field is private.
 		entries.emplace_back((int)rows[k], (int)cols[k], value);
-		// if (rows[k] != cols[k])
-		// {
-		// 	entries.emplace_back((int)cols[k], (int)rows[k], value);
-		// }
 	}
 
 	delete[] L;
 
 	A.setFromTriplets(entries.begin(), entries.end());
+}
+
+void
+Cartosphere::TriangularMesh::fill(Matrix& A, Matrix& M, Triangle::Integrator intr) const
+{
+	// 1. Build the gradient inner matrix
+	fill(A, intr);
+
+	// 2. Build the inner matrix
+	auto stat = statistics();
+
+	// Construct a square matrix and one row for each vertex
+	int N = (int)stat.V;
+	M.resize(N, N);
+
+	// 3. Need to numerically construct the local stiffness matrices
+	auto L = new FLP[stat.F][3][3]();
+
+	// T-loop.
+	for (size_t k = 0; k < stat.F; ++k)
+	{
+		auto& local = L[k];
+		const auto& triangle = _vt[k];
+
+		for (int i = 0; i < 3; ++i)
+		{
+			for (int j = 0; j < 3; ++j)
+			{
+				Function f = triangle.element(i);
+				Function g = triangle.element(j);
+				Function inner = [&f, &g](const Point& p) -> FLP {
+					return f(p) * g(p);
+				};
+				L[k][i][j] = triangle.integrate(inner, intr);
+			}
+		}
+	}
+
+	// 4. Calculate the adjacency of vertices from the list of undirected edges
+	// by populating the zero-valued entries of the global stiffness matrix
+	std::vector<size_t> rows, cols;
+
+	// V-loop: diagonal entries
+	for (size_t i = 0; i < stat.V; ++i)
+	{
+		rows.push_back(i);
+		cols.push_back(i);
+	}
+
+	// E-loop: undirected edges gives two directed edges
+	for (size_t i = 0; i < stat.E; ++i)
+	{
+		rows.push_back(_E[i].first);
+		cols.push_back(_E[i].second);
+		rows.push_back(_E[i].second);
+		cols.push_back(_E[i].first);
+	}
+
+	// 5. Assemble the global stiffness matrix from the local stiffness matrix
+	std::vector<Entry> entries;
+	for (size_t k = 0; k < rows.size(); ++k)
+	{
+		FLP value = 0;
+
+		// Calculate the common support
+		const auto& support1 = _VF[rows[k]];
+		const auto& support2 = _VF[cols[k]];
+		std::vector<size_t> support;
+		std::set_intersection(
+			support1.cbegin(), support1.cend(),
+			support2.cbegin(), support2.cend(),
+			std::back_inserter(support)
+		);
+
+		// For each face in the support find the appropriate local stiffness
+		for (auto index : support)
+		{
+			const auto& fv = _FV[index];
+			size_t i = std::find(fv.cbegin(), fv.cend(), rows[k]) - fv.cbegin();
+			size_t j = std::find(fv.cbegin(), fv.cend(), cols[k]) - fv.cbegin();
+			value += L[index][i][j];
+		}
+
+		Entry e;
+		FLP v = e.value();
+		// Unfortunately, the value() field is private.
+		entries.emplace_back((int)rows[k], (int)cols[k], value);
+	}
+
+	delete[] L;
+
+	M.setFromTriplets(entries.begin(), entries.end());
 }
 
 void
@@ -1251,6 +1568,15 @@ Cartosphere::TriangularMesh::integrate(const Function& f,
 	return result;
 }
 
+FLP
+Cartosphere::TriangularMesh::interpolate(const std::vector<FLP>& values,
+	const Point& point) const
+{
+	FLP value = 0;
+
+	return value;
+}
+
 Cartosphere::TriangularMesh::Stats
 Cartosphere::TriangularMesh::statistics() const
 {
@@ -1275,6 +1601,12 @@ Cartosphere::TriangularMesh::statistics() const
 	s.areaElementDisparity = s.areaElementMax / s.areaElementMin;
 
 	return s;
+}
+
+std::vector<Cartosphere::Point>
+Cartosphere::TriangularMesh::vertices() const
+{
+	return _V;
 }
 
 void

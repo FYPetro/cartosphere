@@ -1,0 +1,13 @@
+# Cartosphere MTL Color Specification File
+# Material Count: 1
+
+newmtl color
+Ns 96.078431
+Ka 0.4 0.4 0.4
+Kd 1.0 1.0 1.0
+Ks 1.0 1.0 1.0
+Ni 1.0
+d 0.80
+illum 1
+map_Ka texture.png
+map_Kd texture.png
