@@ -272,6 +272,16 @@ Cartosphere::Triangle::integrate(const Function& f, Integrator intr) const
 	return integral;
 }
 
+FLP
+Cartosphere::TriangularMesh::integrate(const std::vector<FLP>& v) const
+{
+	FLP integral = 0;
+
+
+
+	return integral;
+}
+
 void
 Cartosphere::TriangularMesh::clear()
 {

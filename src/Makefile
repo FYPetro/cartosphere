@@ -1,6 +1,6 @@
 CC = g++
 
-INCLUDE = -I../include -I../include/LAPACK
+INCLUDE = -I../include -I../include/LAPACK -I/usr/local/include/eigen3 
 
 CFLAGS = -g $(INCLUDE) -std=c++14
 

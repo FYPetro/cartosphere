@@ -335,6 +335,8 @@ namespace Cartosphere
 		FLP integrate(const Function& f,
 			Quadrature rule = Quadrature::AreaWeighted,
 			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
+		// Numerically integrate function values at vertices
+		FLP integrate(const std::vector<FLP>& values) const;
 		// Interpolate
 		FLP interpolate(const std::vector<FLP>& values, const Point& point) const;
 		// FEM: Generate inner products of the gradients of finite elements

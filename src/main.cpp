@@ -475,6 +475,124 @@ int test_obj()
 	return 0;
 }
 
+/* Validation, for research only */
+int research_a()
+{
+	// Set file name of initial mesh
+	std::string name = "icosahedron.csm";
+
+	// Set the number of refinements to perform
+	int refinements = 5;
+
+	// Set the initial condition	
+	auto u_init_func = [](const Cartosphere::Point& p) -> FLP {
+		return 2 + p.z();
+	};
+
+	// Set the steady state solution
+	auto u_steady_func = [](const Cartosphere::Point& p) -> FLP {
+		return 2;
+	};
+
+	// Set the external term
+	auto f = [](const Cartosphere::Point& p) -> FLP {
+		return 0;
+	};
+
+	// Perform diffusion on iteratively finer meshes
+	Cartosphere::TriangularMesh m(name);
+
+	if (m.isReady())
+	{
+		std::cout << "Loaded mesh from file: " << name << "\n\n";
+
+		// Print statistics about the mesh
+		auto stats = m.statistics();
+		size_t euler = stats.V + stats.F - stats.E;
+
+		std::cout << "Statistics:\n"
+			<< "    Euler: V - E + F = " << stats.V << " - " << stats.E
+			<< " + " << stats.F << " = " << euler << "\n"
+			<< "    Area ratio: " << stats.areaElementDisparity
+			<< " (max " << stats.areaElementMax
+			<< ", min " << stats.areaElementMin << ")" << std::endl;
+	}
+	else
+	{
+		// Print error messages
+		for (auto& msg : m.getMessages())
+		{
+			std::cout << msg << "\n";
+		}
+		std::cout << std::flush;
+		return 0;
+	}
+
+	for (int i = 0; i <= refinements; ++i, m.refine())
+	{
+		// Stiffness matrix and time-related matrix
+		Matrix A, M;
+		m.fill(A, M);
+
+		// Manual fix for matrix A
+		for (int k = 0; k < A.outerSize(); ++k)
+		{
+			Matrix::InnerIterator it_diag;
+			FLP sum_offdiag=0;
+			for (Matrix::InnerIterator it(A, k); it; ++it)
+			{
+				if (it.row() == it.col())
+				{
+					it_diag = it;
+				}
+				else
+				{
+					sum_offdiag += it.value();
+				}
+			}
+			it_diag.valueRef() = -sum_offdiag;
+		}
+		
+		// External forces
+		Vector b;
+		m.fill(b, f);
+
+		// Initialize the scalar field
+		Vector u0(A.cols());
+		auto vs = m.vertices();
+		std::transform(vs.begin(), vs.end(), u0.begin(), u_init_func);
+
+		// Time stepping control
+		int time_steps = 20;
+		FLP time_elapsed = 20;
+		FLP tolerance = 1e-6;
+		
+		int iteration = 0;
+		FLP indicator = 1;
+		Vector u1 = u0;
+		Vector u2;
+
+		for (int step = 0; step < time_steps; ++step)
+		{
+			FLP duration = time_elapsed / time_steps;
+			Matrix LHS = A + M / duration;
+			Vector RHS = b + M / duration * u1;
+
+			Solver s(LHS);
+			u2 = s.solve(RHS);
+			Vector du = u2 - u1;
+			std::vector<FLP> e(du.data(), du.data() + du.size());
+			indicator = m.integrate(e);
+	
+			u1 = u2;
+		}
+		
+		std::cout << "Completed: " << i << ": " << indicator << "\n";
+	}
+
+	return 0;
+}
+
 /* **************************** MAIN ENTRY POINT **************************** */
 int main(int argc, char** argv)
 {
@@ -513,6 +631,21 @@ int main(int argc, char** argv)
 	else if (item == "testobj")
 	{
 		return test_obj();
+	}
+	else if (item == "research")
+	{
+		if (argc < 3)
+		{
+			std::cout << "Specify research option with research a/b/c/etc\n";
+			return 0;
+		}
+
+		std::string option(argv[2]);
+		if (option == "a")
+		{
+			// Find the rate of convergence of the diffusion problem
+			return research_a();
+		}
 	}
 
 	return 0;
