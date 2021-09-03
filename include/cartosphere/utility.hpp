@@ -83,6 +83,11 @@ public:
 	{
 		return FL3(a.x / b, a.y / b, a.z / b);
 	}
+	// Dot product
+	friend FLP dot(const FL3& a, const FL3& b)
+	{
+		return a.x * b.x + a.y * b.y + a.z * b.z;
+	}
 	// Cross product
 	friend FL3 cross(const FL3& a, const FL3& b)
 	{

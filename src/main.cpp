@@ -538,7 +538,7 @@ int research_a()
 		for (int k = 0; k < A.outerSize(); ++k)
 		{
 			Matrix::InnerIterator it_diag;
-			FLP sum_offdiag=0;
+			FLP sum_offdiag = 0;
 			for (Matrix::InnerIterator it(A, k); it; ++it)
 			{
 				if (it.row() == it.col())
@@ -557,21 +557,24 @@ int research_a()
 		Vector b;
 		m.fill(b, f);
 
-		// Initialize the scalar field
+		// Initialize the scalar field at t=0 and infinity
 		Vector u0(A.cols());
+		Vector ui(A.cols());
 		auto vs = m.vertices();
 		std::transform(vs.begin(), vs.end(), u0.begin(), u_init_func);
+		std::transform(vs.begin(), vs.end(), ui.begin(), u_steady_func);
 
 		// Time stepping control
-		int time_steps = 20;
+		int time_steps = 10;
 		FLP time_elapsed = 20;
-		FLP tolerance = 1e-6;
+		// FLP tolerance = 1e-6;
 		
 		int iteration = 0;
 		FLP indicator = 1;
 		Vector u1 = u0;
 		Vector u2;
 
+		// Perform timestepping
 		for (int step = 0; step < time_steps; ++step)
 		{
 			FLP duration = time_elapsed / time_steps;
@@ -580,13 +583,17 @@ int research_a()
 
 			Solver s(LHS);
 			u2 = s.solve(RHS);
-			Vector du = u2 - u1;
-			std::vector<FLP> e(du.data(), du.data() + du.size());
-			indicator = m.integrate(e);
 	
 			u1 = u2;
 		}
+
+		// Compute the final error based on the steady state
+		Vector e = u1 - ui;
+
+		// Convert to the L^2 norm
+		indicator = sqrt(m.integrate(std::vector<FLP>(e.data(), e.data() + e.size())));
 		
+		// Report the error
 		std::cout << "Completed: " << i << ": " << indicator << "\n";
 	}
 

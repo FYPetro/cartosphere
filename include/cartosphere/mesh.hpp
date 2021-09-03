@@ -147,10 +147,18 @@ namespace Cartosphere
 		operator Preimage() const { return preimage(); }
 		// Implicit conversion to image
 		operator Image() const { return image(); }
+		// Obtain the azimuth of a different given point relative to this point
+		// Returns values in the interval (-pi,pi)
+		FLP azimuth(const Point& other) const;
 		// Obtain distance
 		friend FLP distance(const Point& a, const Point& b)
 		{
 			return distance(a.image(), b.image());
+		}
+		// Calculate the angle spanned by three points
+		friend FLP angle(const Point& a, const Point& b, const Point& c)
+		{
+			return angle(a.image(), b.image(), c.image());
 		}
 		// Obtain midpoint
 		friend Point midpoint(const Point& a, const Point& b);
@@ -249,9 +257,16 @@ namespace Cartosphere
 		Triangle(const Triangle& that) = default;
 
 	public:
-		// Calculate the area as a spherical triangle
+		// Obtain the orientation of the spherical triangle
+		int orientation() const;
+		// Calculate the area as a non-oriented spherical triangle
+		// Returns an output in (0,pi)
 		FLP area() const;
+		// Returns the area of the oriented spherical triangle
+		// Returns an output in (-pi,pi)
+		FLP areaOriented() const { return orientation() * area(); }
 		// Calculate the area as a Euclidean triangle
+		// Returns a positive output
 		FLP areaEuclidean() const;
 		// Calculate the location of the center of mass
 		Point centroid() const;
@@ -259,6 +274,24 @@ namespace Cartosphere
 		Function element(size_t index) const;
 		// Numerically integrate a scalar function
 		FLP integrate(const Function& f, Integrator intr) const;
+	};
+
+	// A (spherical) polygon
+	class Polygon
+	{
+	public:
+		// Default constructor
+		Polygon() {}
+		// Construct from a list of points
+		Polygon(const std::vector<Point>& points) : _V(points) {}
+
+	public:
+		// Calculate the area as a spherical polygon
+		FLP area() const;
+
+	protected:
+		// Input data: List of vertices
+		std::vector<Point> _V;
 	};
 
 	// A triangular mesh

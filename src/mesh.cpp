@@ -98,6 +98,16 @@ Cartosphere::Point::isValid() const
 		&& x() == 0 && y() == 0 && z() == 0;
 }
 
+FLP
+Cartosphere::Point::azimuth(const Point& other) const
+{
+	FLP t = sin(a() - other.a()) * sin(other.p());
+	FLP b = cos(other.p()) * sin(p())
+		- sin(other.p()) * cos(p()) * cos(a() - other.a());
+
+	return atan2(t, b);
+}
+
 Cartosphere::Point
 Cartosphere::midpoint(const Point& a, const Point& b)
 {
@@ -116,6 +126,29 @@ Cartosphere::midpoint(const Point& a, const Point& b)
 /* *************************** *
  * class Cartosphere::Triangle *
  * *************************** */
+int
+Cartosphere::Triangle::orientation() const
+{
+	// Form vector AB, AC
+	FL3 AB = A.image() - B.image();
+	FL3 BC = B.image() - C.image();
+	FL3 OC = C.image();
+	// Obtain mixed product
+	FLP product = dot(cross(AB, BC), OC);
+	if (product > 0)
+	{
+		return 1;
+	}
+	else if (product < 0)
+	{
+		return -1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
 FLP
 Cartosphere::Triangle::area() const
 {
@@ -138,11 +171,11 @@ Cartosphere::Triangle::area() const
 FLP
 Cartosphere::Triangle::areaEuclidean() const
 {
-	// Form vector AB
+	// Form vector AB, AC
 	FL3 AB = B.image() - A.image();
 	FL3 AC = C.image() - A.image();
+	// Calculate the area as half of the magnitude of AB x AC
 	FL3 product = cross(AB, AC);
-	// Form vector AC
 	return FLP(0.5) * product.norm2();
 }
 
@@ -273,11 +306,78 @@ Cartosphere::Triangle::integrate(const Function& f, Integrator intr) const
 }
 
 FLP
-Cartosphere::TriangularMesh::integrate(const std::vector<FLP>& v) const
+Cartosphere::Polygon::area() const
+{
+	FLP sum = 0;
+
+	// Accumulate the sum of angles
+	const size_t n = _V.size();
+	for (size_t i = 0; i < _V.size(); ++i)
+	{
+		sum += angle(_V[i], _V[(i + 1) % n], _V[(i + 2) % n]);
+	}
+
+	// Return the spherical excess
+	return sum - (n - 2) * M_PI;
+}
+
+FLP
+Cartosphere::TriangularMesh::integrate(const std::vector<FLP>& values) const
 {
 	FLP integral = 0;
 
+	// For each vertex v in the triangular mesh, we construct its dual
+	// spherical polygon by storing its
+	//  1. dual vertices
+	//  2. azimuth of its dual vertex relative to v.
+	std::vector<std::pair<Point,FLP>> dual;
+	std::vector<Point> vertices;
 
+	// For each vertex, construct its dual spherical polygon
+	for (size_t i = 0; i < _V.size(); ++i)
+	{
+		// Convert the list of neighboring faces to the list of their centroids
+		const Point& v = _V[i];
+		const auto& fs = _VF[i];
+		std::transform(fs.begin(), fs.end(), std::back_inserter(dual),
+			[this,v](size_t k) {
+				Point centroid = _vt[k].centroid();
+				FLP azimuth = v.azimuth(centroid);
+				return std::make_pair(centroid, azimuth);
+			}
+		);
+
+		// Sort the dual vertices by azimuth
+		struct AzimuthSorter
+		{
+			inline bool operator()(
+				const std::pair<Point,FLP>& a,
+				const std::pair<Point,FLP>& b) const
+			{
+				return a.second < b.second;
+			}
+		};
+		std::sort(dual.begin(), dual.end(), AzimuthSorter());
+
+		// Extract points to vector
+		for (auto it = std::make_move_iterator(dual.begin()),
+			end = std::make_move_iterator(dual.end()); it != end; ++it)
+		{
+			vertices.insert(vertices.end(), std::move(it->first));
+		}
+
+		// Spherical excess is the area
+		// Only works if the azimuths all lie within the principal interval
+		Polygon poly(vertices);
+		FLP area = poly.area();
+
+		// Accumulate the integral
+		integral += pow(abs(values[i]), 2) * area;
+
+		// Cleanup
+		dual.clear();
+		vertices.clear();
+	}
 
 	return integral;
 }
@@ -1510,12 +1610,12 @@ Cartosphere::TriangularMesh::fill(Vector& b, Function f,
 	
 	b.resize(stat.V);
 	// Loop through all vertices
-	for (int i = 0; i < stat.V; ++i)
+	for (size_t i = 0; i < stat.V; ++i)
 	{
 		b[i] = 0;
 		// Obtain the precalculated faces that share each vertex
 		const auto &star = _VF[i];
-		for (int k = 0; k < star.size(); ++k)
+		for (size_t k = 0; k < star.size(); ++k)
 		{
 			// For each face, obtain the correct element
 			size_t vid = std::find(_FV[star[k]].cbegin(), _FV[star[k]].cend(), i) - _FV[star[k]].cbegin();
