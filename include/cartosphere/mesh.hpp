@@ -229,7 +229,9 @@ namespace Cartosphere
 	public:
 		// A selection of quadrature rules for integration
 		enum class Integrator {
-			Centroid, ThreeVertices, Simpsons,
+			Centroid,
+			ThreeVertices,
+			Simpsons,
 			Refinement1,
 			Refinement2,
 			Refinement3,
@@ -322,7 +324,8 @@ namespace Cartosphere
 		} Stats;
 		// Integrator rules
 		enum class Quadrature {
-			AreaWeighted
+			AreaWeighted,
+			DualAreaWeighted, // Weight values by area of dual polygons
 		};
 
 	public:
@@ -369,7 +372,9 @@ namespace Cartosphere
 			Quadrature rule = Quadrature::AreaWeighted,
 			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
 		// Numerically integrate function values at vertices
-		FLP integrate(const std::vector<FLP>& values) const;
+		FLP integrate(const std::vector<FLP>& values,
+			Quadrature rule = Quadrature::DualAreaWeighted,
+			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
 		// Interpolate
 		FLP interpolate(const std::vector<FLP>& values, const Point& point) const;
 		// FEM: Generate inner products of the gradients of finite elements

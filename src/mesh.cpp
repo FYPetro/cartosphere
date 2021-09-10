@@ -322,61 +322,107 @@ Cartosphere::Polygon::area() const
 }
 
 FLP
-Cartosphere::TriangularMesh::integrate(const std::vector<FLP>& values) const
+Cartosphere::TriangularMesh::integrate(
+	const std::vector<FLP>& values,
+	Quadrature rule, Triangle::Integrator intr) const
 {
 	FLP integral = 0;
 
-	// For each vertex v in the triangular mesh, we construct its dual
-	// spherical polygon by storing its
-	//  1. dual vertices
-	//  2. azimuth of its dual vertex relative to v.
-	std::vector<std::pair<Point,FLP>> dual;
-	std::vector<Point> vertices;
-
-	// For each vertex, construct its dual spherical polygon
-	for (size_t i = 0; i < _V.size(); ++i)
+	// The discrete values are for each dual polygon
+	if (rule == Quadrature::DualAreaWeighted)
 	{
-		// Convert the list of neighboring faces to the list of their centroids
-		const Point& v = _V[i];
-		const auto& fs = _VF[i];
-		std::transform(fs.begin(), fs.end(), std::back_inserter(dual),
-			[this,v](size_t k) {
-				Point centroid = _vt[k].centroid();
-				FLP azimuth = v.azimuth(centroid);
-				return std::make_pair(centroid, azimuth);
-			}
-		);
-
-		// Sort the dual vertices by azimuth
-		struct AzimuthSorter
+		if (intr == Triangle::Integrator::Centroid)
 		{
-			inline bool operator()(
-				const std::pair<Point,FLP>& a,
-				const std::pair<Point,FLP>& b) const
+			// For each vertex v in the triangular mesh, we construct its dual
+			// spherical polygon by storing its
+			//  1. dual vertices
+			//  2. azimuth of its dual vertex relative to v.
+			std::vector<std::pair<Point, FLP>> dual;
+			std::vector<Point> vertices;
+
+			// For each vertex, construct its dual spherical polygon
+			for (size_t i = 0; i < _V.size(); ++i)
 			{
-				return a.second < b.second;
+				// Convert the list of neighboring faces to the list of their centroids
+				const Point& v = _V[i];
+				const auto& fs = _VF[i];
+				std::transform(fs.begin(), fs.end(), std::back_inserter(dual),
+					[this, v](size_t k) {
+						Point centroid = _vt[k].centroid();
+						FLP azimuth = v.azimuth(centroid);
+						return std::make_pair(centroid, azimuth);
+					}
+				);
+
+				// Sort the dual vertices by azimuth
+				struct AzimuthSorter
+				{
+					inline bool operator()(
+						const std::pair<Point, FLP>& a,
+						const std::pair<Point, FLP>& b) const
+					{
+						return a.second < b.second;
+					}
+				};
+				std::sort(dual.begin(), dual.end(), AzimuthSorter());
+
+				// Extract points to vector
+				for (auto it = std::make_move_iterator(dual.begin()),
+					end = std::make_move_iterator(dual.end()); it != end; ++it)
+				{
+					vertices.insert(vertices.end(), std::move(it->first));
+				}
+
+				// Spherical excess is the area
+				// Only works if the azimuths all lie within the principal interval
+				Polygon poly(vertices);
+				FLP area = poly.area();
+
+				// Accumulate the integral
+				integral += pow(abs(values[i]), 2) * area;
+
+				// Cleanup
+				dual.clear();
+				vertices.clear();
 			}
-		};
-		std::sort(dual.begin(), dual.end(), AzimuthSorter());
-
-		// Extract points to vector
-		for (auto it = std::make_move_iterator(dual.begin()),
-			end = std::make_move_iterator(dual.end()); it != end; ++it)
-		{
-			vertices.insert(vertices.end(), std::move(it->first));
 		}
+		else
+		{
+			for (size_t i = 0; i < _V.size(); ++i)
+			{
+				const Triangle& t = _vt[i];
 
-		// Spherical excess is the area
-		// Only works if the azimuths all lie within the principal interval
-		Polygon poly(vertices);
-		FLP area = poly.area();
+				// Obtain the restriction of basis functions
+				auto e_a = t.element(0);
+				auto e_b = t.element(1);
+				auto e_c = t.element(2);
 
-		// Accumulate the integral
-		integral += pow(abs(values[i]), 2) * area;
+				// Obtain the values
+				size_t index_a;
+				{
+					const auto& edge = std::get<0>(_F[i]);
+					index_a = edge.second ? _E[edge.first].first : _E[edge.first].second;
+				}
+				size_t index_b;
+				{
+					const auto& edge = std::get<1>(_F[i]);
+					index_b = edge.second ? _E[edge.first].first : _E[edge.first].second;
+				}
+				size_t index_c;
+				{
+					const auto& edge = std::get<2>(_F[i]);
+					index_c = edge.second ? _E[edge.first].first : _E[edge.first].second;
+				}
+				auto f_a = values[index_a];
+				auto f_b = values[index_b];
+				auto f_c = values[index_c];
 
-		// Cleanup
-		dual.clear();
-		vertices.clear();
+				auto f = [&e_a, &e_b, &e_c, f_a, f_b, f_c](const Point& p) {
+					return std::pow(f_a * e_a(p) + f_b * e_b(p) + f_c * e_c(p), 2);
+				};
+				integral += t.integrate(f, intr);
+			}
+		}
 	}
 
 	return integral;

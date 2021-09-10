@@ -485,18 +485,36 @@ int research_a()
 	int refinements = 5;
 
 	// Set the initial condition	
+	// auto u_init_func = [](const Cartosphere::Point& p) -> FLP {
+	// 	return 2 + p.z();
+	// };
+
+	// Set the steady state solution
+	// auto u_steady_func = [](const Cartosphere::Point& p) -> FLP {
+	// 	return 2;
+	// };
+
+	// Set the external term
+	// auto f = [](const Cartosphere::Point& p) -> FLP {
+	// 	return 0;
+	// };
+
 	auto u_init_func = [](const Cartosphere::Point& p) -> FLP {
 		return 2 + p.z();
 	};
 
-	// Set the steady state solution
-	auto u_steady_func = [](const Cartosphere::Point& p) -> FLP {
-		return 2;
+	// The function u(x,y) = x y
+	auto u_steady_func = [](const Cartosphere::Point& p) -> FLP
+	{
+		return 2 + p.x() * p.y();
 	};
 
-	// Set the external term
+	// Laplace-Beltrami of u(x,y,z) = x y
 	auto f = [](const Cartosphere::Point& p) -> FLP {
-		return 0;
+		FLP x = p.x(), y = p.y(), z = p.z();
+		return x - 2 * x * x * x + y - 2 * x * y - 4 * x * x * y + 6 * x * x * x * y
+			- 4 * x * y * y - 2 * y * y * y + 6 * x * y * y * y
+			- 2 * x * y * z - 2 * x * z * z - 2 * y * z * z + 6 * x * y * z * z;
 	};
 
 	// Perform diffusion on iteratively finer meshes
@@ -589,9 +607,10 @@ int research_a()
 
 		// Compute the final error based on the steady state
 		Vector e = u1 - ui;
+		std::vector<FLP> ev(e.data(), e.data() + e.size());
 
 		// Convert to the L^2 norm
-		indicator = sqrt(m.integrate(std::vector<FLP>(e.data(), e.data() + e.size())));
+		indicator = sqrt(m.integrate(ev));
 		
 		// Report the error
 		std::cout << "Completed: " << i << ": " << indicator << "\n";
