@@ -335,17 +335,17 @@ int convergence()
 	// Files to loop through
 	std::vector<std::string> paths = {
 		"icosahedron.csm",
-		"icosahedron.csm.1.csm",
-		"icosahedron.csm.2.csm",
-		"icosahedron.csm.3.csm",
-		"icosahedron.csm.4.csm",
-		"icosahedron.csm.5.csm",
+		"icosahedron.csm.r1",
+		"icosahedron.csm.r2",
+		"icosahedron.csm.r3",
+		"icosahedron.csm.r4",
+		"icosahedron.csm.r5",
 	};
 
 	// The function u(x,y) = x y
 	auto u = [](const Cartosphere::Point& p) -> FLP
 	{
-		return p.x() * p.y();
+		return pow(p.x(),2) + pow(p.y(),2);
 	};
 
 	// Laplace-Beltrami of u(x,y,z) = x y
@@ -357,7 +357,13 @@ int convergence()
 	};*/
 
 	auto f = [](const Cartosphere::Point& p) -> FLP {
-		return 1;
+		FLP x = p.x(), y=p.y(), z=p.z();
+		FLP l = 4 - 10 * pow(x,2) - 10 * pow(y,2) - (
+			x * (x * (2 - 6 * pow(x,2) - 2 * pow(y,2)) + y * (-4 * x * y)) +
+			y * (x * (-4 * x * y) + y * (2 - 2 * pow(x,2) - 6 * pow(y,2))) +
+			z * (x * (-4 * x * z) + y * (-4 * y * z) + z * (-2 * pow(x,2) - 2 * pow(y,2)))
+		);
+		return -l;
 	};
 
 	int vvv = 4;
@@ -389,17 +395,20 @@ int convergence()
 		// Calculate the ell2-norm of the residual
 		FLP norm = 0;
 		FLP norm_max = 0;
+		std::vector<FLP> e(us.size());
 		for (size_t k = 0; k < us.size(); ++k)
 		{
-			norm += std::pow(us[k] - x[k], 2);
-			if (abs(us[k] - x[k]) > norm_max)
+			e[k] = us[k] - x[k];
+			norm += std::pow(e[k], 2);
+			if (abs(e[k]) > norm_max)
 			{
-				norm_max = abs(us[k] - x[k]);
+				norm_max = abs(e[k]);
 			}
+			e[k] = pow(e[k],2);
 		}
 		error = std::sqrt(norm) / us.size();
 
-		std::cout << "L_inf = " << norm_max << "\n";
+		std::cout << "L_inf = " << norm_max << ", L_2 = " << sqrt(mesh.integrate(e)) << "\n";
 
 		// Save error
 		L2E.push_back(error);
@@ -500,21 +509,24 @@ int research_a()
 	// };
 
 	auto u_init_func = [](const Cartosphere::Point& p) -> FLP {
-		return 2 + p.z();
+		return 0;
 	};
 
 	// The function u(x,y) = x y
 	auto u_steady_func = [](const Cartosphere::Point& p) -> FLP
 	{
-		return 2 + p.x() * p.y();
+		return pow(p.x(),2) + pow(p.y(),2);
 	};
 
 	// Laplace-Beltrami of u(x,y,z) = x y
 	auto f = [](const Cartosphere::Point& p) -> FLP {
-		FLP x = p.x(), y = p.y(), z = p.z();
-		return x - 2 * x * x * x + y - 2 * x * y - 4 * x * x * y + 6 * x * x * x * y
-			- 4 * x * y * y - 2 * y * y * y + 6 * x * y * y * y
-			- 2 * x * y * z - 2 * x * z * z - 2 * y * z * z + 6 * x * y * z * z;
+		FLP x = p.x(), y=p.y(), z=p.z();
+		FLP l = 4 - 10 * pow(x,2) - 10 * pow(y,2) - (
+			x * (x * (2 - 6 * pow(x,2) - 2 * pow(y,2)) + y * (-4 * x * y)) +
+			y * (x * (-4 * x * y) + y * (2 - 2 * pow(x,2) - 6 * pow(y,2))) +
+			z * (x * (-4 * x * z) + y * (-4 * y * z) + z * (-2 * pow(x,2) - 2 * pow(y,2)))
+		);
+		return -l;
 	};
 
 	// Perform diffusion on iteratively finer meshes
@@ -533,7 +545,7 @@ int research_a()
 			<< " + " << stats.F << " = " << euler << "\n"
 			<< "    Area ratio: " << stats.areaElementDisparity
 			<< " (max " << stats.areaElementMax
-			<< ", min " << stats.areaElementMin << ")" << std::endl;
+			<< ", min " << stats.areaElementMin << ")\n" << std::endl;
 	}
 	else
 	{
@@ -606,8 +618,14 @@ int research_a()
 		}
 
 		// Compute the final error based on the steady state
-		Vector e = u1 - ui;
-		std::vector<FLP> ev(e.data(), e.data() + e.size());
+		Vector e = (u1 - ui);
+
+
+		std::vector<FLP> ev(e.size());
+		for (size_t k = 0; k < ev.size(); ++k)
+		{
+			ev[k] = pow(e[k], 2);
+		}
 
 		// Convert to the L^2 norm
 		indicator = sqrt(m.integrate(ev));
@@ -615,6 +633,28 @@ int research_a()
 		// Report the error
 		std::cout << "Completed: " << i << ": " << indicator << "\n";
 	}
+
+	return 0;
+}
+
+// Sep 16, 2021. To gauge the error of FEM correctly.
+// The gol is to start my preliminaaries!!! HOPE FOR THE BEST!!!
+int research_b()
+{
+	Cartosphere::TriangularMesh m;
+	m.load("icosahedron.csm");
+
+	if (!m.isReady())
+	{
+		std::cout << "The mesh is not ready!\n";
+		return -1;
+	}
+	
+	// Create a list of test values.
+	std::vector<FLP> values(m.vertices().size(), 1);
+	FLP integral = m.integrate(values);
+
+	std::cout << integral << "\n";
 
 	return 0;
 }
@@ -671,6 +711,11 @@ int main(int argc, char** argv)
 		{
 			// Find the rate of convergence of the diffusion problem
 			return research_a();
+		}
+		else if (option == "b")
+		{
+			// Check aall error gauging functions
+			return research_b();
 		}
 	}
 

@@ -388,7 +388,7 @@ Cartosphere::TriangularMesh::integrate(
 		}
 		else
 		{
-			for (size_t i = 0; i < _V.size(); ++i)
+			for (size_t i = 0; i < _vt.size(); ++i)
 			{
 				const Triangle& t = _vt[i];
 
@@ -1720,6 +1720,8 @@ Cartosphere::TriangularMesh::integrate(const Function& f,
 			result += triangle.integrate(f, intr);
 		}
 	} break;
+	default:
+		break;
 	}
 	return result;
 }
