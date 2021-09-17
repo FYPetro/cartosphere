@@ -272,6 +272,8 @@ namespace Cartosphere
 		FLP areaEuclidean() const;
 		// Calculate the location of the center of mass
 		Point centroid() const;
+		// Calculate the diameter of the circumcircle
+		FLP diameter() const;
 		// Obtain a finite element
 		Function element(size_t index) const;
 		// Numerically integrate a scalar function
@@ -321,6 +323,8 @@ namespace Cartosphere
 			FLP areaElementMin;
 			// The area ratio of the largest and smallest triangles
 			FLP areaElementDisparity;
+			// The diameter of the largest circumcircle
+			FLP diameterElementMax;
 		} Stats;
 		// Integrator rules
 		enum class Quadrature {
@@ -374,6 +378,9 @@ namespace Cartosphere
 		// Numerically integrate function values at vertices
 		FLP integrate(const std::vector<FLP>& values,
 			Quadrature rule = Quadrature::DualAreaWeighted,
+			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
+		// L2 error
+		FLP lebesgue(const std::vector<FLP>& weights, const Function& func,
 			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
 		// Interpolate
 		FLP interpolate(const std::vector<FLP>& values, const Point& point) const;

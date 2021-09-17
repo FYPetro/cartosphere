@@ -487,67 +487,14 @@ int test_obj()
 /* Validation, for research only */
 int research_a()
 {
-	// Set file name of initial mesh
+	// Set mesh, equation, refinement levels
 	std::string name = "icosahedron.csm";
+	const int scenario = 1;
+	const int refinements = 6;
 
-	// Set the number of refinements to perform
-	int refinements = 5;
-
-	// Set the initial condition	
-	// auto u_init_func = [](const Cartosphere::Point& p) -> FLP {
-	// 	return 2 + p.z();
-	// };
-
-	// Set the steady state solution
-	// auto u_steady_func = [](const Cartosphere::Point& p) -> FLP {
-	// 	return 2;
-	// };
-
-	// Set the external term
-	// auto f = [](const Cartosphere::Point& p) -> FLP {
-	// 	return 0;
-	// };
-
-	auto u_init_func = [](const Cartosphere::Point& p) -> FLP {
-		return 0;
-	};
-
-	// The function u(x,y) = x y
-	auto u_steady_func = [](const Cartosphere::Point& p) -> FLP
-	{
-		return pow(p.x(),2) + pow(p.y(),2);
-	};
-
-	// Laplace-Beltrami of u(x,y,z) = x y
-	auto f = [](const Cartosphere::Point& p) -> FLP {
-		FLP x = p.x(), y=p.y(), z=p.z();
-		FLP l = 4 - 10 * pow(x,2) - 10 * pow(y,2) - (
-			x * (x * (2 - 6 * pow(x,2) - 2 * pow(y,2)) + y * (-4 * x * y)) +
-			y * (x * (-4 * x * y) + y * (2 - 2 * pow(x,2) - 6 * pow(y,2))) +
-			z * (x * (-4 * x * z) + y * (-4 * y * z) + z * (-2 * pow(x,2) - 2 * pow(y,2)))
-		);
-		return -l;
-	};
-
-	// Perform diffusion on iteratively finer meshes
+	// Load initial mesh from path and print statistics
 	Cartosphere::TriangularMesh m(name);
-
-	if (m.isReady())
-	{
-		std::cout << "Loaded mesh from file: " << name << "\n\n";
-
-		// Print statistics about the mesh
-		auto stats = m.statistics();
-		size_t euler = stats.V + stats.F - stats.E;
-
-		std::cout << "Statistics:\n"
-			<< "    Euler: V - E + F = " << stats.V << " - " << stats.E
-			<< " + " << stats.F << " = " << euler << "\n"
-			<< "    Area ratio: " << stats.areaElementDisparity
-			<< " (max " << stats.areaElementMax
-			<< ", min " << stats.areaElementMin << ")\n" << std::endl;
-	}
-	else
+	if (!m.isReady())
 	{
 		// Print error messages
 		for (auto& msg : m.getMessages())
@@ -555,90 +502,147 @@ int research_a()
 			std::cout << msg << "\n";
 		}
 		std::cout << std::flush;
-		return 0;
+		return -1;
 	}
 
+	auto stats = m.statistics();
+	size_t euler = stats.V + stats.F - stats.E;
+
+	std::cout << "Loaded mesh from file: " << name << "\n\n"
+		<< "Statistics:\n"
+		<< "    Euler: V - E + F = " << stats.V << " - " << stats.E
+		<< " + " << stats.F << " = " << euler << "\n"
+		<< "    Area ratio: " << stats.areaElementDisparity
+		<< " (max " << stats.areaElementMax
+		<< ", min " << stats.areaElementMin << ")\n" << std::endl;
+
+	Cartosphere::Function u_inf_func, f_func, g_func;
+	if (scenario == 0)
+	{
+		// The desired steady-state solution u = x^2 + y^2
+		// The external term                 f = -Lapl u
+		// The initial condition             g = 0
+		u_inf_func = [](const Cartosphere::Point& p) -> FLP
+		{
+			FLP x = p.x(), y = p.y(), z = p.z();
+			return pow(x, 2) + pow(y, 2);
+		};
+		f_func = [](const Cartosphere::Point& p) -> FLP {
+			FLP x = p.x(), y = p.y(), z = p.z();
+			FLP l = 4 - 10 * pow(x, 2) - 10 * pow(y, 2) - (
+				x * (x * (2 - 6 * pow(x, 2) - 2 * pow(y, 2)) + y * (-4 * x * y)) +
+				y * (x * (-4 * x * y) + y * (2 - 2 * pow(x, 2) - 6 * pow(y, 2))) +
+				z * (x * (-4 * x * z) + y * (-4 * y * z) + z * (-2 * pow(x, 2) - 2 * pow(y, 2)))
+				);
+			return -l;
+		};
+		g_func = [](const Cartosphere::Point& p) -> FLP {
+			FLP x = p.x(), y = p.y(), z = p.z();
+			return 0;
+		};
+	}
+	else
+	{
+		// The desired steady-state solution u = 2
+		// The external term                 f = 0
+		// The initial condition             g = 2 + z
+		u_inf_func = [](const Cartosphere::Point& p) -> FLP
+		{
+			FLP x = p.x(), y = p.y(), z = p.z();
+			return 2;
+		};
+		f_func = [](const Cartosphere::Point& p) -> FLP {
+			FLP x = p.x(), y = p.y(), z = p.z();
+			return 0;
+		};
+		g_func = [](const Cartosphere::Point& p) -> FLP {
+			FLP x = p.x(), y = p.y(), z = p.z();
+			return 2 + z;
+		};
+	}
+
+	// Iteratively refine and observe the convergence
 	for (int i = 0; i <= refinements; ++i, m.refine())
 	{
-		// Stiffness matrix and time-related matrix
-		Matrix A, M;
-		m.fill(A, M);
-
-		// Manual fix for matrix A
-		for (int k = 0; k < A.outerSize(); ++k)
-		{
-			Matrix::InnerIterator it_diag;
-			FLP sum_offdiag = 0;
-			for (Matrix::InnerIterator it(A, k); it; ++it)
-			{
-				if (it.row() == it.col())
-				{
-					it_diag = it;
-				}
-				else
-				{
-					sum_offdiag += it.value();
-				}
-			}
-			it_diag.valueRef() = -sum_offdiag;
-		}
-		
-		// External forces
-		Vector b;
-		m.fill(b, f);
+		// Extract vertices
+		const auto vs = m.vertices();
 
 		// Initialize the scalar field at t=0 and infinity
-		Vector u0(A.cols());
-		Vector ui(A.cols());
-		auto vs = m.vertices();
-		std::transform(vs.begin(), vs.end(), u0.begin(), u_init_func);
-		std::transform(vs.begin(), vs.end(), ui.begin(), u_steady_func);
+		Vector u_init(vs.size());
+		Vector u_inf(vs.size());
+		std::transform(vs.begin(), vs.end(), u_init.begin(), g_func);
+		std::transform(vs.begin(), vs.end(), u_inf.begin(), u_inf_func);
 
-		// Time stepping control
-		int time_steps = 10;
-		FLP time_elapsed = 20;
-		// FLP tolerance = 1e-6;
-		
+		// Build the linear system
+		Matrix A, M;
+		Vector F;
+		m.fill(A, M);
+		m.fill(F, f_func);
+
+		// Manual fix for matrix A
+		// for (int k = 0; k < A.outerSize(); ++k)
+		// {
+		// 	Matrix::InnerIterator it_diag;
+		// 	FLP sum_offdiag = 0;
+		// 	for (Matrix::InnerIterator it(A, k); it; ++it)
+		// 	{
+		// 		if (it.row() == it.col())
+		// 		{
+		// 			it_diag = it;
+		// 		}
+		// 		else
+		// 		{
+		// 			sum_offdiag += it.value();
+		// 		}
+		// 	}
+		// 	it_diag.valueRef() = -sum_offdiag;
+		// }
+
+		// Perform time-stepping
+		const int time_steps = 200;
+		const FLP time_elapsed = 10;
 		int iteration = 0;
 		FLP indicator = 1;
-		Vector u1 = u0;
-		Vector u2;
-
-		// Perform timestepping
-		for (int step = 0; step < time_steps; ++step)
+		Vector u_prev = u_init;
+		Vector u_curr;
+		for (int step = 0; step < time_steps; ++step, u_prev = u_curr)
 		{
 			FLP duration = time_elapsed / time_steps;
+
 			Matrix LHS = A + M / duration;
-			Vector RHS = b + M / duration * u1;
+			Vector RHS = F + M * u_prev / duration;
 
 			Solver s(LHS);
-			u2 = s.solve(RHS);
-	
-			u1 = u2;
+			u_curr = s.solve(RHS);
 		}
 
-		// Compute the final error based on the steady state
-		Vector e = (u1 - ui);
+		// Report the L2-error by comparing the linearly weighted approximation
+		// to the exact steady-state solution
+		std::vector<FLP> u;
+		std::transform(u_curr.begin(), u_curr.end(), std::back_inserter(u),
+			[](auto& u) -> FLP { return FLP(u); }
+		);
 
+		indicator = m.lebesgue(u, u_inf_func);
+		std::cout << "R" << i
+			<< ": h = " << m.statistics().diameterElementMax <<
+			" L2e_" << i << " = " << indicator << "\n";
 
-		std::vector<FLP> ev(e.size());
-		for (size_t k = 0; k < ev.size(); ++k)
-		{
-			ev[k] = pow(e[k], 2);
-		}
-
-		// Convert to the L^2 norm
-		indicator = sqrt(m.integrate(ev));
-		
-		// Report the error
-		std::cout << "Completed: " << i << ": " << indicator << "\n";
+		// Debug the values
+		// for (size_t k = 0; k < m.statistics().V; ++k)
+		// {
+		// 	const auto& v = vs[k];
+		// 	std::cout << "k = " << k
+		// 		<< " (" << v.x() << ", " << v.y() << ", " << v.z() << ") "
+		// 		<< " num=" << u_prev[k] << " exact=" << u_inf[k] << "\n";
+		// }
 	}
 
 	return 0;
 }
 
 // Sep 16, 2021. To gauge the error of FEM correctly.
-// The gol is to start my preliminaaries!!! HOPE FOR THE BEST!!!
+// The goal is to start my preliminaries!!! HOPE FOR THE BEST!!!
 int research_b()
 {
 	Cartosphere::TriangularMesh m;
@@ -649,12 +653,14 @@ int research_b()
 		std::cout << "The mesh is not ready!\n";
 		return -1;
 	}
-	
-	// Create a list of test values.
-	std::vector<FLP> values(m.vertices().size(), 1);
-	FLP integral = m.integrate(values);
 
-	std::cout << integral << "\n";
+	for (size_t k = 0; k <= 7; ++k, m.refine())
+	{
+		std::vector<FLP> values(m.vertices().size(), 1);
+		FLP integral = m.integrate(values);
+
+		std::cout << "I_" << k << " = " << integral << "\n";
+	}
 
 	return 0;
 }
@@ -698,11 +704,11 @@ int main(int argc, char** argv)
 	{
 		return test_obj();
 	}
-	else if (item == "research")
+	else if (item == "res")
 	{
 		if (argc < 3)
 		{
-			std::cout << "Specify research option with research a/b/c/etc\n";
+			std::cout << "Specify research option with res a/b/c/etc\n";
 			return 0;
 		}
 

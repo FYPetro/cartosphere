@@ -186,6 +186,19 @@ Cartosphere::Triangle::centroid() const
 	return Cartosphere::Point(Cartosphere::Image(c.normalize()));
 }
 
+FLP
+Cartosphere::Triangle::diameter() const
+{
+	// Form vector AB, AC
+	FL3 AB = B.image() - A.image();
+	FL3 AC = C.image() - A.image();
+	// The oriented unit normal to the planar triangle
+	FL3 n = normalize(cross(AB, AC));
+	// The distance from the plane ABC to O
+	FLP d = dot(A.image(), n);
+	return FLP(2) * acos(d);
+}
+
 Cartosphere::Function
 Cartosphere::Triangle::element(size_t index) const
 {
@@ -418,7 +431,7 @@ Cartosphere::TriangularMesh::integrate(
 				auto f_c = values[index_c];
 
 				auto f = [&e_a, &e_b, &e_c, f_a, f_b, f_c](const Point& p) {
-					return std::pow(f_a * e_a(p) + f_b * e_b(p) + f_c * e_c(p), 2);
+					return pow(f_a * e_a(p) + f_b * e_b(p) + f_c * e_c(p), 2);
 				};
 				integral += t.integrate(f, intr);
 			}
@@ -426,6 +439,52 @@ Cartosphere::TriangularMesh::integrate(
 	}
 
 	return integral;
+}
+
+FLP
+Cartosphere::TriangularMesh::lebesgue(
+	const std::vector<FLP>& weights, const Function& func,
+	Triangle::Integrator intr) const
+{
+	FLP integral = 0;
+
+	// Integrate error in each triangle
+	for (size_t i = 0; i < _vt.size(); ++i)
+	{
+		const Triangle& t = _vt[i];
+
+		// Obtain the restriction of basis functions
+		auto e_a = t.element(0);
+		auto e_b = t.element(1);
+		auto e_c = t.element(2);
+
+		// Obtain the values
+		size_t index_a;
+		{
+			const auto& edge = std::get<0>(_F[i]);
+			index_a = edge.second ? _E[edge.first].first : _E[edge.first].second;
+		}
+		size_t index_b;
+		{
+			const auto& edge = std::get<1>(_F[i]);
+			index_b = edge.second ? _E[edge.first].first : _E[edge.first].second;
+		}
+		size_t index_c;
+		{
+			const auto& edge = std::get<2>(_F[i]);
+			index_c = edge.second ? _E[edge.first].first : _E[edge.first].second;
+		}
+		auto f_a = weights[index_a];
+		auto f_b = weights[index_b];
+		auto f_c = weights[index_c];
+
+		auto f = [&e_a, &e_b, &e_c, f_a, f_b, f_c, func](const Point& p) {
+			return pow(abs(f_a * e_a(p) + f_b * e_b(p) + f_c * e_c(p) - func(p)), 2);
+		};
+		integral += t.integrate(f, intr);
+	}
+
+	return pow(integral, 1 / FLP(2));
 }
 
 void
@@ -1668,7 +1727,17 @@ Cartosphere::TriangularMesh::fill(Vector& b, Function f,
 			auto g = _vt[star[k]].element(vid);
 			auto h = [f, g](const Point& p)->FLP { return f(p) * g(p); };
 			b[i] += _vt[star[k]].integrate(h, intr);
+
+			// Debug
+			// std::cout
+			// 	<< " V=" << i
+			// 	<< " nb=" << star[k]
+			// 	<< " 1@" << vid
+			// 	<< " I=" << _vt[star[k]].integrate(h, intr) << "\n";
 		}
+		
+		// Debug
+		// std::cout << "F_" << i << " = " << b[i] << "\n";
 	}
 }
 
@@ -1740,21 +1809,24 @@ Cartosphere::TriangularMesh::statistics() const
 {
 	Stats s;
 
-	// Report basic enentiy count
+	// Report basic entity count
 	s.V = _V.size();
 	s.E = _E.size();
 	s.F = _F.size();
 
-	// Report max and min triangle size
+	// Report element statistics
 	s.areaElementMax = std::numeric_limits<FLP>::min();
 	s.areaElementMin = std::numeric_limits<FLP>::max();
+	s.diameterElementMax = std::numeric_limits<FLP>::min();
 
-	FLP area;
 	for (auto& triangle : _vt)
 	{
-		area = triangle.area();
+		FLP area = triangle.area();
 		s.areaElementMax = std::max(s.areaElementMax, area);
 		s.areaElementMin = std::min(s.areaElementMin, area);
+
+		FLP diameter = triangle.diameter();
+		s.diameterElementMax = std::max(s.diameterElementMax, diameter);
 	}
 	s.areaElementDisparity = s.areaElementMax / s.areaElementMin;
 
