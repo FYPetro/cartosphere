@@ -15,7 +15,7 @@ using FLP = double;
 using Matrix = Eigen::SparseMatrix<FLP, Eigen::RowMajor>;
 using Entry = Eigen::Triplet<FLP>;
 using Vector = Eigen::Matrix<FLP, Eigen::Dynamic, 1>;
-using Solver = Eigen::BiCGSTAB<Matrix>;
+using Solver = Eigen::BiCGSTAB<Matrix,Eigen::IncompleteLUT<Matrix::Scalar>>;
 
 template<typename T>
 constexpr T deg2rad(T angle) { return (angle * M_PI / (FLP)180); }
@@ -120,5 +120,9 @@ public:
 	// Components
 	size_t a, b, c;
 };
+
+#include <complex>
+
+using FLC = std::complex<FLP>;
 
 #endif // !__UTILITY_HPP__

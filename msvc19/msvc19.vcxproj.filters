@@ -16,13 +16,28 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="include\s2kit10">
+      <UniqueIdentifier>{46800886-94a7-4171-acc4-c60938b750b2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\s2kit10">
+      <UniqueIdentifier>{c74efba7-299d-407c-9fee-b5c1d6f0c954}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\cartosphere">
+      <UniqueIdentifier>{b6508f33-6d74-4d6e-84bb-f355f7c0f42d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\solver.cpp">
+      <Filter>src\cartosphere</Filter>
+    </ClCompile>
     <ClCompile Include="..\src\mesh.cpp">
-      <Filter>src</Filter>
+      <Filter>src\cartosphere</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\functions.cpp">
+      <Filter>src\cartosphere</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -30,6 +45,12 @@
       <Filter>include\cartosphere</Filter>
     </ClInclude>
     <ClInclude Include="..\include\cartosphere\utility.hpp">
+      <Filter>include\cartosphere</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\cartosphere\solver.hpp">
+      <Filter>include\cartosphere</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\cartosphere\functions.hpp">
       <Filter>include\cartosphere</Filter>
     </ClInclude>
   </ItemGroup>

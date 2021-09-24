@@ -1,8 +1,10 @@
 
 #include <iostream>
 #include <fstream>
+#include <cmath>
 
-#include "cartosphere/mesh.hpp"
+#include "cartosphere/solver.hpp"
+#include "cartosphere/functions.hpp"
 
 /* Build a linear system for the demo program */
 void build_system(const Cartosphere::TriangularMesh& mesh, Matrix& A, Vector& b)
@@ -489,7 +491,7 @@ int research_a()
 {
 	// Set mesh, equation, refinement levels
 	std::string name = "icosahedron.csm";
-	const int scenario = 1;
+	const int scenario = 0;
 	const int refinements = 6;
 
 	// Load initial mesh from path and print statistics
@@ -519,13 +521,13 @@ int research_a()
 	Cartosphere::Function u_inf_func, f_func, g_func;
 	if (scenario == 0)
 	{
-		// The desired steady-state solution u = x^2 + y^2
+		// The desired steady-state solution u = x^2 + y^2 - 2/3
 		// The external term                 f = -Lapl u
 		// The initial condition             g = 0
 		u_inf_func = [](const Cartosphere::Point& p) -> FLP
 		{
 			FLP x = p.x(), y = p.y(), z = p.z();
-			return pow(x, 2) + pow(y, 2);
+			return pow(x, 2) + pow(y, 2) - FLP(2) / 3;
 		};
 		f_func = [](const Cartosphere::Point& p) -> FLP {
 			FLP x = p.x(), y = p.y(), z = p.z();
@@ -579,25 +581,6 @@ int research_a()
 		m.fill(A, M);
 		m.fill(F, f_func);
 
-		// Manual fix for matrix A
-		// for (int k = 0; k < A.outerSize(); ++k)
-		// {
-		// 	Matrix::InnerIterator it_diag;
-		// 	FLP sum_offdiag = 0;
-		// 	for (Matrix::InnerIterator it(A, k); it; ++it)
-		// 	{
-		// 		if (it.row() == it.col())
-		// 		{
-		// 			it_diag = it;
-		// 		}
-		// 		else
-		// 		{
-		// 			sum_offdiag += it.value();
-		// 		}
-		// 	}
-		// 	it_diag.valueRef() = -sum_offdiag;
-		// }
-
 		// Perform time-stepping
 		const int time_steps = 200;
 		const FLP time_elapsed = 10;
@@ -627,15 +610,6 @@ int research_a()
 		std::cout << "R" << i
 			<< ": h = " << m.statistics().diameterElementMax <<
 			" L2e_" << i << " = " << indicator << "\n";
-
-		// Debug the values
-		// for (size_t k = 0; k < m.statistics().V; ++k)
-		// {
-		// 	const auto& v = vs[k];
-		// 	std::cout << "k = " << k
-		// 		<< " (" << v.x() << ", " << v.y() << ", " << v.z() << ") "
-		// 		<< " num=" << u_prev[k] << " exact=" << u_inf[k] << "\n";
-		// }
 	}
 
 	return 0;
@@ -660,6 +634,113 @@ int research_b()
 		FLP integral = m.integrate(values);
 
 		std::cout << "I_" << k << " = " << integral << "\n";
+	}
+
+	return 0;
+}
+
+// Sep 23, 2021. To test the steady state problem for the eigenfunctions
+// Again, hope for the best!
+int research_c(int l = 0, int m = 0, bool silent = false)
+{
+	// Set levels of refinements
+	const int levels = 6;
+
+	// Set name of mesh file to load
+	std::string name = "icosahedron.csm";
+
+	// Load mesh for steady state solver
+	Cartosphere::TriangularMesh mesh;
+
+	mesh.load(name);
+	if (!mesh.isReady())
+	{
+		std::cout << "The mesh is not ready!\n";
+		return -1;
+	}
+
+	// Print mesh statistics
+	auto stats = mesh.statistics();
+	size_t euler = stats.V + stats.F - stats.E;
+
+	if (!silent)
+	{
+		std::cout << "Loaded mesh from file: " << name << "\n"
+			<< "Setting up the solver...\n";
+	}
+
+	// Set up iterative refinement and the solver
+	Cartosphere::SteadyStateSolver solver;
+	std::vector<FLP> errors(levels + 1);
+	for (int level = 0; level <= levels; ++level, mesh.refine())
+	{
+		// Output updated mesh information
+		stats = mesh.statistics();
+
+		if (!silent)
+		{
+			std::cout << "Refinement level " << level << "\n"
+				<< "Statistics:\n"
+				<< "    Euler: V - E + F = " << stats.V << " - " << stats.E
+				<< " + " << stats.F << " = " << euler << "\n"
+				<< "    Area ratio: " << stats.areaElementDisparity
+				<< " (max " << stats.areaElementMax
+				<< ", min " << stats.areaElementMin << ")\n"
+				<< "    Max diameter: " << stats.diameterElementMax << "\n\n";
+		}
+
+		// Update solver
+		solver.set(mesh);
+
+		// *******************************************************************
+		// Equation                          -LAPL u = f
+		// The desired steady-state solution u = Y_l^m
+		// The external term                 f = Y_l^m * (l * (l + 1))
+		// *******************************************************************
+		// When l = 0, u is not zero-averaged
+		// When l > 0, u is zero-averged
+
+		Cartosphere::Function u = [l, m](const Cartosphere::Point& p) -> FLP {
+			return cartosphere_Y_real(l, m, p.p(), p.a());
+		};
+
+		Cartosphere::Function f = [l, m](const Cartosphere::Point& p) -> FLP {
+			return l * (l + 1) * cartosphere_Y_real(l, m, p.p(), p.a());
+		};
+
+		// Debug the system
+		std::string debug_name;
+		{
+			std::stringstream sst;
+			sst << "system_" << l
+				<< (m < 0 ? "_m" : "_") << std::abs(m)
+				<< "_" << level << ".m";
+			debug_name = sst.str();
+		}
+		// solver.debug(debug_name);
+
+		// Solve the system
+		solver.solve(f);
+		std::vector<FLP> solution = solver.get();
+
+		// Gauge the error
+		FLP error = mesh.lebesgue(solution, u);
+		errors[level] = error;
+
+		if (!silent)
+		{
+			std::cout
+				<< "Refine   = " << level << "\n"
+				<< "Diameter = " << stats.diameterElementMax << "\n"
+				<< "Error    = " << errors[level] << "\n"
+				<< std::endl;
+		}
+		else
+		{
+			std::cout << "level=" << level
+				<< " h=" << stats.diameterElementMax
+				<< " e=" << errors[level] << "\n";
+		}
 	}
 
 	return 0;
@@ -722,6 +803,35 @@ int main(int argc, char** argv)
 		{
 			// Check aall error gauging functions
 			return research_b();
+		}
+		else if (option == "c")
+		{
+			// Test steady-state solver for FEM
+			if (argc < 5)
+			{
+				std::cout << "Specify degree and order\n";
+				return 0;
+			}
+			return research_c(std::stoi(argv[3]), std::stoi(argv[4]));
+		}
+		else if (option == "cc")
+		{
+			// Test all 0 < l <= 1
+			for (int l = 1; l <= 3; ++l)
+			{
+				std::cout << "Y_" << l << "^" << 0 << "\n\n";
+				research_c(l, 0, true);
+
+				for (int m = 1; m <= l; ++m)
+				{
+					std::cout << "Y_" << l << "^" << m << "\n\n";
+					research_c(l, m, true);
+
+					std::cout << "Y_" << l << "^" << -m << "\n\n";
+					research_c(l, -m, true);
+				}
+			}
+			return 0;
 		}
 	}
 
