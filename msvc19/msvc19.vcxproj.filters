@@ -39,6 +39,12 @@
     <ClCompile Include="..\src\functions.cpp">
       <Filter>src\cartosphere</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\research.cpp">
+      <Filter>src\cartosphere</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\globe.cpp">
+      <Filter>src\cartosphere</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\cartosphere\mesh.hpp">
@@ -51,6 +57,12 @@
       <Filter>include\cartosphere</Filter>
     </ClInclude>
     <ClInclude Include="..\include\cartosphere\functions.hpp">
+      <Filter>include\cartosphere</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\cartosphere\research.hpp">
+      <Filter>include\cartosphere</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\cartosphere\globe.hpp">
       <Filter>include\cartosphere</Filter>
     </ClInclude>
   </ItemGroup>

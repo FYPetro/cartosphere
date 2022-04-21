@@ -36,6 +36,86 @@ namespace Cartosphere
 		// File name debug
 		std::string _debug;
 	};
+
+	class TimeDependentSolver
+	{
+	public:
+		// Set mesh
+		void set(const TriangularMesh& m)
+		{
+			_m = m;
+
+			// Build relevant matrices
+			_m.fill(_A, _M, Cartosphere::Triangle::Integrator::Refinement5);
+
+			// Attempt to correct the matrix A
+			for (int k = 0; k < _A.outerSize(); ++k)
+			{
+				Matrix::InnerIterator it_diag;
+				FLP sum_offdiag = 0;
+				for (Matrix::InnerIterator it(_A, k); it; ++it)
+				{
+					it.row();   // row index
+					it.col();   // col index (here it is equal to k)
+
+					// Locate the diagonal element or else accumulate
+					if (it.row() == it.col())
+					{
+						it_diag = it;
+					}
+					else
+					{
+						sum_offdiag += it.value();
+					}
+				}
+				it_diag.valueRef() = -sum_offdiag;
+			}
+
+			_a = Vector(_A.cols());
+			_v = _m.vertices();
+		}
+		// Set mesh
+		void set(Function f)
+		{
+			_m.fill(_b, f, Cartosphere::Triangle::Integrator::Refinement5);
+		}
+		// Set mesh
+		void initialize(Function f)
+		{
+			std::transform(_v.begin(), _v.end(), _a.begin(), f);
+		}
+		// Advance
+		void advance(FLP timestep)
+		{
+			Matrix LHS = _A + _M / timestep;
+			Vector RHS = _b + _M / timestep * _a;
+
+			Solver s(LHS);
+			Vector a = s.solve(RHS);
+
+			_a = a;
+
+			// Update the nodal values but convert Vector to std::vector<FLP>
+			std::vector<FLP> a_vec(_a.size(), 0);
+			for (int i = 0; i < _a.size(); ++i)
+			{
+				a_vec[i] = _a[i];
+			}
+			_m.set(a_vec);
+		}
+		// Velocity
+		std::vector<FL3> velocity(const std::vector<Point>& p) const;
+		
+	protected:
+		// Finite-element Mesh
+		TriangularMesh _m;
+		// List of vertices
+		std::vector<Point> _v;
+		// Matrix for internal calculation
+		Matrix _A, _M;
+		// Vectors for internal calculation
+		Vector _b, _a;
+	};
 }
 
 #endif // !__SOLVER_HPP__

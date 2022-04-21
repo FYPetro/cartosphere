@@ -24,3 +24,21 @@ cartosphere_Y_real(int l, int m, FLP z, FLP a)
 
 	return r;
 }
+
+FLP cartosphere_azview(FLP p, FLP a, FLP pv, FLP av)
+{
+	FLP v, t, b;
+
+	if (pv == 0)
+	{
+		v = a;
+	}
+	else
+	{
+		t = sin(av - a) * sin(p);
+		b = cos(p) * sin(pv) - sin(p) * cos(pv) * cos(av - a);
+		v = atan2(t, b);
+	}
+
+	return v;
+}

@@ -98,6 +98,13 @@ Cartosphere::Point::isValid() const
 		&& x() == 0 && y() == 0 && z() == 0;
 }
 
+void
+Cartosphere::Point::move(FL3 displacement)
+{
+	Cartosphere::Arc arc(*this, displacement);
+	set(arc.local(displacement.norm2()));
+}
+
 FLP
 Cartosphere::Point::azimuth(const Point& other) const
 {
@@ -179,11 +186,33 @@ Cartosphere::Triangle::areaEuclidean() const
 	return FLP(0.5) * product.norm2();
 }
 
+FL3
+Cartosphere::Triangle::barycentric(const Point& p) const
+{
+	FL3 t;
+	Arc a(B, C);
+	t.x = a.distance(p) / a.distance(A);
+	Arc b(C, A);
+	t.y = b.distance(p) / b.distance(B);
+	Arc c(A, B);
+	t.z = c.distance(p) / c.distance(C);
+
+	return t;
+}
+
 Cartosphere::Point
 Cartosphere::Triangle::centroid() const
 {
 	FL3 c = A.image().to_vector() + B.image().to_vector() + C.image().to_vector();
 	return Cartosphere::Point(Cartosphere::Image(c.normalize()));
+}
+
+bool
+Cartosphere::Triangle::contains(const Point& p) const
+{
+	return Arc(A, B).encloses(p)
+		&& Arc(B, C).encloses(p)
+		&& Arc(C, A).encloses(p);
 }
 
 FLP
@@ -197,6 +226,12 @@ Cartosphere::Triangle::diameter() const
 	// The distance from the plane ABC to O
 	FLP d = dot(A.image(), n);
 	return FLP(2) * acos(d);
+}
+
+Cartosphere::Cap
+Cartosphere::Triangle::circumcircle() const
+{
+	return Cap(centroid(), diameter() / 2);
 }
 
 Cartosphere::Function
@@ -247,6 +282,50 @@ Cartosphere::Triangle::element(size_t index) const
 		};
 	}
 	return f;
+}
+
+FL3
+Cartosphere::Triangle::gradient(size_t index) const
+{
+	FL3 gradient;
+	switch (index)
+	{
+	case 0:
+	{
+		Point vertex = A;
+		Point pole = Arc(B, C).pole();
+		Arc arc(vertex, pole);
+		gradient = arc.tangent(0);
+		FLP scalar = FLP(1) / (M_PI_2 - arc.length());
+		gradient *= scalar;
+	}
+	break;
+	case 1:
+	{
+		Point vertex = B;
+		Point pole = Arc(C, A).pole();
+		Arc arc(vertex, pole);
+		gradient = arc.tangent(0);
+		FLP scalar = FLP(1) / (M_PI_2 - arc.length());
+		gradient *= scalar;
+	}
+	break;
+	case 2:
+	{
+		Point vertex = C;
+		Point pole = Arc(A, B).pole();
+		Arc arc(vertex, pole);
+		gradient = arc.tangent(0);
+		FLP scalar = FLP(1) / (M_PI_2 - arc.length());
+		gradient *= scalar;
+	}
+	break;
+	default:
+		gradient.x = 0;
+		gradient.y = 0;
+		gradient.z = 0;
+	}
+	return gradient;
 }
 
 FLP
@@ -332,6 +411,134 @@ Cartosphere::Polygon::area() const
 
 	// Return the spherical excess
 	return sum - (n - 2) * M_PI;
+}
+
+void
+Cartosphere::TriangularMesh::Tree::_insert(Node::Pointer n, size_t level)
+{
+	Node::Pointer subtree = _choose(n, level);
+
+	if (subtree->degree() <= M)
+	{
+		subtree->store(subtree);
+	}
+
+	Node::Pointer iter = subtree;
+	while (iter->degree() > M)
+	{
+		bool split = _overflow(iter, iter->height());
+
+		if (!split) break;
+
+		if (iter->isRoot())
+		{
+			// TODO
+		}
+	}
+
+	// Adjust all circumcircles in the insertion path
+	for (iter = subtree; !iter->isRoot(); iter = iter->parent())
+	{
+		// TODO
+	}
+}
+
+Cartosphere::TriangularMesh::Tree::Node::Pointer
+Cartosphere::TriangularMesh::Tree::_choose(Node::Pointer n, size_t level)
+{
+	// Based on the R-tree, not the R*-tree
+	// This is because the overlap enlargement might be difficult to compute
+	Node::Pointer iter = std::make_shared<Node>(_root);
+
+	while (!iter->isLeaf())
+	{
+		typedef std::tuple<Node::Pointer, FLP, FLP> PointerWithAreas;
+		
+		std::vector<PointerWithAreas> areas;
+		std::transform(iter->begin(), iter->end(), std::back_inserter(areas),
+			[n](const Node::Pointer& a) {
+				FLP before = a->cap().radius();
+				//FLP after = a->cap().combine(n->cap()).radius();
+				FLP after = 0;
+				return std::make_tuple(a, after - before, before);
+			}
+		);
+
+		std::sort(areas.begin(), areas.end(),
+			[](const PointerWithAreas& a, const PointerWithAreas& b) {
+				return std::get<1>(a) < std::get<1>(b)
+					|| std::get<2>(a) < std::get<2>(b);
+			}
+		);
+
+		iter = std::get<0>(areas.front());
+	}
+
+	return iter;
+}
+
+bool
+Cartosphere::TriangularMesh::Tree::_overflow(Node::Pointer n, size_t level)
+{
+	if (level != height() && !_overflown[level])
+	{
+		_reinsert(n);
+		return false;
+	}
+	else
+	{
+		_split(n);
+		return true;
+	}
+}
+
+void
+Cartosphere::TriangularMesh::Tree::_reinsert(Node::Pointer n)
+{
+	auto& cap = n->cap();
+
+	typedef std::pair<Node::Pointer, FLP> PointerWithDistance;
+	std::vector<PointerWithDistance> dist;
+
+	std::transform(n->begin(), n->end(), std::back_inserter(dist),
+		[&cap](Node::Pointer n) {
+			FLP d = distance(cap.apex(), n->cap().apex());
+			return std::make_pair(n, d);
+		}
+	);
+
+	std::sort(dist.begin(), dist.end(),
+		[](const PointerWithDistance& a, const PointerWithDistance& b) {
+			return a.second > b.second;
+		}
+	);
+
+	Node::Pointers toRemove;
+	std::transform(dist.begin(), dist.begin() + p, std::back_inserter(toRemove),
+		[](const PointerWithDistance& a) {
+			return a.first;
+		}
+	);
+
+	Node::Pointers toRemain;
+	std::transform(dist.begin() + p, dist.end(), std::back_inserter(toRemain),
+		[](const PointerWithDistance& a) {
+			return a.first;
+		}
+	);
+
+	n->update(toRemain);
+
+	for (int i = 0; i < toRemain.size(); ++i)
+	{
+		_insert(toRemain[i]);
+	}
+}
+
+void
+Cartosphere::TriangularMesh::Tree::_split(Node::Pointer n)
+{
+
 }
 
 FLP
@@ -864,6 +1071,7 @@ Cartosphere::TriangularMesh::format(const std::string& path,
 	//   2. Generate UV sphere (material globe)
 	//   3. Generate Segmented Edges (material segment)
 	//   4. Generate triangulated faces (material color) if values are provided
+	//      - The entire mesh is refined
 	//   5. Format Wavefront OBJ output file
 
 	// Export to specified path
@@ -967,9 +1175,6 @@ Cartosphere::TriangularMesh::format(const std::string& path,
 		}
 	}
 
-
-	cs.resize(vs.size());
-
 	// Push vertices and edges for each arc used
 	{
 		// Desired length and width of each segment
@@ -1026,6 +1231,8 @@ Cartosphere::TriangularMesh::format(const std::string& path,
 			}
 		}
 	}
+
+	cs.resize(vs.size());
 
 	/////////////////////////////////////
 	// Outputs OBJ File Comment Header //
@@ -1776,6 +1983,70 @@ Cartosphere::TriangularMesh::reportAreas()
 }
 
 FLP
+Cartosphere::TriangularMesh::interpolate(const Point& p) const
+{
+	size_t i = _lookup(p);
+	FL3 c = _vt[i].barycentric(p);
+	FL3 v(_a[_FV[i][0]], _a[_FV[i][1]], _a[_FV[i][2]]);
+	FLP value = dot(c, v);
+	return value;
+}
+
+FL3
+Cartosphere::TriangularMesh::gradient(const Point& p) const
+{
+	size_t i = _lookup(p);
+	// FL3 c = _vt[i].barycentric(p).normalize();
+
+	FL3 u = transport(_V[_FV[i][0]], p, _vt[i].gradient(0));
+	FL3 v = transport(_V[_FV[i][1]], p, _vt[i].gradient(1));
+	FL3 w = transport(_V[_FV[i][2]], p, _vt[i].gradient(2));
+	
+	// FL3 u = transport(_V[_FV[i][0]], p, _grad[_FV[i][0]]),
+	// 	v = transport(_V[_FV[i][1]], p, _grad[_FV[i][1]]),
+	// 	w = transport(_V[_FV[i][2]], p, _grad[_FV[i][2]]);
+	
+	if (u.anynan())
+	{
+		u = _vt[i].gradient(0);
+	}
+	if (v.anynan())
+	{
+		v = _vt[i].gradient(1);
+	}
+	if (w.anynan())
+	{
+		w = _vt[i].gradient(2);
+	}
+
+	return _a[_FV[i][0]] * u + _a[_FV[i][1]] * v + _a[_FV[i][2]] * w;
+}
+
+void
+Cartosphere::TriangularMesh::set(const std::vector<FLP>& values)
+{
+	_a = values;
+	// Initialize an empty gradient field, one vector for each vertex
+	_grad.assign(_V.size(), FL3());
+	// Loop through all the faces
+	for (int k = 0; k < _vt.size(); ++k)
+	{
+		// Face
+		const auto& f = _vt[k];
+		// Indices of vertices
+		const auto& v = _FV[k];
+		// Obtain a gradient vector for each vertex.
+		// Scale accordingly by the values.
+		// Accumulate per vertex.
+		for (int i = 0; i < 3; ++i)
+		{
+			size_t j = v[i];
+			_grad[j] += values[j] * f.gradient(i);
+		}
+	}
+}
+
+FLP
 Cartosphere::TriangularMesh::integrate(const Function& f,
 	Quadrature rule, Triangle::Integrator intr) const
 {
@@ -1793,15 +2064,6 @@ Cartosphere::TriangularMesh::integrate(const Function& f,
 		break;
 	}
 	return result;
-}
-
-FLP
-Cartosphere::TriangularMesh::interpolate(const std::vector<FLP>& values,
-	const Point& point) const
-{
-	FLP value = 0;
-
-	return value;
 }
 
 Cartosphere::TriangularMesh::Stats
@@ -1831,12 +2093,6 @@ Cartosphere::TriangularMesh::statistics() const
 	s.areaElementDisparity = s.areaElementMax / s.areaElementMin;
 
 	return s;
-}
-
-std::vector<Cartosphere::Point>
-Cartosphere::TriangularMesh::vertices() const
-{
-	return _V;
 }
 
 void
@@ -1911,4 +2167,41 @@ Cartosphere::TriangularMesh::_populate()
 			_VF[_FV[k][i]].push_back(k);
 		}
 	}
+
+	// Construct the fast-lookup structure
+	//_tree.build(_vt);
+}
+
+void
+Cartosphere::TriangularMesh::_gradient(const std::vector<FLP>& a)
+{
+	_grad.resize(_V.size());
+
+	for (int i = 0; i < _FV.size(); ++i)
+	{
+		std::vector<size_t> V = _FV[i];
+		for (int j = 0; j < 3; ++j)
+		{
+			_grad[V[j]] += a[i] * _vt[i].gradient(j);
+		}
+	}
+}
+
+size_t
+Cartosphere::TriangularMesh::_lookup(const Point& p) const
+{
+	for (size_t i = 0; i < _vt.size(); ++i)
+	{
+		if (_vt[i].contains(p))
+		{
+			return i;
+		}
+	}
+	return (size_t)(-1);
+}
+
+FL3
+Cartosphere::transport(const Point& from, const Point& to, const FL3& vector)
+{
+	return Arc(from, to).rotate(vector);
 }
