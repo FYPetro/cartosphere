@@ -1,8 +1,6 @@
 
 #include "cartosphere/solver.hpp"
 
-#include "s2kit10/makeweights.h"
-
 #include <fstream>
 
 using namespace Cartosphere;

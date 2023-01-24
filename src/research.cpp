@@ -930,8 +930,6 @@ int research_f()
 			<< " (max " << stats.areaElementMax
 			<< ", min " << stats.areaElementMin << ")\n"
 			<< "    Max diameter: " << stats.diameterElementMax << "\n\n";
-
-		continue;
 		
 		std::vector<Point> p;
 		for (int k = -180; k < 180; ++k)
