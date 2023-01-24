@@ -25,6 +25,15 @@
     <Filter Include="src\cartosphere">
       <UniqueIdentifier>{b6508f33-6d74-4d6e-84bb-f355f7c0f42d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="include\fftw-3.3.5">
+      <UniqueIdentifier>{3f7fdcde-716e-405c-b7da-8ed58000fd22}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\fftw-3.3.5\api">
+      <UniqueIdentifier>{6b23a54c-ebe4-4bc9-8a73-6e320cf1900d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\fftw-3.3.5\mpi">
+      <UniqueIdentifier>{eab2d2b1-2d3f-483b-b522-765ae0a059c4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -45,6 +54,9 @@
     <ClCompile Include="..\src\globe.cpp">
       <Filter>src\cartosphere</Filter>
     </ClCompile>
+    <ClCompile Include="..\include\s2kit10\makeweights.c">
+      <Filter>src\s2kit10</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\cartosphere\mesh.hpp">
@@ -64,6 +76,21 @@
     </ClInclude>
     <ClInclude Include="..\include\cartosphere\globe.hpp">
       <Filter>include\cartosphere</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\s2kit10\pmls.h">
+      <Filter>include\s2kit10</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\s2kit10\utility.h">
+      <Filter>include\s2kit10</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\fftw-3.3.5\api\fftw3.h">
+      <Filter>include\fftw-3.3.5\api</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\fftw-3.3.5\mpi\fftw3-mpi.h">
+      <Filter>include\fftw-3.3.5\mpi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\s2kit10\makeweights.h">
+      <Filter>include\s2kit10</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

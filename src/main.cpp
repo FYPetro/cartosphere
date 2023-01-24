@@ -94,6 +94,14 @@ int main(int argc, char** argv)
 		{
 			return research_d();
 		}
+		else if (option == "f")
+		{
+			return research_f();
+		}
+	}
+	else if (item == "benchmark")
+	{
+		return benchmark();
 	}
 
 	return 0;

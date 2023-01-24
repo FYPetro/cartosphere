@@ -3,6 +3,22 @@
 
 #include <cmath>
 
+#ifndef _WIN32
+
+FLP
+cartosphere_Y_real(int l, int m, FLP z, FLP a)
+{
+	return 0;
+}
+
+FLP
+cartosphere_azview(FLP p, FLP a, FLP pv, FLP av)
+{
+	return 0;
+}
+
+#elif _WIN32
+
 FLP
 cartosphere_Y_real(int l, int m, FLP z, FLP a)
 {
@@ -25,7 +41,8 @@ cartosphere_Y_real(int l, int m, FLP z, FLP a)
 	return r;
 }
 
-FLP cartosphere_azview(FLP p, FLP a, FLP pv, FLP av)
+FLP
+cartosphere_azview(FLP p, FLP a, FLP pv, FLP av)
 {
 	FLP v, t, b;
 
@@ -42,3 +59,7 @@ FLP cartosphere_azview(FLP p, FLP a, FLP pv, FLP av)
 
 	return v;
 }
+
+#else
+
+#endif

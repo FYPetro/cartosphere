@@ -381,6 +381,8 @@ namespace Cartosphere
 		Function element(size_t index) const;
 		// Obtain a gradient vector element
 		FL3 gradient(size_t index) const;
+		// Obtain a gradient vector element at an interior point
+		FL3 gradient(size_t index, const Point &p) const;
 		// Numerically integrate a scalar function
 		FLP integrate(const Function& f, Integrator intr) const;
 	};

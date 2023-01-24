@@ -197,7 +197,9 @@ Cartosphere::Triangle::barycentric(const Point& p) const
 	Arc c(A, B);
 	t.z = c.distance(p) / c.distance(C);
 
-	return t;
+	FLP sum = t.x + t.y + t.z;
+
+	return t / sum;
 }
 
 Cartosphere::Point
@@ -292,9 +294,8 @@ Cartosphere::Triangle::gradient(size_t index) const
 	{
 	case 0:
 	{
-		Point vertex = A;
-		Point pole = Arc(B, C).pole();
-		Arc arc(vertex, pole);
+		Point Ap = Arc(B, C).pole();
+		Arc arc(A, Ap);
 		gradient = arc.tangent(0);
 		FLP scalar = FLP(1) / (M_PI_2 - arc.length());
 		gradient *= scalar;
@@ -302,9 +303,8 @@ Cartosphere::Triangle::gradient(size_t index) const
 	break;
 	case 1:
 	{
-		Point vertex = B;
-		Point pole = Arc(C, A).pole();
-		Arc arc(vertex, pole);
+		Point Bp = Arc(C, A).pole();
+		Arc arc(B, Bp);
 		gradient = arc.tangent(0);
 		FLP scalar = FLP(1) / (M_PI_2 - arc.length());
 		gradient *= scalar;
@@ -312,11 +312,51 @@ Cartosphere::Triangle::gradient(size_t index) const
 	break;
 	case 2:
 	{
-		Point vertex = C;
-		Point pole = Arc(A, B).pole();
-		Arc arc(vertex, pole);
+		Point Cp = Arc(A, B).pole();
+		Arc arc(C, Cp);
 		gradient = arc.tangent(0);
 		FLP scalar = FLP(1) / (M_PI_2 - arc.length());
+		gradient *= scalar;
+	}
+	break;
+	default:
+		gradient.x = 0;
+		gradient.y = 0;
+		gradient.z = 0;
+	}
+	return gradient;
+}
+
+FL3
+Cartosphere::Triangle::gradient(size_t index, const Point &p) const
+{
+	FL3 gradient;
+	switch (index)
+	{
+	case 0:
+	{
+		Point Ap = Arc(B, C).pole();
+		Arc arc(p, Ap);
+		gradient = arc.tangent(0);
+		FLP scalar = FLP(1) / (M_PI_2 - Arc(A, Ap).length());
+		gradient *= scalar;
+	}
+	break;
+	case 1:
+	{
+		Point Bp = Arc(C, A).pole();
+		Arc arc(p, Bp);
+		gradient = arc.tangent(0);
+		FLP scalar = FLP(1) / (M_PI_2 - Arc(B, Bp).length());
+		gradient *= scalar;
+	}
+	break;
+	case 2:
+	{
+		Point Cp = Arc(A, B).pole();
+		Arc arc(p, Cp);
+		gradient = arc.tangent(0);
+		FLP scalar = FLP(1) / (M_PI_2 - Arc(C, Cp).length());
 		gradient *= scalar;
 	}
 	break;
@@ -789,6 +829,7 @@ Cartosphere::TriangularMesh::load(const std::string& path)
 	{
 		// Increment line number and skip empty lines
 		++lineNumber;
+		if (!line.empty() && line.back() == '\r') { line.pop_back(); }
 		if (!line.length()) continue;
 		iss.str(line);
 
@@ -1996,27 +2037,33 @@ FL3
 Cartosphere::TriangularMesh::gradient(const Point& p) const
 {
 	size_t i = _lookup(p);
-	// FL3 c = _vt[i].barycentric(p).normalize();
 
-	FL3 u = transport(_V[_FV[i][0]], p, _vt[i].gradient(0));
-	FL3 v = transport(_V[_FV[i][1]], p, _vt[i].gradient(1));
-	FL3 w = transport(_V[_FV[i][2]], p, _vt[i].gradient(2));
-	
-	// FL3 u = transport(_V[_FV[i][0]], p, _grad[_FV[i][0]]),
-	// 	v = transport(_V[_FV[i][1]], p, _grad[_FV[i][1]]),
-	// 	w = transport(_V[_FV[i][2]], p, _grad[_FV[i][2]]);
-	
-	if (u.anynan())
+	FL3 u, v, w;
+	if (false)
 	{
-		u = _vt[i].gradient(0);
+		u = transport(_V[_FV[i][0]], p, _vt[i].gradient(0));
+		v = transport(_V[_FV[i][1]], p, _vt[i].gradient(1));
+		w = transport(_V[_FV[i][2]], p, _vt[i].gradient(2));
+
+		if (u.anynan())
+		{
+			u = _vt[i].gradient(0);
+		}
+		if (v.anynan())
+		{
+			v = _vt[i].gradient(1);
+		}
+		if (w.anynan())
+		{
+			w = _vt[i].gradient(2);
+		}
 	}
-	if (v.anynan())
+	else
 	{
-		v = _vt[i].gradient(1);
-	}
-	if (w.anynan())
-	{
-		w = _vt[i].gradient(2);
+		u = _vt[i].gradient(0, p);
+		v = _vt[i].gradient(1, p);
+		w = _vt[i].gradient(2, p);
+		// std::cout << "<" << u << "> <" << v << "> <" << w << "\n";
 	}
 
 	return _a[_FV[i][0]] * u + _a[_FV[i][1]] * v + _a[_FV[i][2]] * w;

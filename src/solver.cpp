@@ -1,14 +1,14 @@
 
 #include "cartosphere/solver.hpp"
 
+#include "s2kit10/makeweights.h"
+
 #include <fstream>
 
-using Cartosphere::TimeDependentSolver;
-using Cartosphere::Arc;
-using Cartosphere::Point;
+using namespace Cartosphere;
 
 void
-Cartosphere::SteadyStateSolver::solve(Function f)
+SteadyStateSolver::solve(Function f)
 {
 	// ***********************
 	// Build the linear system
@@ -64,6 +64,28 @@ Cartosphere::SteadyStateSolver::solve(Function f)
 	}
 }
 
+FLP
+TimeDependentSolver::advanceCrankNicolson(FLP timestep)
+{
+	Matrix LHS = _A / 2 + _M / timestep;
+	Vector RHS = _b + (_M / timestep - _A / 2) * _a;
+
+	Solver s(LHS);
+	Vector a = s.solve(RHS);
+
+	_a = a;
+
+	// Update the nodal values but convert Vector to std::vector<FLP>
+	std::vector<FLP> a_vec(_a.size(), 0);
+	for (int i = 0; i < _a.size(); ++i)
+	{
+		a_vec[i] = _a[i];
+	}
+	_m.set(a_vec);
+
+	return 0;
+}
+
 std::vector<FL3>
 TimeDependentSolver::velocity(const std::vector<Point>& p) const
 {
@@ -99,4 +121,123 @@ TimeDependentSolver::velocity(const std::vector<Point>& p) const
 	// }
 	//
 	// return u;
+}
+
+SpectralSolver::~SpectralSolver()
+{
+
+}
+
+void
+SpectralSolver::parse(const std::string& path)
+{
+	// Set a temporary bandlimit to test the code
+	_B = 16;
+}
+
+void
+SpectralSolver::execute()
+{
+	/*
+	// (Re)allocate memory if necessary
+	if (_bandlimit != _B)
+	{
+		// Update stored bandlimit
+		_B = _bandlimit;
+
+		// Sampling rate is doubled
+		int size = 2 * _B;
+
+		// Initial distribution (2B x 2B)
+		_u0.reset(new FLP[size * size]);
+		// Diffused distribution (2B x 2B)
+		// [used towards fftw plan]
+		_ut.reset(fftw_alloc_real(size * size));
+		// Real parts of initial harmonic coefficients
+		_re0.reset(new FLP[size * size]);
+		// Imaginary parts of initial harmonic coefficients
+		_im0.reset(new FLP[size * size]);
+		// Real parts of diffused harmonic coefficients
+		// [used towards fftw plan]
+		_ret.reset(fftw_alloc_real(_B * _B));
+		// Imaginary parts of diffused harmonic coefficients
+		// [used towards fftw plan]
+		_imt.reset(fftw_alloc_real(_B * _B));
+
+		// Initialize workspace required by S2kit
+		_ws.reset(fftw_alloc_real(10 * _B * _B + 24 * _B));
+		// Initialize weights required by S2kit
+		_wt.reset(fftw_alloc_real(4 * _B));
+		// Fill array with weights
+		makeweights(_B, _ws.get());
+
+		// Initialize the fftw plans
+		int rank, howmany_rank;
+		fftw_iodim dims[1], howmany_dims[1];
+		
+		// Starting with the FFT plan
+		// https://www.fftw.org/fftw3_doc/Guru-Real_002ddata-DFTs.html
+		rank = 1;
+		dims[0].n = size;
+		dims[0].is = 1;
+		dims[0].os = size;
+
+		howmany_rank = 1;
+		howmany_dims[0].n = size;
+		howmany_dims[0].is = size;
+		howmany_dims[0].os = 1;
+
+		_fft = fftw_plan_guru_split_dft_r2c(
+			rank, dims, howmany_rank, howmany_dims,
+			_ut.get(), _ws.get(), _ws.get() + size * size,
+			FFTW_MEASURE
+		);
+
+		// Then plan the inverse FFT
+		// https://www.fftw.org/fftw3_doc/Guru-Real_002ddata-DFTs.html
+		rank = 1;
+		dims[0].n = size;
+		dims[0].is = size;
+		dims[0].os = 1;
+
+		howmany_rank = 1;
+		howmany_dims[0].n = size;
+		howmany_dims[0].is = 1;
+		howmany_dims[0].os = size;
+
+		_ifft = fftw_plan_guru_split_dft_c2r(
+			rank, dims, howmany_rank, howmany_dims,
+			_ws.get(), _ws.get() + size * size, _ut.get(),
+			FFTW_MEASURE
+		);
+
+		// Plan the DCT
+		_dct = fftw_plan_r2r_1d(
+			size, _wt.get(), _ut.get(),
+			FFTW_REDFT10, FFTW_MEASURE
+		);
+
+		// Plan the inverse DCT
+		_idct = fftw_plan_r2r_1d(
+			size, _wt.get(), _ut.get(),
+			FFTW_REDFT01, FFTW_MEASURE
+		);
+	}
+	*/
+}
+
+std::string
+SpectralSolver::inputSummary() const
+{
+	std::stringstream sst;
+
+	return sst.str();
+}
+
+std::string
+SpectralSolver::outputSummary() const
+{
+	std::stringstream sst;
+
+	return sst.str();
 }

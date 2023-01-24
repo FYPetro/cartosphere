@@ -1,16 +1,16 @@
 CC = g++
 
-INCLUDE = -I../include -I../include/LAPACK -I/usr/local/include/eigen3 
+INCLUDE = -I../include -I/usr/local/include/eigen3 -I/usr/local/include
 
 CFLAGS = -g $(INCLUDE) -std=c++17
 
-CPPFLAGS = -O3
+CPPFLAGS = -O3 -Wswitch
 
 all: cartosphere
 
-cartosphere: main.cpp functions.cpp mesh.cpp solver.cpp
+cartosphere: main.cpp functions.cpp mesh.cpp solver.cpp research.cpp globe.cpp
 	pwd
-	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $+ -L/usr/local/lib -L/usr/local/lib/gcc/10 -lgfortran -lblas -llapack -llapacke -largp
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $+ -L/usr/local/lib -L/usr/local/lib -lfftw3 -largp
 
 clean:
 	-rm cartosphere
