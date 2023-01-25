@@ -7,6 +7,7 @@
 #include "cartosphere/research.hpp"
 #include "cartosphere/functions.hpp"
 #include "cartosphere/globe.hpp"
+#include "cartosphere/shapefile.hpp"
 
 using Cartosphere::Point;
 using Cartosphere::TriangularMesh;
@@ -999,6 +1000,26 @@ int research_f()
 		std::cout << mean << " +/- " << stddev << "\n";
 	}
 
+
+	return 0;
+}
+
+int research_g(const std::string &folder)
+{
+	std::cout << "Initializing from directory " << folder << "\n";
+
+	Cartosphere::ShapeFile file;
+
+	std::string message;
+	if (!file.open(folder, message))
+	{
+		std::cout << "Error: " << message << "\n";
+		return -1;
+	}
+
+	std::cout << "Initialization success!\n";
+	
+	std::cout << "Shapes loaded: " << file.count() << "\n";
 
 	return 0;
 }

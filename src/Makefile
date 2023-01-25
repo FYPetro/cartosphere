@@ -8,7 +8,7 @@ CPPFLAGS = -O3
 
 all: cartosphere
 
-cartosphere: main.cpp functions.cpp mesh.cpp solver.cpp research.cpp globe.cpp
+cartosphere: main.cpp functions.cpp mesh.cpp solver.cpp research.cpp globe.cpp shapefile.cpp
 	pwd
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $+ \
 		$(FFTWINC) $(FFTWLIB) $(S2KITINC) $(S2KITOBJ) $(EIGENINC)

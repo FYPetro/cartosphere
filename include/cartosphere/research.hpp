@@ -48,6 +48,9 @@ int research_d();
 // Jan 04, 2022. Incorporate second-order time discretization.
 int research_f();
 
+// Jan 24, 2023. Read shapefiles
+int research_g(const std::string &folder);
+
 // Jun 06, 2022. To replicate the original paper
 int benchmark();
 

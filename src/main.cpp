@@ -98,6 +98,12 @@ int main(int argc, char** argv)
 		{
 			return research_f();
 		}
+		else if (option == "g")
+		{
+			// Read shapefiles
+			std::string name(argv[3]);
+			return research_g(name);
+		}
 	}
 	else if (item == "benchmark")
 	{

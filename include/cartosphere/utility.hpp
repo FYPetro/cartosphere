@@ -196,4 +196,12 @@ static inline std::string trim_copy(std::string s) {
 	return s;
 }
 
+// Ref: https://stackoverflow.com/a/3824338
+template <class T>
+void endswap(T *objp)
+{
+  unsigned char *memp = reinterpret_cast<unsigned char*>(objp);
+  std::reverse(memp, memp + sizeof(T));
+}
+
 #endif // !__UTILITY_HPP__
