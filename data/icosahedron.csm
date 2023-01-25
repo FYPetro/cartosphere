@@ -1,0 +1,76 @@
+#Cartosphere Mesh Format
+#Orthographic projection of a regular icosahedron onto the unit sphere
+#V #E #F [#Type (defaults to 0)]
+12 30 29
+
+#V List
+#Type 0 formats (2-entry degrees): POLAR AZIMUTHAL
+#Type 0 formats (3-entry coordiantes): X Y Z
+0 0
+63.434948822922011 -36
+63.434948822922011 36
+63.434948822922011 108
+63.434948822922011 180
+63.434948822922011 252
+116.565051177077989 0
+116.565051177077989 72
+116.565051177077989 144
+116.565051177077989 216
+116.565051177077989 288
+180 0
+
+#E List (defaults to automatic detection)
+#Type 0 format (0-based): V1 V2
+0 1
+0 2
+0 3
+0 4
+0 5
+1 2
+2 3
+3 4
+4 5
+5 1
+1 6
+6 2
+2 7
+7 3
+3 8
+8 4
+4 9
+9 5
+5 10
+10 1
+6 7
+7 8
+8 9
+9 10
+10 6
+6 11
+7 11
+8 11
+9 11
+10 11
+
+#F List (defaults to automatic detection)
+#Type 0 format (0-based): +/-E1 +/-E2 +/-E3
++0 +5 -1
++1 +6 -2
++2 +7 -3
++3 +8 -4
++4 +9 -0
+-5 +10 +11
+-11 +20 -12
+-6 +12 +13
+-13 +21 -14
+-7 +14 +15
+-15 +22 -16
+-8 +16 +17
+-17 +23 -18
+-9 +18 +19
+-19 +24 -10
+-20 +25 -26
+-21 +26 -27
+-22 +27 -28
+-23 +28 -29
+-24 +29 -25

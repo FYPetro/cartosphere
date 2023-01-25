@@ -1,16 +1,17 @@
 CC = g++
 
-INCLUDE = -I../include -I/usr/local/include/eigen3 -I/usr/local/include
+INCLUDE = -I../include 
 
-CFLAGS = -g $(INCLUDE) -std=c++17
+CFLAGS = -g $(INCLUDE) -std=c++17 -Wswitch -Wclass-conversion
 
-CPPFLAGS = -O3 -Wswitch
+CPPFLAGS = -O3
 
 all: cartosphere
 
 cartosphere: main.cpp functions.cpp mesh.cpp solver.cpp research.cpp globe.cpp
 	pwd
-	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $+ -L/usr/local/lib -L/usr/local/lib -lfftw3 -largp
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $+ \
+		$(FFTWINC) $(FFTWLIB) $(S2KITINC) $(S2KITOBJ) $(EIGENINC)
 
 clean:
 	-rm cartosphere

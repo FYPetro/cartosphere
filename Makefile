@@ -1,41 +1,45 @@
-package = cartosphere
+PACKAGE = cartosphere
+VERSION = 0.1.0
 
-version = 0.1.0
-
-tarname = $(package)
-
-distdir = $(tarname)-$(version)
+TARNAME = $(PACKAGE)
+DISTDIR = $(TARNAME)-$(VERSION)
 
 export prefix=/usr/local
+
+export FFTWINC=-I/usr/local/opt/fftw/include
+export FFTWLIB=-L/usr/local/opt/fftw/lib -lfftw3
+export S2KITINC=-I/usr/local/include/s2kit10
+export S2KITOBJ= 
+export EIGENINC=-I/usr/local/include/eigen3
 
 all clean install uninstall cartosphere:
 	$(MAKE) -C src $@
 
-dist: $(distdir).tar.gz
+dist: $(DISTDIR).tar.gz
 
-distcheck: $(distdir).tar.gz
+distcheck: $(DISTDIR).tar.gz
 	gzip -cd $+ | tar xvf -
-	$(MAKE) -C $(distdir) all check
-	$(MAKE) -C $(distdir) prefix=\
-	$$(PWD)/$(distdir)/_inst install uninstall
-	$(MAKE) -C $(distdir) clean
-	rm -rf $(distdir)
-	@echo "*** Package $(distdir).tar.gz ready for distribution ***"
+	$(MAKE) -C $(DISTDIR) all check
+	$(MAKE) -C $(DISTDIR) prefix=\
+	$$(PWD)/$(DISTDIR)/_inst install uninstall
+	$(MAKE) -C $(DISTDIR) clean
+	rm -rf $(DISTDIR)
+	@echo "*** Package $(DISTDIR).tar.gz ready for distribution ***"
 
-$(distdir).tar.gz: FORCE $(distdir)
-	tar chof - $(distdir) |\
-		gzip -9 -c >$(distdir).tar.gz
-	rm -rf $(distdir)
+$(DISTDIR).tar.gz: FORCE $(DISTDIR)
+	tar chof - $(DISTDIR) |\
+		gzip -9 -c >$(DISTDIR).tar.gz
+	rm -rf $(DISTDIR)
 
-$(distdir):
-	mkdir -p $(distdir)/src
-	cp Makefile $(distdir)
-	cp src/Makefile $(distdir)/src
-	cp src/main.c $(distdir)/src
+$(DISTDIR):
+	mkdir -p $(DISTDIR)/src
+	cp Makefile $(DISTDIR)
+	cp src/Makefile $(DISTDIR)/src
+	cp src/main.c $(DISTDIR)/src
 
 FORCE:
-	-rm $(distdir).tar.gz &> /dev/null
-	-rm -rf $(distdir) &> /dev/null
+	-rm $(DISTDIR).tar.gz &> /dev/null
+	-rm -rf $(DISTDIR) &> /dev/null
 
 .PHONY: FORCE all clean dist distcheck
 

@@ -6,3 +6,5 @@ cartosphere-*.tar.gz
 **/.vs/
 bin/
 obj/
+tests/
+src/cartosphere
