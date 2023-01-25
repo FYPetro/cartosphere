@@ -161,6 +161,8 @@
     <None Include="..\data\cartosphere.mtl" />
     <None Include="..\data\icosahedron.csm" />
     <None Include="..\data\octahedron.csm" />
+    <None Include="..\README.md" />
+    <None Include="..\vcpkg.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -807,7 +807,7 @@ Cartosphere::TriangularMesh::load(const std::string& path)
 		std::string message;
 		{
 			std::stringstream sst;
-			sst << "Coud not load path " << path;
+			sst << "Could not load path " << path;
 			message = sst.str();
 		}
 		_vInfo.push_back(message);

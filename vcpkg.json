@@ -4,6 +4,7 @@
   "description": "Spherical cartogram generating library.",
   "dependencies": [
     "fftw3",
-    "eigen3"
+    "eigen3",
+    "argparse"
   ]
 }

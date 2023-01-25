@@ -76,5 +76,7 @@
     <None Include="..\data\cartosphere.color.mtl">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="..\vcpkg.json" />
+    <None Include="..\README.md" />
   </ItemGroup>
 </Project>
