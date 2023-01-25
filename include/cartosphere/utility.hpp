@@ -4,11 +4,16 @@
 
 using FLP = double;
 
+#include <cmath>
+
 #pragma warning(push)
 #pragma warning(disable: 4819)
 #include <Eigen/Core>
+
 #include <Eigen/Sparse>
+
 #include <Eigen/SparseCore>
+
 #include <Eigen/IterativeLinearSolvers>
 #pragma warning(pop)
 

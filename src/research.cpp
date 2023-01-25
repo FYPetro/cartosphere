@@ -1,13 +1,19 @@
 
 #include <iostream>
+
 #include <fstream>
+
 #include <numeric>
-#include <cmath>
 
 #include "cartosphere/research.hpp"
+
 #include "cartosphere/functions.hpp"
+
 #include "cartosphere/globe.hpp"
+
 #include "cartosphere/shapefile.hpp"
+
+#include "cartosphere/utility.hpp"
 
 using Cartosphere::Point;
 using Cartosphere::TriangularMesh;
@@ -950,7 +956,7 @@ int research_f()
 		solver.initialize([](const Point& x) -> FLP { return 2 + x.z(); });
 
 		size_t step = 0;
-		size_t cumulative = 0;
+		FLP cumulative = 0;
 		FLP duration = time_initial;
 		FLP dist_max = std::numeric_limits<FLP>::max();
 		FLP vertex_change = std::numeric_limits<FLP>::max();

@@ -1,0 +1,9 @@
+{
+  "name": "cartosphere",
+  "version-string": "0.1.0-dev",
+  "description": "Spherical cartogram generating library.",
+  "dependencies": [
+    "fftw3",
+    "eigen3"
+  ]
+}

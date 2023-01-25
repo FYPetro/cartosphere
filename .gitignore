@@ -1,10 +1,19 @@
+# Distributions
 cartosphere-*/
 cartosphere-*.tar.gz
+
+# macOS: XCode and Finder
 **/*.dSYM
 **/*.dSYM.zip
 **/*.DS_Store
 **/.vs/
-bin/
-obj/
-tests/
+
+# macOS binaries
 src/cartosphere
+
+# Visual Studio
+Debug/
+Release/
+
+# Windows vcpkg packages
+vcpkg_installed/

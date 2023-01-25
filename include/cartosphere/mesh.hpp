@@ -2,6 +2,8 @@
 #ifndef __MESH_HPP__
 #define __MESH_HPP__
 
+#include "cartosphere/utility.hpp"
+
 #include <utility>
 #include <functional>
 #include <iterator>
@@ -10,7 +12,6 @@
 #include <vector>
 #include <string>
 
-#include "cartosphere/utility.hpp"
 
 namespace Cartosphere
 {

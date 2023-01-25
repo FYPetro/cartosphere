@@ -630,7 +630,7 @@ Cartosphere::TriangularMesh::integrate(
 				for (auto it = std::make_move_iterator(dual.begin()),
 					end = std::make_move_iterator(dual.end()); it != end; ++it)
 				{
-					vertices.insert(vertices.end(), std::move(it->first));
+					vertices.insert(vertices.end(), it->first);
 				}
 
 				// Spherical excess is the area
