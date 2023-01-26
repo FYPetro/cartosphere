@@ -4,6 +4,8 @@ using argparse::ArgumentParser;
 
 #include <iostream>
 
+#include "cartosphere/shapefile.hpp"
+
 #include "cartosphere/research.hpp"
 
 int
@@ -15,10 +17,44 @@ main(int argc, char* argv[])
 {
 	ArgumentParser args("cartosphere", "0.1.0-dev");
 
-	args.add_argument("--demo")
+	args.add_argument("mode")
+		.help("specify cartosphere operation mode")
+		.default_value(std::string{"demo"})
+		.metavar("MODE");
+	// cartosphere viz -i cb_2021_us_state_500k -o cb_2021_us_state_500k.m
+
+	// Demo overrides all other options
+	args.add_argument("-s", "--scene")
+		.help("specify demo scene")
+		.nargs(argparse::nargs_pattern::at_least_one)
 		.default_value(std::vector{ std::string{"list"}})
-		.help("run demo scenarios")
-		.nargs(argparse::nargs_pattern::any);
+		.metavar("SCENE [args...]");
+
+	// If not a demo, an input must be specified
+	args.add_argument("-i", "--input")
+		.help("path of input file/folder")
+		.nargs(1)
+		.metavar("INPUT");
+
+	args.add_argument("--input-format")
+		.help("format of input")
+		.default_value(std::string{"shapefile"})
+		.metavar("INFMT");
+
+	args.add_argument("-o", "--output")
+		.help("path to output file/folder")
+		.nargs(1)
+		.metavar("OUTPUT");
+
+	args.add_argument("--output-format")
+		.help("format of output")
+		.default_value(std::string{"matlab"})
+		.metavar("OUTFMT");
+
+	args.add_argument("-m", "--mesh")
+		.help("specify input .csm file as background mesh")
+		.nargs(1)
+		.metavar("CSMFILE");
 
 	try
 	{
@@ -31,16 +67,62 @@ main(int argc, char* argv[])
 		std::exit(1);
 	}
 
-	auto isDemo = args.is_used("--demo");
-	
-	if (isDemo)
+	auto mode = args.get<std::string>("mode");
+
+	// Priotize demo over all other operating modes
+	if (mode == "demo")
 	{
-		auto demoArgs = args.get<std::vector<std::string>>("--demo");
+		auto demoArgs = args.get<std::vector<std::string>>("--scene");
 		auto demoName = demoArgs.front();
 		demoArgs.erase(demoArgs.begin());
 
 		return runDemo(demoName, demoArgs);
 	}
+
+	// Visualize a file
+	if (mode == "viz")
+	{
+		auto inputPath = args.get<std::string>("--input");
+		auto inputFormat = args.get<std::string>("--input-format");
+		std::cout << "Input path: " << inputPath
+			<< " (format: " << inputFormat << ")\n";
+
+		auto outputPath = args.get<std::string>("--output");
+		auto outputFormat = args.get<std::string>("--output-format");
+		std::cout << "Output path: " << outputPath
+			<< " (format: " << outputFormat << ")\n";
+
+		// Visualize a shapefile
+		if (inputFormat == "shapefile")
+		{
+			std::cout << "Initializing shapefile from " << inputPath << "...\n";
+
+			Cartosphere::ShapeFile shapefile;
+			std::string message;
+			if (!shapefile.open(inputPath, message))
+			{
+				std::cerr << "Error: " << message << "\n";
+				std::exit(1);
+			}
+			std::cout << "Shapes loaded: " << shapefile.count() << "\n";
+
+			if (outputFormat == "matlab")
+			{
+				std::cout << "Viz-ing shapefile using matlab...\n";
+				std::exit(0);
+			}
+
+			std::cerr << "Unhandled Output Format: " << outputFormat << "\n";
+			std::exit(1);
+		}
+
+		std::cerr << "Unhandled Input Format: " << inputFormat << "\n";
+		std::exit(1);
+	}
+
+	// Command not recognized
+	std::cerr << "Unrecognized mode " << mode << "\n";
+	std::exit(1);
 
 	return 0;
 }
@@ -50,22 +132,23 @@ runDemo(const std::string& name, const std::vector<std::string>& args)
 {
 	if (name == "list")
 	{
-		std::cout << "Available demos:\n"
-			<< "demo\n"
-			<< "diffusion\n"
-			<< "seminar\n"
-			<< "quadrature\n"
-			<< "testobj\n"
-			<< "benchmark\n"
-			<< "precompute\n"
-			<< "refine\n"
-			<< "A\n"
-			<< "B\n"
-			<< "C\n"
-			<< "CC\n"
-			<< "D\n"
-			<< "F\n"
-			<< "G\n";
+		std::cout << "Available demo SCENARIOs:\n"
+			<< "\tdemo               [---]\n"
+			<< "\tdiffusion          [---]\n"
+			<< "\tseminar            [---]\n"
+			<< "\tquadrature         [---]\n"
+			<< "\ttestobj            [---]\n"
+			<< "\tbenchmark          [---]\n"
+			<< "\tprecompute         [---]\n"
+			<< "\trefine LEVEL       [---]\n"
+			<< "\tA                  [Research A]\n"
+			<< "\tB                  [Research B]\n"
+			<< "\tC L M              [Research C]\n"
+			<< "\tCC                 [Research CC]\n"
+			<< "\tD                  [Research D]\n"
+			<< "\tF                  [Research F]\n"
+			<< "\tG SHAPEFILE        [Research G]\n"
+			<< "Usage: cartosphere demo --scene [SCENARIO]\n";
 		return 0;
 	}
 

@@ -7,6 +7,7 @@ cartosphere-*.tar.gz
 **/*.dSYM.zip
 **/*.DS_Store
 **/.vs/
+*.xcworkspace/xcuserdata/*.xcuserdatad/
 
 # macOS binaries
 src/cartosphere
