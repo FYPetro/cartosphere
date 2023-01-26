@@ -395,6 +395,10 @@ Cartosphere::Triangle::integrate(const Function& f, Integrator intr) const
 	case Integrator::Refinement4:
 	case Integrator::Refinement5:
 	case Integrator::Refinement6:
+	case Integrator::Refinement7:
+	case Integrator::Refinement8:
+	case Integrator::Refinement9:
+	case Integrator::Refinement10:
 	{
 		// Create a mesh
 		TriangularMesh m;
@@ -423,6 +427,11 @@ Cartosphere::Triangle::integrate(const Function& f, Integrator intr) const
 			levels = 9; break;
 		case Integrator::Refinement10:
 			levels = 10; break;
+	case Integrator::Centroid:
+	case Integrator::ThreeVertices:
+	case Integrator::Simpsons:
+	default:
+		break;
 		}
 		for (unsigned k = 0; k < levels; ++k)
 		{

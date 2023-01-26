@@ -1,6 +1,6 @@
 CC = g++
 
-INCLUDE = -I../include 
+INCLUDE = -I../include -I/usr/local/include
 
 CFLAGS = -g $(INCLUDE) -std=c++17 -Wswitch -Wclass-conversion
 

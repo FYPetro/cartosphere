@@ -1,0 +1,410 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		92C49DDF29819F8500007587 /* libcartosphere.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 92C49DDE29819F8500007587 /* libcartosphere.hpp */; };
+		92C49DE129819F8500007587 /* libcartospherePriv.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 92C49DE029819F8500007587 /* libcartospherePriv.hpp */; };
+		92C49DE329819F8500007587 /* libcartosphere.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 92C49DE229819F8500007587 /* libcartosphere.cpp */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		92C49DE72981A00300007587 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 92C49DBA298198C900007587 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 92C49DBE298198C900007587;
+			remoteInfo = cartosphere;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		92C49DC429819E7F00007587 /* include */ = {isa = PBXFileReference; lastKnownFileType = folder; path = include; sourceTree = "<group>"; };
+		92C49DD629819E9900007587 /* src */ = {isa = PBXFileReference; lastKnownFileType = folder; path = src; sourceTree = "<group>"; };
+		92C49DDB29819F8500007587 /* liblibcartosphere.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = liblibcartosphere.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		92C49DDE29819F8500007587 /* libcartosphere.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = libcartosphere.hpp; sourceTree = "<group>"; };
+		92C49DE029819F8500007587 /* libcartospherePriv.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = libcartospherePriv.hpp; sourceTree = "<group>"; };
+		92C49DE229819F8500007587 /* libcartosphere.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = libcartosphere.cpp; sourceTree = "<group>"; };
+		92C49DE92981A04D00007587 /* include */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = include; sourceTree = SOURCE_ROOT; };
+		92C49E0C2981A09400007587 /* src */ = {isa = PBXFileReference; lastKnownFileType = text; path = src; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		92C49DD929819F8500007587 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		92C49DB9298198C900007587 = {
+			isa = PBXGroup;
+			children = (
+				92C49DC429819E7F00007587 /* include */,
+				92C49DD629819E9900007587 /* src */,
+				92C49DDD29819F8500007587 /* libcartosphere */,
+				92C49DDC29819F8500007587 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		92C49DDC29819F8500007587 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				92C49DDB29819F8500007587 /* liblibcartosphere.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		92C49DDD29819F8500007587 /* libcartosphere */ = {
+			isa = PBXGroup;
+			children = (
+				92C49E0C2981A09400007587 /* src */,
+				92C49DE92981A04D00007587 /* include */,
+				92C49DDE29819F8500007587 /* libcartosphere.hpp */,
+				92C49DE029819F8500007587 /* libcartospherePriv.hpp */,
+				92C49DE229819F8500007587 /* libcartosphere.cpp */,
+			);
+			path = libcartosphere;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		92C49DD729819F8500007587 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				92C49DE129819F8500007587 /* libcartospherePriv.hpp in Headers */,
+				92C49DDF29819F8500007587 /* libcartosphere.hpp in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXLegacyTarget section */
+		92C49DBE298198C900007587 /* cartosphere */ = {
+			isa = PBXLegacyTarget;
+			buildArgumentsString = "$(ACTION)";
+			buildConfigurationList = 92C49DC1298198C900007587 /* Build configuration list for PBXLegacyTarget "cartosphere" */;
+			buildPhases = (
+			);
+			buildToolPath = /usr/bin/make;
+			buildWorkingDirectory = /Users/frenzyli/Developer/cartosphere;
+			dependencies = (
+			);
+			name = cartosphere;
+			passBuildSettingsInEnvironment = 1;
+			productName = cartosphere;
+		};
+/* End PBXLegacyTarget section */
+
+/* Begin PBXNativeTarget section */
+		92C49DDA29819F8500007587 /* libcartosphere */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 92C49DE429819F8500007587 /* Build configuration list for PBXNativeTarget "libcartosphere" */;
+			buildPhases = (
+				92C49DD729819F8500007587 /* Headers */,
+				92C49DD829819F8500007587 /* Sources */,
+				92C49DD929819F8500007587 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				92C49DE82981A00300007587 /* PBXTargetDependency */,
+			);
+			name = libcartosphere;
+			productName = libcartosphere;
+			productReference = 92C49DDB29819F8500007587 /* liblibcartosphere.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		92C49DBA298198C900007587 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1420;
+				TargetAttributes = {
+					92C49DBE298198C900007587 = {
+						CreatedOnToolsVersion = 14.2;
+					};
+					92C49DDA29819F8500007587 = {
+						CreatedOnToolsVersion = 14.2;
+					};
+				};
+			};
+			buildConfigurationList = 92C49DBD298198C900007587 /* Build configuration list for PBXProject "cartosphere" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 92C49DB9298198C900007587;
+			productRefGroup = 92C49DDC29819F8500007587 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				92C49DBE298198C900007587 /* cartosphere */,
+				92C49DDA29819F8500007587 /* libcartosphere */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		92C49DD829819F8500007587 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				92C49DE329819F8500007587 /* libcartosphere.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		92C49DE82981A00300007587 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 92C49DBE298198C900007587 /* cartosphere */;
+			targetProxy = 92C49DE72981A00300007587 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		92C49DBF298198C900007587 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					/usr/local/opt/fftw/include,
+					/usr/local/include,
+					/usr/local/include/s2kit10,
+					/usr/local/include/eigen3,
+					"$(ProjectDir)/include/**",
+				);
+				LIBRARY_SEARCH_PATHS = "";
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+			};
+			name = Debug;
+		};
+		92C49DC0298198C900007587 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					/usr/local/opt/fftw/include,
+					/usr/local/include,
+					/usr/local/include/s2kit10,
+					/usr/local/include/eigen3,
+					"$(ProjectDir)/include/**",
+				);
+				LIBRARY_SEARCH_PATHS = "";
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+			};
+			name = Release;
+		};
+		92C49DC2298198C900007587 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEBUGGING_SYMBOLS = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = Q4J662524X;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				OTHER_CFLAGS = "";
+				OTHER_LDFLAGS = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		92C49DC3298198C900007587 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = Q4J662524X;
+				OTHER_CFLAGS = "";
+				OTHER_LDFLAGS = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		92C49DE529819F8500007587 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = Q4J662524X;
+				EXECUTABLE_PREFIX = lib;
+				GCC_ENABLE_CPP_EXCEPTIONS = YES;
+				GCC_ENABLE_CPP_RTTI = YES;
+				HEADER_SEARCH_PATHS = (
+					/usr/local/opt/fftw/include,
+					/usr/local/include/argparse,
+					/usr/local/include/s2kit10,
+					/usr/local/include/eigen3,
+					"$(PROJECT_DIR)/include/**",
+				);
+				LIBRARY_SEARCH_PATHS = /usr/local/opt/fftw/lib;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		92C49DE629819F8500007587 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = Q4J662524X;
+				EXECUTABLE_PREFIX = lib;
+				GCC_ENABLE_CPP_EXCEPTIONS = YES;
+				GCC_ENABLE_CPP_RTTI = YES;
+				HEADER_SEARCH_PATHS = (
+					/usr/local/opt/fftw/include,
+					/usr/local/include/argparse,
+					/usr/local/include/s2kit10,
+					/usr/local/include/eigen3,
+					"$(PROJECT_DIR)/include/**",
+				);
+				LIBRARY_SEARCH_PATHS = /usr/local/opt/fftw/lib;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		92C49DBD298198C900007587 /* Build configuration list for PBXProject "cartosphere" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				92C49DBF298198C900007587 /* Debug */,
+				92C49DC0298198C900007587 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		92C49DC1298198C900007587 /* Build configuration list for PBXLegacyTarget "cartosphere" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				92C49DC2298198C900007587 /* Debug */,
+				92C49DC3298198C900007587 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		92C49DE429819F8500007587 /* Build configuration list for PBXNativeTarget "libcartosphere" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				92C49DE529819F8500007587 /* Debug */,
+				92C49DE629819F8500007587 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 92C49DBA298198C900007587 /* Project object */;
+}

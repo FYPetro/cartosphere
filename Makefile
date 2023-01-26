@@ -12,10 +12,16 @@ export S2KITINC=-I/usr/local/include/s2kit10
 export S2KITOBJ= 
 export EIGENINC=-I/usr/local/include/eigen3
 
-all clean install uninstall cartosphere:
+all clean uninstall cartosphere:
 	$(MAKE) -C src $@
+.PHONY: all clean uninstall
+
+install: all
+	$(MAKE) -C src $@
+.PHONY: install
 
 dist: $(DISTDIR).tar.gz
+.PHONY: dist
 
 distcheck: $(DISTDIR).tar.gz
 	gzip -cd $+ | tar xvf -
@@ -25,6 +31,7 @@ distcheck: $(DISTDIR).tar.gz
 	$(MAKE) -C $(DISTDIR) clean
 	rm -rf $(DISTDIR)
 	@echo "*** Package $(DISTDIR).tar.gz ready for distribution ***"
+.PHONY: distcheck
 
 $(DISTDIR).tar.gz: FORCE $(DISTDIR)
 	tar chof - $(DISTDIR) |\
@@ -40,7 +47,3 @@ $(DISTDIR):
 FORCE:
 	-rm $(DISTDIR).tar.gz &> /dev/null
 	-rm -rf $(DISTDIR) &> /dev/null
-
-.PHONY: FORCE all clean dist distcheck
-
-.PHONY: install uninstall

@@ -82,8 +82,6 @@ namespace Cartosphere
 		}
 
 	public:
-		// Implicit conversion to FL3
-		operator FL3() const { return static_cast<FL3>(*this); }
 		// Calculate the spherical distance between two points
 		friend FLP distance(const Image& a, const Image& b);
 		// Calculate the angle spanned by three points
