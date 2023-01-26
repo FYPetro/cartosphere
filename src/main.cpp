@@ -19,8 +19,11 @@ main(int argc, char* argv[])
 
 	args.add_argument("mode")
 		.help("specify cartosphere operation mode")
-		.default_value(std::string{"demo"})
-		.metavar("MODE");
+		.default_value(std::string{ "demo" })
+#if __APPLE__
+		.metavar("MODE")
+#endif
+		;
 	// cartosphere viz -i cb_2021_us_state_500k -o cb_2021_us_state_500k.m
 
 	// Demo overrides all other options
@@ -28,33 +31,51 @@ main(int argc, char* argv[])
 		.help("specify demo scene")
 		.nargs(argparse::nargs_pattern::at_least_one)
 		.default_value(std::vector{ std::string{"list"}})
-		.metavar("SCENE [args...]");
+#if __APPLE__
+		.metavar("SCENE [args...]")
+#endif
+		;
 
 	// If not a demo, an input must be specified
 	args.add_argument("-i", "--input")
 		.help("path of input file/folder")
 		.nargs(1)
-		.metavar("INPUT");
+#if __APPLE__
+		.metavar("INPUT")
+#endif
+		;
 
 	args.add_argument("--input-format")
 		.help("format of input")
-		.default_value(std::string{"shapefile"})
-		.metavar("INFMT");
+		.default_value(std::string{ "shapefile" })
+#if __APPLE__
+		.metavar("INFMT")
+#endif
+		;
 
 	args.add_argument("-o", "--output")
 		.help("path to output file/folder")
 		.nargs(1)
-		.metavar("OUTPUT");
+#if __APPLE__
+		.metavar("OUTPUT")
+#endif
+		;
 
 	args.add_argument("--output-format")
 		.help("format of output")
-		.default_value(std::string{"matlab"})
-		.metavar("OUTFMT");
+		.default_value(std::string{ "matlab" })
+#if __APPLE__
+		.metavar("OUTFMT")
+#endif
+		;
 
 	args.add_argument("-m", "--mesh")
 		.help("specify input .csm file as background mesh")
 		.nargs(1)
-		.metavar("CSMFILE");
+#if __APPLE__
+		.metavar("CSMFILE")
+#endif
+		;
 
 	try
 	{
