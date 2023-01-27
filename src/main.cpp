@@ -116,10 +116,9 @@ main(int argc, char* argv[])
 		// Visualize a shapefile
 		if (inputFormat == "shapefile")
 		{
-			std::cout << "Initializing shapefile from " << inputPath << "...\n";
-
 			Cartosphere::ShapeFile shapefile;
 			std::string message;
+			std::cout << "Initializing shapefile from " << inputPath << "...\n";
 			if (!shapefile.open(inputPath, message))
 			{
 				std::cerr << "Error: " << message << "\n";
@@ -130,6 +129,7 @@ main(int argc, char* argv[])
 			if (outputFormat == "matlab")
 			{
 				std::cout << "Viz-ing shapefile using matlab...\n";
+				shapefile.to_matlab(outputPath);
 				std::exit(0);
 			}
 
