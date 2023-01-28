@@ -1,6 +1,8 @@
 
 #include <argparse/argparse.hpp>
 using argparse::ArgumentParser;
+using argparse::default_arguments;
+using argparse::nargs_pattern;
 
 #include <iostream>
 
@@ -15,101 +17,110 @@ runDemo(const std::string&, const std::vector<std::string>&);
 int
 main(int argc, char* argv[])
 {
-	ArgumentParser args("cartosphere", "0.1.0-dev");
+	ArgumentParser program("cartosphere", "0.1.0-dev");
 
-	args.add_argument("mode")
-		.help("specify cartosphere operation mode")
-		.default_value(std::string{ "demo" })
+	// Demonstrative scenarios
+	// cartosphere demo [args...]
+	ArgumentParser demoCmd("demo");
+	demoCmd.add_description("Run a demo");
+	demoCmd.add_argument("scenario")
+		.help("specify which demo to run")
+		.nargs(nargs_pattern::at_least_one)
+		.default_value(std::vector{ std::string{"list"} })
 #if __APPLE__
-		.metavar("MODE")
+		.metavar("SCENARIO...")
 #endif
 		;
-	// cartosphere viz -i cb_2021_us_state_500k -o cb_2021_us_state_500k.m
+	program.add_subparser(demoCmd);
 
-	// Demo overrides all other options
-	args.add_argument("-s", "--scene")
-		.help("specify demo scene")
-		.nargs(argparse::nargs_pattern::at_least_one)
-		.default_value(std::vector{ std::string{"list"}})
-#if __APPLE__
-		.metavar("SCENE [args...]")
-#endif
-		;
-
-	// If not a demo, an input must be specified
-	args.add_argument("-i", "--input")
-		.help("path of input file/folder")
-		.nargs(1)
+	// Visualization mode
+	// cartosphere viz INPUT OUTPUT [-i INFMT] [-o OUTFMT]
+	ArgumentParser vizCmd("viz");
+	vizCmd.add_description("Visualize cartographic file");
+	vizCmd.add_argument("input")
+		.help("Path of input file/folder")
 #if __APPLE__
 		.metavar("INPUT")
 #endif
 		;
-
-	args.add_argument("--input-format")
-		.help("format of input")
+	vizCmd.add_argument("output")
+		.help("Path to output file/folder")
+#if __APPLE__
+		.metavar("OUTPUT")
+#endif
+		;
+	vizCmd.add_argument("-i", "--input-format")
+		.help("Input format")
+		.nargs(1)
 		.default_value(std::string{ "shapefile" })
 #if __APPLE__
 		.metavar("INFMT")
 #endif
 		;
-
-	args.add_argument("-o", "--output")
-		.help("path to output file/folder")
+	vizCmd.add_argument("-o", "--output-format")
+		.help("Output format")
 		.nargs(1)
-#if __APPLE__
-		.metavar("OUTPUT")
-#endif
-		;
-
-	args.add_argument("--output-format")
-		.help("format of output")
 		.default_value(std::string{ "matlab" })
 #if __APPLE__
 		.metavar("OUTFMT")
 #endif
 		;
+	program.add_subparser(vizCmd);
 
-	args.add_argument("-m", "--mesh")
+	// Add verbosity control
+	program.add_argument("--verbose")
+		.help("Generate more messages?")
+		.default_value(false)
+		.implicit_value(true);
+	
+	// Transform input file into a spherical cartogram
+	// cartosphere transform INPUT OUTPUT [-i INFMT] [-o OUTFMT] [-m CSM]
+	ArgumentParser transformCmd("transform");
+	transformCmd.add_description("Generate a spherical cartogram.");
+	transformCmd.add_argument("-m", "--mesh")
 		.help("specify input .csm file as background mesh")
 		.nargs(1)
 #if __APPLE__
 		.metavar("CSMFILE")
 #endif
 		;
+	program.add_subparser(transformCmd);
 
+	// Set Epilog
+	program.add_epilog("See Z. Li and S. A. Aryana (2018).");
+
+	// Parse command line
 	try
 	{
-		args.parse_args(argc, argv);
+		program.parse_args(argc, argv);
 	}
 	catch (const std::runtime_error& err)
 	{
 		std::cerr << err.what() << "\n";
-		std::cerr << args;
+		std::cerr << program;
 		std::exit(1);
 	}
 
-	auto mode = args.get<std::string>("mode");
-
 	// Priotize demo over all other operating modes
-	if (mode == "demo")
+	if (program.is_subcommand_used("demo"))
 	{
-		auto demoArgs = args.get<std::vector<std::string>>("--scene");
-		auto demoName = demoArgs.front();
+		auto demoArgs = demoCmd.get<std::vector<std::string>>("scenario");
+		auto scenario = demoArgs.front();
 		demoArgs.erase(demoArgs.begin());
 
-		return runDemo(demoName, demoArgs);
+		return runDemo(scenario, demoArgs);
 	}
 
 	// Visualize a file
-	if (mode == "viz")
+	if (program.is_subcommand_used("viz"))
 	{
-		auto inputPath = args.get<std::string>("--input");
-		auto inputFormat = args.get<std::string>("--input-format");
+		auto inputPath = vizCmd.get<std::string>("input");
+		auto inputFormat = vizCmd.get<std::string>("--input-format");
 		std::cout << "Input path: " << inputPath
 			<< " (format: " << inputFormat << ")\n";
 
-		auto outputPath = args.get<std::string>("--output");
-		auto outputFormat = args.get<std::string>("--output-format");
+		auto outputPath = vizCmd.get<std::string>("output");
+		auto outputFormat = vizCmd.get<std::string>("--output-format");
 		std::cout << "Output path: " << outputPath
 			<< " (format: " << outputFormat << ")\n";
 
@@ -128,8 +139,9 @@ main(int argc, char* argv[])
 
 			if (outputFormat == "matlab")
 			{
-				std::cout << "Viz-ing shapefile using matlab...\n";
+				std::cout << "Vizzing shapefile using matlab...\n";
 				shapefile.to_matlab(outputPath);
+				std::cout << "Vizzing complete!\n";
 				std::exit(0);
 			}
 
@@ -141,39 +153,21 @@ main(int argc, char* argv[])
 		std::exit(1);
 	}
 
-	// Command not recognized
-	std::cerr << "Unrecognized mode " << mode << "\n";
-	std::exit(1);
+	if (program.is_subcommand_used("transform"))
+	{
+		std::cerr << "Not yet implemented.\n";
+		std::exit(1);
+	}
 
+	// If command is not right, print program
+	std::cout << program;
 	return 0;
 }
 
 int
 runDemo(const std::string& name, const std::vector<std::string>& args)
 {
-	if (name == "list")
-	{
-		std::cout << "Available demo SCENARIOs:\n"
-			<< "\tdemo               [---]\n"
-			<< "\tdiffusion          [---]\n"
-			<< "\tseminar            [---]\n"
-			<< "\tquadrature         [---]\n"
-			<< "\ttestobj            [---]\n"
-			<< "\tbenchmark          [---]\n"
-			<< "\tprecompute         [---]\n"
-			<< "\trefine LEVEL       [---]\n"
-			<< "\tA                  [Research A]\n"
-			<< "\tB                  [Research B]\n"
-			<< "\tC L M              [Research C]\n"
-			<< "\tCC                 [Research CC]\n"
-			<< "\tD                  [Research D]\n"
-			<< "\tF                  [Research F]\n"
-			<< "\tG SHAPEFILE        [Research G]\n"
-			<< "Usage: cartosphere demo --scene [SCENARIO]\n";
-		return 0;
-	}
-
-	if (name == "demo")
+	if (name == "default")
 		return demo();
 	
 	if (name == "diffusion")
@@ -194,7 +188,10 @@ runDemo(const std::string& name, const std::vector<std::string>& args)
 	if (name == "precompute")
 	{
 		if (args.size() != 1)
-			throw std::runtime_error("This demo needs 1 argument.");
+		{
+			std::cerr << "This demo needs 1 argument.\n";
+			std::exit(1);
+		}
 
 		auto path = args[0];
 		return precompute_weights(path);
@@ -204,8 +201,8 @@ runDemo(const std::string& name, const std::vector<std::string>& args)
 	{
 		if (args.size() != 1)
 		{
-			std::cerr << "Needs 1 demo argument.";
-			return 1;
+			std::cerr << "Needs 1 demo argument.\n";
+			std::exit(1);
 		}
 
 		auto path = args[0];
@@ -223,8 +220,8 @@ runDemo(const std::string& name, const std::vector<std::string>& args)
 	{
 		if (args.size() != 2)
 		{
-			std::cerr << "Needs 2 demo arguments.";
-			return 1;
+			std::cerr << "Needs 2 demo arguments.\n";
+			std::exit(1);
 		}
 
 		auto l = std::stoi(args[0]);
@@ -262,13 +259,34 @@ runDemo(const std::string& name, const std::vector<std::string>& args)
 		if (args.size() != 1)
 		{
 			std::cerr << "Needs 1 demo argument.\n";
-			return 1;
+			std::exit(1);
 		}
 
 		auto folder = args[0];
 		return research_g(folder);
 	}
 
-	std::cerr << "Unknown demo name\n";
+	if (name != "list")
+	{
+		std::cerr << "Unknown demo name\n";
+	}
+
+	std::cout << "Available demo SCENARIO:\n"
+		<< "default            [---]\n"
+		<< "diffusion          [---]\n"
+		<< "seminar            [---]\n"
+		<< "quadrature         [---]\n"
+		<< "testobj            [---]\n"
+		<< "benchmark          [---]\n"
+		<< "precompute         [---]\n"
+		<< "refine LEVEL       [---]\n"
+		<< "A                  [Research A]\n"
+		<< "B                  [Research B]\n"
+		<< "C L M              [Research C]\n"
+		<< "CC                 [Research CC]\n"
+		<< "D                  [Research D]\n"
+		<< "F                  [Research F]\n"
+		<< "G SHAPEFILE        [Research G]\n\n"
+		<< "Usage: cartosphere demo SCENARIO [ARGS...]\n";
 	return 0;
 }

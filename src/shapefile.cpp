@@ -230,8 +230,8 @@ ShapeFile::to_matlab(const string &outPath) const
 	ofstream ofs;
 
 	// Print points of all shapes in *.m_data.m
-	auto outDataStem = path{outPath}.stem();
-	auto outDataPath = outDataStem.filename().string() + ".m";
+	auto outStem = path{outPath}.stem();
+	auto outDataPath = outStem.filename().string() + "_data.m";
 	ofs.open(outDataPath);
 	ofs << "%% Shapes\n";
 	for (size_t i = 0; i < shapes.size(); ++i)
@@ -246,7 +246,7 @@ ShapeFile::to_matlab(const string &outPath) const
 	// Plot all shapes in *.m
 	ofs.open(outPath);
 	ofs << "%% Load data\n"
-		<< outDataStem << "\n\n"
+		<< outStem.string() << "_data\n\n"
 		<< "%% Plot shape\n"
 		<< "for i = 1:length(shape)\n"
 		<< "\t" << "for k = 1:length(shape{i})\n"
