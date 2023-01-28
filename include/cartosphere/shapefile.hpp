@@ -2,11 +2,11 @@
 #ifndef __SHAPEFILE_HPP__
 #define __SHAPEFILE_HPP__
 
-#include <string>
-
 #include <memory>
 
 #include <vector>
+
+#include <string>
 
 namespace Cartosphere
 {

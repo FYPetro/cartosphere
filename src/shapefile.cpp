@@ -1,25 +1,14 @@
 
 #include "cartosphere/shapefile.hpp"
-using std::string;
+using Cartosphere::ShapeFile;
 using std::shared_ptr;
+using std::string;
 using std::vector;
-using namespace Cartosphere;
 
 #include "cartosphere/utility.hpp"
 
 #include <filesystem>
 namespace filesystem = std::filesystem;
-using filesystem::path;
-
-#include <fstream>
-using std::ifstream;
-using std::ofstream;
-
-#include <sstream>
-using std::stringstream;
-
-#include <iostream>
-using std::cout;
 
 string
 ShapeFile::Point::to_matlab() const
@@ -63,7 +52,7 @@ bool
 ShapeFile::open(const string &folder, string &error)
 {
 	// Check if the folder exists.
-	path directory{folder};
+	filesystem::path directory{folder};
 	if (!filesystem::exists(directory))
 	{
 		error = "The folder does not exist.";
@@ -145,13 +134,9 @@ ShapeFile::open(const string &folder, string &error)
 
 		case PolygonType:
 		{
-			// cout << "New Polygon: " << shapes.size() << "\n";
-
 			ptr = std::make_shared<Polygon>();
 			Polygon& polygon = *static_cast<Polygon*>(ptr.get());
 			polygon.type = recordShapeType;
-
-			// cout << "Type: " << polygon.type << "\n";
 
 			file.read(reinterpret_cast<char*>(floats), 4 * sizeof(double));
 			polygon.box[0] = floats[0];
@@ -159,19 +144,9 @@ ShapeFile::open(const string &folder, string &error)
 			polygon.box[2] = floats[2];
 			polygon.box[3] = floats[3];
 
-			// cout << "Box:";
-			// for (int i = 0; i < 4; ++i)
-			// {
-			//	 cout << " " << polygon.box[i];
-			// }
-			// cout << "\n";
-
 			file.read(reinterpret_cast<char*>(integers), 2 * sizeof(int));
 			polygon.numParts = integers[0];
 			polygon.numPoints = integers[1];
-
-			// cout << "Parts: " << polygon.numParts << "\n";
-			// cout << "Points: " << polygon.numPoints << "\n";
 
 			for (int i = 0; i < polygon.numParts; ++i)
 			{
@@ -200,12 +175,10 @@ ShapeFile::open(const string &folder, string &error)
 		shapes.push_back(ptr);
 		parsedLength += 4 + contentLength;
 
-		// cout << parsedLength << "/" << fileLength <<  "\n";
+		// std::cout << parsedLength << "/" << fileLength <<  "\n";
 	}
-
 	file.close();
 
-	// ================ //
 	// Parse Index File //
 	file.open(directory/idxFile, std::ios::binary);
 	if (!file.is_open())
@@ -213,6 +186,7 @@ ShapeFile::open(const string &folder, string &error)
 		error = "The index file " + idxFile + " does not exist.";
 		return false;
 	}
+	file.close();
 
 	file.open(directory/dbFile, std::ios::binary);
 	if (!file.is_open())
@@ -220,6 +194,7 @@ ShapeFile::open(const string &folder, string &error)
 		error = "The dBASE file " + dbFile + " does not exist.";
 		return false;
 	}
+	file.close();
 
 	return true;
 }
@@ -230,7 +205,7 @@ ShapeFile::to_matlab(const string &outPath) const
 	ofstream ofs;
 
 	// Print points of all shapes in *.m_data.m
-	auto outStem = path{outPath}.stem();
+	auto outStem = filesystem::path{outPath}.stem();
 	auto outDataPath = outStem.filename().string() + "_data.m";
 	ofs.open(outDataPath);
 	ofs << "%% Shapes\n";

@@ -3,6 +3,7 @@
 #define __SOLVER_HPP__
 
 #include "cartosphere/mesh.hpp"
+
 #include <fftw3.h>
 
 namespace Cartosphere

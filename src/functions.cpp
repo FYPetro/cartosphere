@@ -1,28 +1,12 @@
 
 #include "cartosphere/functions.hpp"
 
-#include <cmath>
-
-#ifndef _WIN32
-
 FLP
 cartosphere_Y_real(int l, int m, FLP z, FLP a)
 {
-	return 0;
-}
-
-FLP
-cartosphere_azview(FLP p, FLP a, FLP pv, FLP av)
-{
-	return 0;
-}
-
-#elif _WIN32
-
-FLP
-cartosphere_Y_real(int l, int m, FLP z, FLP a)
-{
-	FLP r = std::sph_legendre(l, std::abs(m), z);
+	FLP r;
+#ifdef IS_WINDOWS
+	r = std::sph_legendre(l, std::abs(m), z);
 
 	if (m != 0)
 	{
@@ -37,7 +21,11 @@ cartosphere_Y_real(int l, int m, FLP z, FLP a)
 			r *= sin(m * a);
 		}
 	}
+#elif APPLE_LIKE
 
+#else
+
+#endif
 	return r;
 }
 
@@ -59,7 +47,3 @@ cartosphere_azview(FLP p, FLP a, FLP pv, FLP av)
 
 	return v;
 }
-
-#else
-
-#endif

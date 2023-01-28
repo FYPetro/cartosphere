@@ -1,30 +1,24 @@
 
-#include <iostream>
-
-#include <fstream>
-
-#include <numeric>
-
 #include "cartosphere/research.hpp"
+using Cartosphere::Function;
+using Cartosphere::Point;
+using Cartosphere::Arc;
+using Cartosphere::Triangle;
+using Cartosphere::TriangularMesh;
+using Cartosphere::SteadyStateSolver;
+using Cartosphere::TimeDependentSolver;
+using Cartosphere::SpectralSolver;
+
+#include "cartosphere/shapefile.hpp"
+using Cartosphere::ShapeFile;
 
 #include "cartosphere/functions.hpp"
 
-#include "cartosphere/globe.hpp"
-
-#include "cartosphere/shapefile.hpp"
-
-#include "cartosphere/utility.hpp"
-
-using Cartosphere::Point;
-using Cartosphere::TriangularMesh;
-using Cartosphere::TimeDependentSolver;
-using Cartosphere::Function;
-
-void build_system(const Cartosphere::TriangularMesh& mesh, Matrix& A, Vector& b)
+void build_system(const TriangularMesh& mesh, Matrix& A, Vector& b)
 {
 	mesh.fill(A);
 
-	auto f = [](const Cartosphere::Point& p)->FLP {
+	auto f = [](const Point& p)->FLP {
 		return p.x() + p.y() + p.z();
 	};
 	mesh.fill(b, f);
@@ -35,7 +29,7 @@ int demo()
 	std::string file = "icosahedron.csm";
 
 	// Load mesh from file
-	Cartosphere::TriangularMesh mesh(file);
+	TriangularMesh mesh(file);
 	if (mesh.isReady())
 	{
 		std::cout << "Loaded mesh from file: " << file << "\n\n";
@@ -137,7 +131,7 @@ int demo_diffusion()
 	std::string file = "icosahedron.csm";
 
 	// Load mesh from file
-	Cartosphere::TriangularMesh mesh(file);
+	TriangularMesh mesh(file);
 	if (mesh.isReady())
 	{
 		std::cout << "Loaded mesh from file: " << file << "\n\n";
@@ -166,7 +160,7 @@ int demo_diffusion()
 
 	// Build relevant matrices
 	Matrix A, M;
-	mesh.fill(A, M, Cartosphere::Triangle::Integrator::Refinement5);
+	mesh.fill(A, M, Triangle::Integrator::Refinement5);
 
 	// Attempt to correct the matrix A
 	for (int k = 0; k < A.outerSize(); ++k)
@@ -191,15 +185,15 @@ int demo_diffusion()
 		it_diag.valueRef() = -sum_offdiag;
 	}
 
-	auto f = [](const Cartosphere::Point& p)->FLP { return 0; };
+	auto f = [](const Point& p)->FLP { return 0; };
 	Vector b;
-	mesh.fill(b, f, Cartosphere::Triangle::Integrator::Refinement5);
+	mesh.fill(b, f, Triangle::Integrator::Refinement5);
 
 	// Design an initial condition
 	Vector v_init(A.cols());
 	auto vs = mesh.vertices();
 
-	Cartosphere::Function v_init_f = [](const Cartosphere::Point& p)->FLP {
+	Function v_init_f = [](const Point& p)->FLP {
 		return 2 + p.z();
 	};
 	std::transform(vs.begin(), vs.end(), v_init.begin(), v_init_f);
@@ -249,14 +243,14 @@ int demo_diffusion()
 int demo_quadrature()
 {
 	// Demo triangle
-	Cartosphere::Point P(Cartosphere::Image(0, 0, 1));
-	Cartosphere::Point A(Cartosphere::Image(1, 0, 0));
-	Cartosphere::Point B(Cartosphere::Image(0, 1, 0));
-	Cartosphere::Triangle t(P, A, B);
-	Cartosphere::TriangularMesh original(t);
+	Point P(Cartosphere::Image(0, 0, 1));
+	Point A(Cartosphere::Image(1, 0, 0));
+	Point B(Cartosphere::Image(0, 1, 0));
+	Triangle t(P, A, B);
+	TriangularMesh original(t);
 
 	// Demo function
-	Cartosphere::Function f = [](const Cartosphere::Point& p)->FLP {
+	Function f = [](const Point& p)->FLP {
 		return p.x();
 	};
 
@@ -281,8 +275,8 @@ int demo_quadrature()
 		mesh.refine();
 		std::cout << "Level " << k << " integral: "
 			<< mesh.integrate(f,
-				Cartosphere::TriangularMesh::Quadrature::AreaWeighted,
-				Cartosphere::Triangle::Integrator::Centroid)
+				TriangularMesh::Quadrature::AreaWeighted,
+				Triangle::Integrator::Centroid)
 			<< "\n";
 	}
 
@@ -294,8 +288,8 @@ int demo_quadrature()
 		mesh.refine();
 		std::cout << "Level " << k << " integral: "
 			<< mesh.integrate(f,
-				Cartosphere::TriangularMesh::Quadrature::AreaWeighted,
-				Cartosphere::Triangle::Integrator::ThreeVertices)
+				TriangularMesh::Quadrature::AreaWeighted,
+				Triangle::Integrator::ThreeVertices)
 			<< "\n";
 	}
 
@@ -305,14 +299,14 @@ int demo_quadrature()
 int seminar()
 {
 	// Create 3 vertices, 1 simplex, 1 mesh
-	Cartosphere::Point A(Cartosphere::Image(1, 0, 0));
-	Cartosphere::Point B(Cartosphere::Image(0, 1, 0));
-	Cartosphere::Point C(Cartosphere::Image(0, 0, 1));
-	Cartosphere::Triangle T(A, B, C);
-	Cartosphere::TriangularMesh mesh(T);
+	Point A(Cartosphere::Image(1, 0, 0));
+	Point B(Cartosphere::Image(0, 1, 0));
+	Point C(Cartosphere::Image(0, 0, 1));
+	Triangle T(A, B, C);
+	TriangularMesh mesh(T);
 
 	// Function
-	auto f = [](const Cartosphere::Point& p) -> FLP {
+	auto f = [](const Point& p) -> FLP {
 		return 1 - M_2_PI * p.p();
 	};
 
@@ -321,8 +315,8 @@ int seminar()
 	for (size_t i = 0; i <= 10; ++i)
 	{
 		approximation.push_back(mesh.integrate(f,
-			Cartosphere::TriangularMesh::Quadrature::AreaWeighted,
-			Cartosphere::Triangle::Integrator::ThreeVertices));
+			TriangularMesh::Quadrature::AreaWeighted,
+			Triangle::Integrator::ThreeVertices));
 
 		if (i < 10)
 			mesh.refine();
@@ -354,20 +348,20 @@ int convergence()
 	};
 
 	// The function u(x,y) = x y
-	auto u = [](const Cartosphere::Point& p) -> FLP
+	auto u = [](const Point& p) -> FLP
 	{
 		return pow(p.x(), 2) + pow(p.y(), 2);
 	};
 
 	// Laplace-Beltrami of u(x,y,z) = x y
-	/*auto f = [](const Cartosphere::Point& p) -> FLP {
+	/*auto f = [](const Point& p) -> FLP {
 		FLP x = p.x(), y = p.y(), z = p.z();
 		return x - 2 * x * x * x + y - 2 * x * y - 4 * x * x * y + 6 * x * x * x * y
 			- 4 * x * y * y - 2 * y * y * y + 6 * x * y * y * y
 			- 2 * x * y * z - 2 * x * z * z - 2 * y * z * z + 6 * x * y * z * z;
 	};*/
 
-	auto f = [](const Cartosphere::Point& p) -> FLP {
+	auto f = [](const Point& p) -> FLP {
 		FLP x = p.x(), y = p.y(), z = p.z();
 		FLP l = 4 - 10 * pow(x, 2) - 10 * pow(y, 2) - (
 			x * (x * (2 - 6 * pow(x, 2) - 2 * pow(y, 2)) + y * (-4 * x * y)) +
@@ -387,7 +381,7 @@ int convergence()
 		FLP error;
 
 		// Construct mesh and linear system
-		Cartosphere::TriangularMesh mesh(path);
+		TriangularMesh mesh(path);
 		Matrix A;
 		Vector b;
 		mesh.fill(A);
@@ -450,14 +444,14 @@ int convergence()
 
 int precompute_weights(const std::string& path)
 {
-	Cartosphere::TriangularMesh mesh(path);
+	TriangularMesh mesh(path);
 	// TODO
 	return 0;
 }
 
 int refine(const std::string& path)
 {
-	Cartosphere::TriangularMesh m(path);
+	TriangularMesh m(path);
 	for (unsigned k = 1; k <= 5; ++k)
 	{
 		std::stringstream sst;
@@ -473,7 +467,7 @@ int test_obj()
 {
 	// Let's test the coloring of f(r,theta) = theta!
 	// First, we create a mesh
-	Cartosphere::TriangularMesh m;
+	TriangularMesh m;
 	m.load("icosahedron.csm");
 
 	// Obtain vertices and color linearly
@@ -500,7 +494,7 @@ int research_a()
 	const int refinements = 6;
 
 	// Load initial mesh from path and print statistics
-	Cartosphere::TriangularMesh m(name);
+	TriangularMesh m(name);
 	if (!m.isReady())
 	{
 		// Print error messages
@@ -523,18 +517,18 @@ int research_a()
 		<< " (max " << stats.areaElementMax
 		<< ", min " << stats.areaElementMin << ")\n" << std::endl;
 
-	Cartosphere::Function u_inf_func, f_func, g_func;
+	Function u_inf_func, f_func, g_func;
 	if (scenario == 0)
 	{
 		// The desired steady-state solution u = x^2 + y^2 - 2/3
 		// The external term                 f = -Lapl u
 		// The initial condition             g = 0
-		u_inf_func = [](const Cartosphere::Point& p) -> FLP
+		u_inf_func = [](const Point& p) -> FLP
 		{
 			FLP x = p.x(), y = p.y(), z = p.z();
 			return pow(x, 2) + pow(y, 2) - FLP(2) / 3;
 		};
-		f_func = [](const Cartosphere::Point& p) -> FLP {
+		f_func = [](const Point& p) -> FLP {
 			FLP x = p.x(), y = p.y(), z = p.z();
 			FLP l = 4 - 10 * pow(x, 2) - 10 * pow(y, 2) - (
 				x * (x * (2 - 6 * pow(x, 2) - 2 * pow(y, 2)) + y * (-4 * x * y)) +
@@ -543,7 +537,7 @@ int research_a()
 				);
 			return -l;
 		};
-		g_func = [](const Cartosphere::Point& p) -> FLP {
+		g_func = [](const Point& p) -> FLP {
 			FLP x = p.x(), y = p.y(), z = p.z();
 			return 0;
 		};
@@ -553,16 +547,16 @@ int research_a()
 		// The desired steady-state solution u = 2
 		// The external term                 f = 0
 		// The initial condition             g = 2 + z
-		u_inf_func = [](const Cartosphere::Point& p) -> FLP
+		u_inf_func = [](const Point& p) -> FLP
 		{
 			FLP x = p.x(), y = p.y(), z = p.z();
 			return 2;
 		};
-		f_func = [](const Cartosphere::Point& p) -> FLP {
+		f_func = [](const Point& p) -> FLP {
 			FLP x = p.x(), y = p.y(), z = p.z();
 			return 0;
 		};
-		g_func = [](const Cartosphere::Point& p) -> FLP {
+		g_func = [](const Point& p) -> FLP {
 			FLP x = p.x(), y = p.y(), z = p.z();
 			return 2 + z;
 		};
@@ -622,7 +616,7 @@ int research_a()
 
 int research_b()
 {
-	Cartosphere::TriangularMesh m;
+	TriangularMesh m;
 	m.load("icosahedron.csm");
 
 	if (!m.isReady())
@@ -651,7 +645,7 @@ int research_c(int l, int m, bool silent)
 	std::string name = "icosahedron.csm";
 
 	// Load mesh for steady state solver
-	Cartosphere::TriangularMesh mesh;
+	TriangularMesh mesh;
 
 	mesh.load(name);
 	if (!mesh.isReady())
@@ -671,7 +665,7 @@ int research_c(int l, int m, bool silent)
 	}
 
 	// Set up iterative refinement and the solver
-	Cartosphere::SteadyStateSolver solver;
+	SteadyStateSolver solver;
 	std::vector<FLP> errors(levels + 1);
 	for (int level = 0; level <= levels; ++level, mesh.refine())
 	{
@@ -701,11 +695,11 @@ int research_c(int l, int m, bool silent)
 		// When l = 0, u is not zero-averaged
 		// When l > 0, u is zero-averged
 
-		Cartosphere::Function u = [l, m](const Cartosphere::Point& p) -> FLP {
+		Function u = [l, m](const Point& p) -> FLP {
 			return cartosphere_Y_real(l, m, p.p(), p.a());
 		};
 
-		Cartosphere::Function f = [l, m](const Cartosphere::Point& p) -> FLP {
+		Function f = [l, m](const Point& p) -> FLP {
 			return l * (l + 1) * cartosphere_Y_real(l, m, p.p(), p.a());
 		};
 
@@ -752,10 +746,10 @@ int research_d()
 
 	if (true)
 	{
-		Cartosphere::Point A(0, 0);
-		Cartosphere::Point B(M_PI / 3, 0);
-		Cartosphere::Point C(M_PI / 3, M_PI / 3);
-		Cartosphere::Triangle ABC(A, B, C);
+		Point A(0, 0);
+		Point B(M_PI / 3, 0);
+		Point C(M_PI / 3, M_PI / 3);
+		Triangle ABC(A, B, C);
 
 		FL3 u = ABC.gradient(0);
 		FL3 v = ABC.gradient(1);
@@ -769,16 +763,16 @@ int research_d()
 			<< "v<" << v.x << ", " << v.y << ", " << v.z << ">\n"
 			<< "w<" << w.x << ", " << w.y << ", " << w.z << ">\n";
 
-		auto D = Cartosphere::Arc(B, C).midpoint();
+		auto D = Arc(B, C).midpoint();
 
 		std::cout
 			<< "D(" << D.x() << ", " << D.y() << ", " << D.z() << ")\n";
 
-		FLP d = Cartosphere::Arc(D, A).length();
+		FLP d = Arc(D, A).length();
 
 		std::cout << "d = " << d << "\n";
 
-		FL3 t = Cartosphere::Arc(D, A).tangent(0);
+		FL3 t = Arc(D, A).tangent(0);
 
 		std::cout
 			<< "t<" << t.x << ", " << t.y << ", " << t.z << ">\n";
@@ -798,12 +792,12 @@ int research_d()
 	}
 
 	{
-		Cartosphere::Point B(0, 0);
-		Cartosphere::Point C(M_PI / 3, 0);
-		Cartosphere::Point A(M_PI / 3, M_PI / 3);
-		Cartosphere::Triangle ABC(A, B, C);
+		Point B(0, 0);
+		Point C(M_PI / 3, 0);
+		Point A(M_PI / 3, M_PI / 3);
+		Triangle ABC(A, B, C);
 
-		auto D = Cartosphere::Arc(C, A).midpoint();
+		auto D = Arc(C, A).midpoint();
 
 		FL3 g = ABC.gradient(1);
 
@@ -814,12 +808,12 @@ int research_d()
 	}
 
 	{
-		Cartosphere::Point C(0, 0);
-		Cartosphere::Point A(M_PI / 3, 0);
-		Cartosphere::Point B(M_PI / 3, M_PI / 3);
-		Cartosphere::Triangle ABC(A, B, C);
+		Point C(0, 0);
+		Point A(M_PI / 3, 0);
+		Point B(M_PI / 3, M_PI / 3);
+		Triangle ABC(A, B, C);
 
-		auto D = Cartosphere::Arc(A, B).midpoint();
+		auto D = Arc(A, B).midpoint();
 
 		FL3 g = ABC.gradient(2);
 
@@ -831,16 +825,16 @@ int research_d()
 
 
 	{
-		Cartosphere::Point A(0, 0);
-		Cartosphere::Point B(M_PI / 3, 0);
-		Cartosphere::Point C(M_PI / 3, M_PI / 3);
-		Cartosphere::Triangle ABC(A, B, C);
+		Point A(0, 0);
+		Point B(M_PI / 3, 0);
+		Point C(M_PI / 3, M_PI / 3);
+		Triangle ABC(A, B, C);
 
 		std::cout
 			<< ABC.contains(A)
 			<< ABC.contains(B)
 			<< ABC.contains(C)
-			<< ABC.contains(Cartosphere::Point(M_PI / 6, M_PI / 6)) << "\n";
+			<< ABC.contains(Point(M_PI / 6, M_PI / 6)) << "\n";
 	}
 
 	TriangularMesh m("icosahedron.csm.5.csm");
@@ -921,7 +915,7 @@ int research_f()
 	const FLP dist_tolerance = 1e-7;
 	const FLP time_max = 50;
 
-	Cartosphere::TimeDependentSolver solver;
+	TimeDependentSolver solver;
 	size_t levels = 6;
 	for (int level = 0; level <= levels; ++level, mesh.refine())
 	{
@@ -1014,7 +1008,7 @@ int research_g(const std::string &folder)
 {
 	std::cout << "Initializing from directory " << folder << "\n";
 
-	Cartosphere::ShapeFile file;
+	ShapeFile file;
 
 	std::string message;
 	if (!file.open(folder, message))
@@ -1035,7 +1029,7 @@ benchmark()
 {
 	std::cout << "HERE WE GO AGAIN\n";
 
-	Cartosphere::SpectralSolver s;
+	SpectralSolver s;
 	s.parse("population.csm");
 
 	std::cout << s.inputSummary() << std::endl;

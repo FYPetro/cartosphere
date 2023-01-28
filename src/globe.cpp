@@ -1,9 +1,6 @@
 
 #include "cartosphere/globe.hpp"
-#include "cartosphere/utility.hpp"
-
-#include <vector>
-#include <fstream>
+#include "cartosphere/functions.hpp"
 
 using Cartosphere::Globe;
 using Cartosphere::Polygon;

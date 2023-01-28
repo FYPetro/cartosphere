@@ -142,6 +142,7 @@
     <ClInclude Include="..\include\cartosphere\functions.hpp" />
     <ClInclude Include="..\include\cartosphere\globe.hpp" />
     <ClInclude Include="..\include\cartosphere\mesh.hpp" />
+    <ClInclude Include="..\include\cartosphere\nd.hpp" />
     <ClInclude Include="..\include\cartosphere\research.hpp" />
     <ClInclude Include="..\include\cartosphere\shapefile.hpp" />
     <ClInclude Include="..\include\cartosphere\solver.hpp" />

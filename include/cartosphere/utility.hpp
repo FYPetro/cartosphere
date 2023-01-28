@@ -2,159 +2,67 @@
 #ifndef __UTILITY_HPP__
 #define __UTILITY_HPP__
 
+// Detect compiler
+// Ref:	https://stackoverflow.com/a/5920028/1377770
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+	#define IS_WINDOWS
+#elif __APPLE__ || __linux__ || __unix__ || defined(_POSIX_VERSION)
+	#define APPLE_LIKE
+#else
+#   error "Unknown compiler"
+#endif
+
+// Set the floating point used in core calculations
 using FLP = double;
 
+#include <complex>
+using FLC = std::complex<FLP>;
+
+#include <limits>
+static const FLP EPS = std::numeric_limits<FLP>::epsilon();
+
+// Use core math functionality
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES
+#endif // !_USE_MATH_DEFINES
 #include <cmath>
 
+// Commonly used templates
+#include <vector>
+using std::vector;
+
+#include <string>
+using std::string;
+
+#include <fstream>
+using std::ifstream;
+using std::ofstream;
+
+#include <sstream>
+using std::stringstream;
+
+#include <iostream>
+
+// Eigen classes
 #pragma warning(push)
 #pragma warning(disable: 4819)
 #include <Eigen/Core>
-
-#include <Eigen/Sparse>
+using Vector = Eigen::Matrix<FLP, Eigen::Dynamic, 1>;
 
 #include <Eigen/SparseCore>
-
-#include <Eigen/IterativeLinearSolvers>
-#pragma warning(pop)
-
 using Matrix = Eigen::SparseMatrix<FLP, Eigen::RowMajor>;
 using Entry = Eigen::Triplet<FLP>;
-using Vector = Eigen::Matrix<FLP, Eigen::Dynamic, 1>;
-using Solver = Eigen::BiCGSTAB<Matrix,Eigen::IncompleteLUT<Matrix::Scalar>>;
 
-template<typename T>
-constexpr FLP deg2rad(T angle) { return (angle * (FLP)M_PI / (FLP)180); }
+#include <Eigen/IterativeLinearSolvers>
+using Solver = Eigen::BiCGSTAB<Matrix, Eigen::IncompleteLUT<Matrix::Scalar>>;
+#pragma warning(pop)
 
-template<typename T>
-constexpr FLP rad2deg(T angle) { return (angle * (FLP)M_1_PI * (FLP)180); }
-
-static const FLP EPS = std::numeric_limits<FLP>::epsilon();
-
-class FL3
-{
-public:
-	// Components
-	FLP x, y, z;
-
-public:
-	// Default Constructor
-	FL3() : x(0), y(0), z(0) {}
-	// Construct from components
-	FL3(FLP a, FLP b, FLP c) : x(a), y(b), z(c) {}
-	// Copy constructor
-	FL3(const FL3& that) = default;
-	// Assignment operator
-	FL3& operator=(const FL3& that)
-	{
-		if (this != &that)
-		{
-			x = that.x;
-			y = that.y;
-			z = that.z;
-		}
-		return *this;
-	}
-
-public:
-	// Scalar multiplication
-	FL3 operator*(FLP c) const { return FL3(x * c, y * c, z * c); }
-	// Negation
-	FL3 operator-() const { return FL3(-x, -y, -z); }
-	// Add a vector
-	FL3& operator+=(FL3 const& b)
-	{
-		this->x -= b.x;
-		this->y -= b.y;
-		this->z -= b.z;
-		return *this;
-	}
-	// Scalar multiplication by constant
-	FL3& operator*=(FLP b)
-	{
-		x *= b;
-		y *= b;
-		z *= b;
-		return *this;
-	}
-	// Component-wise division by constant
-	FL3& operator/=(FLP b)
-	{
-		x /= b;
-		y /= b;
-		z /= b;
-		return *this;
-	}
-	// Component-wise addition
-	friend FL3 operator+(const FL3& a, const FL3& b)
-	{
-		return FL3(a.x + b.x, a.y + b.y, a.z + b.z);
-	}
-	// Component-wise subtraction
-	friend FL3 operator-(const FL3& a, const FL3& b)
-	{
-		return FL3(a.x - b.x, a.y - b.y, a.z - b.z);
-	}
-	// Scalar multiplication
-	friend FL3 operator*(FLP c, const FL3& b)
-	{
-		return b * c;
-	}
-	// Component-wise division by constant
-	friend FL3 operator/(const FL3& a, FLP b)
-	{
-		return FL3(a.x / b, a.y / b, a.z / b);
-	}
-	// Dot product
-	friend FLP dot(const FL3& a, const FL3& b)
-	{
-		return a.x * b.x + a.y * b.y + a.z * b.z;
-	}
-	// Cross product
-	friend FL3 cross(const FL3& a, const FL3& b)
-	{
-		FLP x = a.y * b.z - a.z * b.y;
-		FLP y = a.z * b.x - a.x * b.z;
-		FLP z = a.x * b.y - a.y * b.x;
-		return FL3(x, y, z);
-	}
-	// Triple product
-	friend FLP triple(const FL3& a, const FL3& b, const FL3& c)
-	{
-		return a.x * b.y * c.z + a.y * b.z * c.x + a.z * b.x * c.y
-			- (a.z * b.y * c.x + a.x * b.z * c.y + a.y * b.x * c.z);
-	}
-	// Normalize
-	friend FL3 normalize(const FL3& a)
-	{
-		FL3 unit = a;
-		return unit.normalize();
-	}
-
-public:
-	// Returns the square of the 2-norm
-	FLP norm2sq() const { return pow(x, 2) + pow(y, 2) + pow(z, 2); }
-	// Returns the 2-norm
-	FLP norm2() const { return sqrt(norm2sq()); }
-	// Normalizes the vector
-	FL3& normalize() { (*this) /= norm2(); return *this; }
-	// Normalizes the vector
-	FL3 toUnitVector() const { return *this / norm2(); }
-	// Any NaN?
-	bool anynan() const { return isnan(x) || isnan(y) || isnan(z); }
-};
-
-class UI3
-{
-public:
-	// Components
-	size_t a, b, c;
-};
-
-#include <complex>
-
-using FLC = std::complex<FLP>;
-
+// Numerics, algorithms, and functionals
+#include <numeric>
 #include <algorithm>
+#include <functional>
+
+// Character types to support string manipulations
 #include <cctype>
 #include <locale>
 
@@ -177,30 +85,32 @@ static inline void rtrim(std::string& s) {
 	).base(),s.end());
 }
 
-// trim from both ends (in place)
+// Trim from both ends (in place)
 static inline void trim(std::string& s) {
 	ltrim(s);
 	rtrim(s);
 }
 
-// trim from start (copying)
+// Trim from start (copying)
 static inline std::string ltrim_copy(std::string s) {
 	ltrim(s);
 	return s;
 }
 
-// trim from end (copying)
+// Trim from end (copying)
 static inline std::string rtrim_copy(std::string s) {
 	rtrim(s);
 	return s;
 }
 
-// trim from both ends (copying)
+// Trim from both ends (copying)
 static inline std::string trim_copy(std::string s) {
 	trim(s);
 	return s;
 }
 
+// Switch endian.
+// By default, little endian is used on Windows.
 // Ref: https://stackoverflow.com/a/3824338
 template <class T>
 void endswap(T *objp)

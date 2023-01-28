@@ -4,9 +4,8 @@ using argparse::ArgumentParser;
 using argparse::default_arguments;
 using argparse::nargs_pattern;
 
-#include <iostream>
-
 #include "cartosphere/shapefile.hpp"
+using Cartosphere::ShapeFile;
 
 #include "cartosphere/research.hpp"
 
@@ -24,7 +23,7 @@ main(int argc, char* argv[])
 	ArgumentParser demoCmd("demo");
 	demoCmd.add_description("Run a demo");
 	demoCmd.add_argument("scenario")
-		.help("specify which demo to run")
+		.help("Specify which demo to run")
 		.nargs(nargs_pattern::at_least_one)
 		.default_value(std::vector{ std::string{"list"} })
 #if __APPLE__
@@ -78,7 +77,7 @@ main(int argc, char* argv[])
 	ArgumentParser transformCmd("transform");
 	transformCmd.add_description("Generate a spherical cartogram.");
 	transformCmd.add_argument("-m", "--mesh")
-		.help("specify input .csm file as background mesh")
+		.help("Specify input .csm file as background mesh")
 		.nargs(1)
 #if __APPLE__
 		.metavar("CSMFILE")
@@ -127,7 +126,7 @@ main(int argc, char* argv[])
 		// Visualize a shapefile
 		if (inputFormat == "shapefile")
 		{
-			Cartosphere::ShapeFile shapefile;
+			ShapeFile shapefile;
 			std::string message;
 			std::cout << "Initializing shapefile from " << inputPath << "...\n";
 			if (!shapefile.open(inputPath, message))
@@ -145,11 +144,11 @@ main(int argc, char* argv[])
 				std::exit(0);
 			}
 
-			std::cerr << "Unhandled Output Format: " << outputFormat << "\n";
+			std::cerr << "Unhandled output format: " << outputFormat << "\n";
 			std::exit(1);
 		}
 
-		std::cerr << "Unhandled Input Format: " << inputFormat << "\n";
+		std::cerr << "Unhandled input format: " << inputFormat << "\n";
 		std::exit(1);
 	}
 
@@ -159,7 +158,7 @@ main(int argc, char* argv[])
 		std::exit(1);
 	}
 
-	// If command is not right, print program
+	// If command is not right, print program help
 	std::cout << program;
 	return 0;
 }

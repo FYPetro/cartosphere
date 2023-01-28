@@ -23,10 +23,10 @@ int seminar();
 int convergence();
 
 /* Generate weights */
-int precompute_weights(const std::string& path);
+int precompute_weights(const string& path);
 
 /* Testing iterative refinement */
-int refine(const std::string& path);
+int refine(const string& path);
 
 /* Test the coloring of obj */
 int test_obj();
@@ -49,7 +49,7 @@ int research_d();
 int research_f();
 
 // Jan 24, 2023. Read shapefiles
-int research_g(const std::string &folder);
+int research_g(const string &folder);
 
 // Jun 06, 2022. To replicate the original paper
 int benchmark();

@@ -1,11 +1,7 @@
 
 #include "cartosphere/mesh.hpp"
 
-#include <algorithm>
-#include <numeric>
-#include <fstream>
-#include <sstream>
-#include <iostream>
+#include "cartosphere/functions.hpp"
 
 /* *************************** *
  * class Cartosphere::Preimage *
