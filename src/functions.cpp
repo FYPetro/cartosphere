@@ -5,7 +5,7 @@ FLP
 cartosphere_Y_real(int l, int m, FLP z, FLP a)
 {
 	FLP r;
-#ifdef IS_WINDOWS
+#if defined(IS_WINDOWS)
 	r = std::sph_legendre(l, std::abs(m), z);
 
 	if (m != 0)
@@ -21,7 +21,7 @@ cartosphere_Y_real(int l, int m, FLP z, FLP a)
 			r *= sin(m * a);
 		}
 	}
-#elif APPLE_LIKE
+#elif defined(APPLE_LIKE)
 
 #else
 
