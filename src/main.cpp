@@ -8,6 +8,8 @@ using argparse::nargs_pattern;
 using Cartosphere::ShapeFile;
 
 #include "cartosphere/research.hpp"
+using Cartosphere::TimeDependentSolver;
+using Cartosphere::SpectralSolver;
 
 int
 runDemo(const std::string&, const std::vector<std::string>&);
@@ -76,13 +78,36 @@ main(int argc, char* argv[])
 	// cartosphere transform INPUT OUTPUT [-i INFMT] [-o OUTFMT] [-m CSM]
 	ArgumentParser transformCmd("transform");
 	transformCmd.add_description("Generate a spherical cartogram.");
+	transformCmd.add_argument("input")
+		.help("Path of input file/folder")
+#if __APPLE__
+		.metavar("INPUT")
+#endif
+		;
+	transformCmd.add_argument("-i", "--input-format")
+		.help("Input format")
+		.nargs(1)
+		.default_value(std::string{ "shapefile" })
+#if __APPLE__
+		.metavar("INFMT")
+#endif
+		;
 	transformCmd.add_argument("-m", "--mesh")
-		.help("Specify input .csm file as background mesh")
+		.help("Set background mesh for FEM")
 		.nargs(1)
 #if __APPLE__
 		.metavar("CSMFILE")
 #endif
 		;
+	transformCmd.add_argument("-b", "--bandlimit")
+		.help("Specify bandlimit for spectral solver")
+		.nargs(1)
+		.default_value(std::int16_t{ 32 })
+#if __APPLE__
+		.metavar("B")
+#endif
+		;
+	transformCmd.add_epilog("Specifying -m(esh) will disable -b.");
 	program.add_subparser(transformCmd);
 
 	// Set Epilog
@@ -154,8 +179,31 @@ main(int argc, char* argv[])
 
 	if (program.is_subcommand_used("transform"))
 	{
-		std::cerr << "Not yet implemented.\n";
-		std::exit(1);
+		auto inputPath = transformCmd.get<std::string>("input");
+		auto inputFormat = transformCmd.get<std::string>("--input-format");
+		std::cout << "Input path: " << inputPath
+			<< " (format: " << inputFormat << ")\n";
+
+		// Check if a mesh is specified. If so, use the FEM approach.
+		if (transformCmd.is_used("--mesh"))
+		{
+			auto meshPath = transformCmd.get<std::string>("--mesh");
+			std::cout << "Mesh specified: " << meshPath << "\n";
+			std::cout << "Invoking FEM implementation...\n";
+			TimeDependentSolver solver;
+
+			std::exit(0);
+		}
+		else
+		{
+			// Use the S2kit-based approach.
+			auto bandlimit = transformCmd.get<std::int16_t>("--bandlimit");
+			std::cout << "Bandlimit specified: " << bandlimit << "\n";
+			std::cout << "Invoking S2kit-based implementation...\n";
+			SpectralSolver solver;
+
+			std::exit(0);
+		}
 	}
 
 	// If command is not right, print program help
