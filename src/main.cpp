@@ -8,8 +8,10 @@ using argparse::nargs_pattern;
 using Cartosphere::ShapeFile;
 
 #include "cartosphere/research.hpp"
-using Cartosphere::TimeDependentSolver;
-using Cartosphere::SpectralSolver;
+
+#include "cartosphere/cartosphere.hpp"
+using Cartosphere::SpectralGlobe;
+using Cartosphere::FiniteElementGlobe;
 
 int
 runDemo(const std::string&, const std::vector<std::string>&);
@@ -82,6 +84,12 @@ main(int argc, char* argv[])
 		.help("Path of input file/folder")
 #if __APPLE__
 		.metavar("INPUT")
+#endif
+		;
+	transformCmd.add_argument("output")
+		.help("Path to output file/folder")
+#if __APPLE__
+		.metavar("OUTPUT")
 #endif
 		;
 	transformCmd.add_argument("-i", "--input-format")
@@ -184,14 +192,39 @@ main(int argc, char* argv[])
 		std::cout << "Input path: " << inputPath
 			<< " (format: " << inputFormat << ")\n";
 
+		auto outputPath = transformCmd.get<std::string>("output");
+		auto outputFormat = transformCmd.get<std::string>("--output-format");
+		std::cout << "Output path: " << outputPath
+			<< " (format: " << outputFormat << ")\n";
+		
+		std::cout << "Collecting points to be transformed...\n";
+		vector<Cartosphere::Point> points;
+		if (inputFormat == "shapefile")
+		{
+			ShapeFile shapefile;
+			string error;
+			if (!shapefile.open(inputPath, error))
+			{
+				std::cerr << "Error: " << error << '\n';
+				std::exit(1);
+			}
+			points = shapefile.gather();
+		}
+		else
+		{
+			std::cerr << "Unknown input format.\n";
+			std::exit(1);
+		}
+
 		// Check if a mesh is specified. If so, use the FEM approach.
 		if (transformCmd.is_used("--mesh"))
 		{
 			auto meshPath = transformCmd.get<std::string>("--mesh");
 			std::cout << "Mesh specified: " << meshPath << "\n";
 			std::cout << "Invoking FEM implementation...\n";
-			TimeDependentSolver solver;
+			FiniteElementGlobe solver;
 
+			solver.transform(points);
 			std::exit(0);
 		}
 		else
@@ -200,8 +233,9 @@ main(int argc, char* argv[])
 			auto bandlimit = transformCmd.get<std::int16_t>("--bandlimit");
 			std::cout << "Bandlimit specified: " << bandlimit << "\n";
 			std::cout << "Invoking S2kit-based implementation...\n";
-			SpectralSolver solver;
+			SpectralGlobe solver;
 
+			solver.transform(points);
 			std::exit(0);
 		}
 	}

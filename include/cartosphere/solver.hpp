@@ -76,17 +76,20 @@ namespace Cartosphere
 			_a = Vector(_A.cols());
 			_v = _m.vertices();
 		}
+
 		// Set mesh
 		void set(Function f)
 		{
 			_m.fill(_b, f, Cartosphere::Triangle::Integrator::Refinement5);
 		}
+
 		// Set mesh
 		void initialize(Function f)
 		{
 			std::transform(_v.begin(), _v.end(), _a.begin(), f);
 		}
-		// Advance
+
+		// Advance using forward Euler.
 		FLP advance(FLP timestep)
 		{
 			Matrix LHS = _A + _M / timestep;
@@ -117,17 +120,23 @@ namespace Cartosphere
 			}
 			return dist;
 		}
+
+		// Advance using Crank-Nicolson.
 		FLP advanceCrankNicolson(FLP timestep);
+
 		// Velocity
 		std::vector<FL3> velocity(const std::vector<Point>& p) const;
 		
 	protected:
 		// Finite-element Mesh
 		TriangularMesh _m;
+
 		// List of vertices
-		std::vector<Point> _v;
+		vector<Point> _v;
+
 		// Matrix for internal calculation
 		Matrix _A, _M;
+
 		// Vectors for internal calculation
 		Vector _b, _a;
 	};
@@ -143,13 +152,15 @@ namespace Cartosphere
 
 	public:
 		
-		void parse(const std::string& path);
+		void parse(const string& path);
+
+		void transform(vector<Cartosphere::Point> &points) const;
 
 		void execute();
 
-		std::string inputSummary() const;
+		string inputSummary() const;
 
-		std::string outputSummary() const;
+		string outputSummary() const;
 
 	protected:
 		// Bandlimit

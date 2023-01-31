@@ -2,6 +2,8 @@
 #ifndef __SHAPEFILE_HPP__
 #define __SHAPEFILE_HPP__
 
+#include "cartosphere/mesh.hpp"
+
 #include <memory>
 
 #include <vector>
@@ -92,6 +94,9 @@ namespace Cartosphere
 
 		// Outputs shape file as a matlab file
 		void to_matlab(const std::string &path) const;
+
+		// Offloads all points into a single vector
+		std::vector<Cartosphere::Point> gather() const;
 
 		// Count number of shapes
 		size_t count() const { return shapes.size(); }
