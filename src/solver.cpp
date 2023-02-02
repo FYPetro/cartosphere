@@ -1,7 +1,7 @@
 
 #include "cartosphere/solver.hpp"
 
-#include <fstream>
+#include <s2kit10/makeweights.h>
 
 using namespace Cartosphere;
 
@@ -11,7 +11,7 @@ SteadyStateSolver::solve(Function f)
 	// ***********************
 	// Build the linear system
 	// ***********************
-	
+
 	Matrix A;
 	_mesh.fill(A);
 
@@ -127,14 +127,26 @@ SpectralSolver::~SpectralSolver()
 }
 
 void
-SpectralSolver::parse(const std::string& path)
+SpectralSolver::ws_initialize()
 {
-	// Set a temporary bandlimit to test the code
-	_B = 16;
+	// Initial/Homogenized values and Fourier coefficients
+	int offset = 4 * pow(bandlimit, 2);
+	u0.reset(new FLP[offset]);
+	ut.reset(fftw_alloc_real(offset));
+	r0.reset(new FLP[offset]);
+	rt.reset(fftw_alloc_real(offset));
+
+	// Initialize weights used in S2-Fourier.
+	offset = 10 * pow(bandlimit, 2) + 24 * bandlimit;
+	ws.reset(fftw_alloc_real(offset));
+	makeweights(bandlimit, ws.get());
+
+	offset = 4 * bandlimit;
+	wt.reset(fftw_alloc_real(offset));
 }
 
 void
-SpectralSolver::execute()
+SpectralSolver::ws_execute()
 {
 	/*
 	// (Re)allocate memory if necessary
@@ -172,7 +184,7 @@ SpectralSolver::execute()
 		// Initialize the fftw plans
 		int rank, howmany_rank;
 		fftw_iodim dims[1], howmany_dims[1];
-		
+
 		// Starting with the FFT plan
 		// https://www.fftw.org/fftw3_doc/Guru-Real_002ddata-DFTs.html
 		rank = 1;
@@ -224,18 +236,8 @@ SpectralSolver::execute()
 	*/
 }
 
-std::string
-SpectralSolver::inputSummary() const
+void
+SpectralSolver::ws_destroy()
 {
-	std::stringstream sst;
 
-	return sst.str();
-}
-
-std::string
-SpectralSolver::outputSummary() const
-{
-	std::stringstream sst;
-
-	return sst.str();
 }

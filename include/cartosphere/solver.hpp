@@ -125,8 +125,8 @@ namespace Cartosphere
 		FLP advanceCrankNicolson(FLP timestep);
 
 		// Velocity
-		std::vector<FL3> velocity(const std::vector<Point>& p) const;
-		
+		vector<FL3> velocity(const std::vector<Point>& p) const;
+
 	protected:
 		// Finite-element Mesh
 		TriangularMesh _m;
@@ -145,47 +145,64 @@ namespace Cartosphere
 	class SpectralSolver
 	{
 	public:
-		// Constructor using just a bandlimit
-		SpectralSolver() = default;
+		// Constructor using default bandlimit
+		SpectralSolver() : SpectralSolver(0) {};
+
+		// Constructor using custom bandlimit
+		SpectralSolver(int B) : bandlimit(B) { ws_initialize(); }
+
+		// Disable copy constructor
+		SpectralSolver(const SpectralSolver &other) : bandlimit(solver.bandlimit)
+		{
+			int offset = 4 * pow(bandlimit, 2);
+			std::copy(other.u0, other.u0 + offset, u0);
+			std::copy(other.ut, other.ut + offset, ut);
+			std::copy(other.r0, other.r0 + offset, r0);
+			std::copy(other.rt, other.rt + offset, rt);
+
+			offset = 10 * pow(bandlimit, 2) + 24 * bandlimit;
+			std::copy(other.ws, other.ws + offset, ws);
+
+			offset = 4 * bandlimit;
+			std::copy(other.wt, other.wt + offset, wt);
+		}
+
 		// Destructor
-		~SpectralSolver();
+		~SpectralSolver() { if (ws != nullptr) ws_destroy(); }
 
 	public:
-		
-		void parse(const string& path);
-
-		void transform(vector<Cartosphere::Point> &points) const;
-
-		void execute();
-
-		string inputSummary() const;
-
-		string outputSummary() const;
+		// Velocity field calculation
+		vector<FL3> velocity(vector<Cartosphere::Point> &points) const;
 
 	protected:
 		// Bandlimit
-		int _bandlimit;
+		int bandlimit;
+
+		// Memory for diffusion solver
+		std::unique_ptr<FLP> u0, ut;
+
+		// Memory for Fourier transformations
+		std::unique_ptr<FLP> r0, rt;
+
+		// Memory reserved for S2kit
+		std::unique_ptr<FLP> ws, wt;
+
+		// FFTW plans
+		fftw_plan dct, idct, ws_dct, ws_idct;
+
 		// Initialize workspace
+		void ws_initialize();
+
+		// Execute workspace
+		void ws_execute();
 
 		// Destroy workspace
+		void ws_destroy();
 
-	private:
-		// Bandlimit allocated
-		int _B = 0;
-		// Memory for diffusion solver
-		std::unique_ptr<FLP> _u0, _ut;
-		// Memory for spherical harmonic transformations
-		std::unique_ptr<FLP> _re0, _im0, _ret, _imt;
-		// Memory reserved for S2kit
-		std::unique_ptr<FLP> _ws, _wt;
-		// FFTW Plan for Fast Fourier Transform
-		fftw_plan _fft = nullptr;
-		// FFTW Plan for Inverse Fast Fourier Transform
-		fftw_plan _ifft = nullptr;
-		// FFTW Plan for DCT-II
-		fftw_plan _dct = nullptr;
-		// FFTW Plan for DCT-III
-		fftw_plan _idct = nullptr;
+	public:
+		// Get/Set bandlimit
+		int get_bandlimit() const { return bandlimit; }
+		void set_bandlimit(int B) { if (B > 0) bandlimit = B; }
 	};
 }
 
