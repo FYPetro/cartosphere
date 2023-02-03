@@ -42,6 +42,7 @@ using std::ofstream;
 using std::stringstream;
 
 #include <iostream>
+#include <iomanip>
 
 // Eigen classes
 #pragma warning(push)

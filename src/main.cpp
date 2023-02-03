@@ -13,6 +13,8 @@ using Cartosphere::ShapeFile;
 using Cartosphere::SpectralGlobe;
 using Cartosphere::FiniteElementGlobe;
 
+#include "cartosphere/dsht.h"
+
 int
 runDemo(const std::string&, const std::vector<std::string>&);
 
@@ -35,6 +37,12 @@ main(int argc, char* argv[])
 #endif
 		;
 	program.add_subparser(demoCmd);
+
+	// Benchmark scenarios
+	// cartosphere benchmark
+	ArgumentParser benchmarkCmd("benchmark");
+	benchmarkCmd.add_description("Run a benchmark");
+	program.add_subparser(benchmarkCmd);
 
 	// Visualization mode
 	// cartosphere viz INPUT OUTPUT [-i INFMT] [-o OUTFMT]
@@ -141,6 +149,31 @@ main(int argc, char* argv[])
 		demoArgs.erase(demoArgs.begin());
 
 		return runDemo(scenario, demoArgs);
+	}
+
+	// Benchmark the entire program
+	if (program.is_subcommand_used("benchmark"))
+	{
+		std::cout << "[STARTING BENCHMARK]\n"
+			<< "#1: Discrete Real S2-Fourier Transforms\n"
+			<< "\t" << "| ## |  BW  | MEMORY (MB) | RUNTIME (s) |\n"
+			<< "\t" << "|---:|-----:|------------:|------------:|\n";
+		
+		std::ios_base::fmtflags f(std::cout.flags());
+		for (size_t i = 0; i <= 10; ++i)
+		{
+			int bandlimit = (int)pow(i + 1, 2);
+			std::cout << "\t"
+				<< "| " << std::setw(2) << (i + 1) << " "
+				<< "| " << std::setw(4) << bandlimit << " "
+				<< "| ";
+
+			fftw_real* hats = fftw_alloc_real(bandlimit * bandlimit);
+			fftw_real* data = fftw_alloc_real(4 * bandlimit * bandlimit);
+			auto ws2 = cs_make_ws2(bandlimit);
+			cs_ids2ht(bandlimit, hats, data);
+			cs_fds2ht(bandlimit, data, hats);
+		}
 	}
 
 	// Visualize a file

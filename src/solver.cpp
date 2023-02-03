@@ -1,8 +1,6 @@
 
 #include "cartosphere/solver.hpp"
 
-#include <s2kit10/makeweights.h>
-
 using namespace Cartosphere;
 
 void
@@ -129,20 +127,7 @@ SpectralSolver::~SpectralSolver()
 void
 SpectralSolver::ws_initialize()
 {
-	// Initial/Homogenized values and Fourier coefficients
-	int offset = 4 * pow(bandlimit, 2);
-	u0.reset(new FLP[offset]);
-	ut.reset(fftw_alloc_real(offset));
-	r0.reset(new FLP[offset]);
-	rt.reset(fftw_alloc_real(offset));
-
-	// Initialize weights used in S2-Fourier.
-	offset = 10 * pow(bandlimit, 2) + 24 * bandlimit;
-	ws.reset(fftw_alloc_real(offset));
-	makeweights(bandlimit, ws.get());
-
-	offset = 4 * bandlimit;
-	wt.reset(fftw_alloc_real(offset));
+	
 }
 
 void

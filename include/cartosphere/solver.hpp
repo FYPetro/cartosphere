@@ -152,19 +152,21 @@ namespace Cartosphere
 		SpectralSolver(int B) : bandlimit(B) { ws_initialize(); }
 
 		// Disable copy constructor
-		SpectralSolver(const SpectralSolver &other) : bandlimit(solver.bandlimit)
+		SpectralSolver(const SpectralSolver &other) : bandlimit(other.bandlimit)
 		{
-			int offset = 4 * pow(bandlimit, 2);
-			std::copy(other.u0, other.u0 + offset, u0);
-			std::copy(other.ut, other.ut + offset, ut);
-			std::copy(other.r0, other.r0 + offset, r0);
-			std::copy(other.rt, other.rt + offset, rt);
+			int offset = 4 * bandlimit * bandlimit;
+			std::copy(other.u0.get(), other.u0.get() + offset, u0.get());
+			std::copy(other.ut.get(), other.ut.get() + offset, ut.get());
+			std::copy(other.r0.get(), other.r0.get() + offset, r0.get());
+			std::copy(other.rt.get(), other.rt.get() + offset, rt.get());
 
-			offset = 10 * pow(bandlimit, 2) + 24 * bandlimit;
-			std::copy(other.ws, other.ws + offset, ws);
+			offset = 10 * bandlimit * bandlimit + 24 * bandlimit;
+			std::copy(other.ws.get(), other.ws.get() + offset, ws.get());
 
 			offset = 4 * bandlimit;
-			std::copy(other.wt, other.wt + offset, wt);
+			std::copy(other.wt.get(), other.wt.get() + offset, wt.get());
+
+			ws_initialize();
 		}
 
 		// Destructor
