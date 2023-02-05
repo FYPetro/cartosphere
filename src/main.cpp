@@ -13,7 +13,7 @@ using Cartosphere::ShapeFile;
 using Cartosphere::SpectralGlobe;
 using Cartosphere::FiniteElementGlobe;
 
-#include "cartosphere/dsht.h"
+#include "cartosphere/dsht.hpp"
 
 int
 runDemo(const std::string&, const std::vector<std::string>&);
@@ -155,25 +155,66 @@ main(int argc, char* argv[])
 	if (program.is_subcommand_used("benchmark"))
 	{
 		std::cout << "[STARTING BENCHMARK]\n"
-			<< "#1: Discrete Real S2-Fourier Transforms\n"
-			<< "\t" << "| ## |  BW  | MEMORY (MB) | RUNTIME (s) |\n"
-			<< "\t" << "|---:|-----:|------------:|------------:|\n";
-		
+			<< "#1: Discrete Real S2-Fourier Transforms\n\n"
+			<< "\t" << "| ## |  BW  | makews (s) | ids2ht (s) | fds2ht (s) |\n"
+			<< "\t" << "|---:|-----:|-----------:|-----------:|-----------:|\n";
+		// Save std::cout flags for later restoration
 		std::ios_base::fmtflags f(std::cout.flags());
-		for (size_t i = 0; i <= 10; ++i)
+		
+		// Bandlimits with default treatment: (0 <= i < 9)
+		//  - 2, 4, 8, 16, 32, 64, 128, 256, 512
+		// Bandlimits with special treatment: (9 <= i)
+		//  - 1024, 2048
+		for (size_t i = 0; i < 9; ++i)
 		{
-			int bandlimit = (int)pow(i + 1, 2);
+			int bandlimit = (int)pow(2, i + 1);
 			std::cout << "\t"
 				<< "| " << std::setw(2) << (i + 1) << " "
 				<< "| " << std::setw(4) << bandlimit << " "
-				<< "| ";
+				<< "| " << std::fixed << std::setprecision(3);
 
-			fftw_real* hats = fftw_alloc_real(bandlimit * bandlimit);
-			fftw_real* data = fftw_alloc_real(4 * bandlimit * bandlimit);
-			auto ws2 = cs_make_ws2(bandlimit);
-			cs_ids2ht(bandlimit, hats, data);
-			cs_fds2ht(bandlimit, data, hats);
+			// Allocate data and randomize the harmonics (hats)
+			double* hats = fftw_alloc_real(bandlimit * bandlimit);
+			double* data = fftw_alloc_real(4 * bandlimit * bandlimit);
+
+			// Make workspace
+			double* ws2;
+			{
+				auto begin = steady_clock::now();
+				ws2 = cs_make_ws2(bandlimit);
+				auto end = steady_clock::now();
+				auto elapsed = (double)
+					(duration_cast<milliseconds>(end - begin).count());
+				elapsed /= 1000;
+				std::cout << std::setw(10) << elapsed << " | ";
+			}
+			// Perform inverse transform (synthesis)
+			{
+				auto begin = steady_clock::now();
+				cs_ids2ht(bandlimit, hats, data, ws2);
+				auto end = steady_clock::now();
+				auto elapsed = (double)
+					(duration_cast<milliseconds>(end - begin).count());
+				elapsed /= 1000;
+				std::cout << std::setw(10) << elapsed << " | ";
+			}
+			// Perform forward transform (analysis)
+			{
+				auto begin = steady_clock::now();
+				cs_fds2ht(bandlimit, data, hats, ws2);
+				auto end = steady_clock::now();
+				auto elapsed = (double)
+					(duration_cast<milliseconds>(end - begin).count());
+				elapsed /= 1000;
+				std::cout << std::setw(10) << elapsed << " |\n";
+			}
+			// Free memory and reset std::cout
+			cs_free_ws2(ws2);
+			fftw_free(hats);
+			fftw_free(data);
+			std::cout.flags(f);
 		}
+		std::exit(0);
 	}
 
 	// Visualize a file
@@ -296,8 +337,8 @@ runDemo(const std::string& name, const std::vector<std::string>& args)
 	if (name == "testobj")
 		return test_obj();
 
-	if (name == "benchmark")
-		return benchmark();
+	// if (name == "benchmark")
+	// 	return benchmark();
 
 	if (name == "precompute")
 	{
@@ -391,7 +432,7 @@ runDemo(const std::string& name, const std::vector<std::string>& args)
 		<< "seminar            [---]\n"
 		<< "quadrature         [---]\n"
 		<< "testobj            [---]\n"
-		<< "benchmark          [---]\n"
+		// << "benchmark          [---]\n"
 		<< "precompute         [---]\n"
 		<< "refine LEVEL       [---]\n"
 		<< "A                  [Research A]\n"

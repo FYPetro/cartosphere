@@ -657,10 +657,10 @@ namespace Cartosphere
 		FLP lebesgue(const std::vector<FLP>& weights, const Function& func,
 			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
 		// FEM: Generate inner products of the gradients of finite elements
-		void fill(Matrix& A,
+		void fill(CSR_Matrix& A,
 			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
 		// FEM: Generate inner products of finite elements and their gradients
-		void fill(Matrix& A, Matrix& M,
+		void fill(CSR_Matrix& A, CSR_Matrix& M,
 			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
 		// FEM: Discretize an external force parametrized by x, y, and z.
 		void fill(Vector& b, Function f,

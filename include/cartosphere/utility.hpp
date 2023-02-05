@@ -41,8 +41,13 @@ using std::ofstream;
 #include <sstream>
 using std::stringstream;
 
+// Terminal output
 #include <iostream>
 #include <iomanip>
+#include <chrono>
+using std::chrono::steady_clock;
+using std::chrono::duration_cast;
+using std::chrono::milliseconds;
 
 // Eigen classes
 #pragma warning(push)
@@ -50,12 +55,15 @@ using std::stringstream;
 #include <Eigen/Core>
 using Vector = Eigen::Matrix<FLP, Eigen::Dynamic, 1>;
 
+#include <Eigen/Dense>
+using Matrix = Eigen::Matrix<FLP, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+
 #include <Eigen/SparseCore>
-using Matrix = Eigen::SparseMatrix<FLP, Eigen::RowMajor>;
+using CSR_Matrix = Eigen::SparseMatrix<FLP, Eigen::RowMajor>;
 using Entry = Eigen::Triplet<FLP>;
 
 #include <Eigen/IterativeLinearSolvers>
-using Solver = Eigen::BiCGSTAB<Matrix, Eigen::IncompleteLUT<Matrix::Scalar>>;
+using BiCGSTAB_iLUT_Solver = Eigen::BiCGSTAB<CSR_Matrix, Eigen::IncompleteLUT<CSR_Matrix::Scalar>>;
 #pragma warning(pop)
 
 // Numerics, algorithms, and functionals

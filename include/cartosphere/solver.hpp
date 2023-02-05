@@ -53,9 +53,9 @@ namespace Cartosphere
 			// Attempt to correct the matrix A
 			for (int k = 0; k < _A.outerSize(); ++k)
 			{
-				Matrix::InnerIterator it_diag;
+				CSR_Matrix::InnerIterator it_diag;
 				FLP sum_offdiag = 0;
-				for (Matrix::InnerIterator it(_A, k); it; ++it)
+				for (CSR_Matrix::InnerIterator it(_A, k); it; ++it)
 				{
 					it.row();   // row index
 					it.col();   // col index (here it is equal to k)
@@ -92,10 +92,10 @@ namespace Cartosphere
 		// Advance using forward Euler.
 		FLP advance(FLP timestep)
 		{
-			Matrix LHS = _A + _M / timestep;
+			CSR_Matrix LHS = _A + _M / timestep;
 			Vector RHS = _b + _M / timestep * _a;
 
-			Solver s(LHS);
+			BiCGSTAB_iLUT_Solver s(LHS);
 			Vector a = s.solve(RHS);
 
 			Vector _aprev = _a;
@@ -135,7 +135,7 @@ namespace Cartosphere
 		vector<Point> _v;
 
 		// Matrix for internal calculation
-		Matrix _A, _M;
+		CSR_Matrix _A, _M;
 
 		// Vectors for internal calculation
 		Vector _b, _a;
@@ -175,6 +175,9 @@ namespace Cartosphere
 	public:
 		// Velocity field calculation
 		vector<FL3> velocity(vector<Cartosphere::Point> &points) const;
+
+		// Advance a timestep
+		void advance(double t);
 
 	protected:
 		// Bandlimit

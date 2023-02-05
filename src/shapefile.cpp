@@ -236,3 +236,13 @@ ShapeFile::to_matlab(const string &outPath) const
 	ofs << "%% Write your code here\n";
 	ofs.close();
 }
+
+vector<Cartosphere::Point>
+ShapeFile::gather() const
+{
+	vector<Cartosphere::Point> points;
+
+	// TODO: gather the points
+
+	return points;
+}

@@ -1683,7 +1683,7 @@ Cartosphere::TriangularMesh::refine(size_t division)
 }
 
 void
-Cartosphere::TriangularMesh::fill(Matrix& A, Triangle::Integrator intr) const
+Cartosphere::TriangularMesh::fill(CSR_Matrix& A, Triangle::Integrator intr) const
 {
 	auto stat = statistics();
 
@@ -1869,7 +1869,7 @@ Cartosphere::TriangularMesh::fill(Matrix& A, Triangle::Integrator intr) const
 }
 
 void
-Cartosphere::TriangularMesh::fill(Matrix& A, Matrix& M, Triangle::Integrator intr) const
+Cartosphere::TriangularMesh::fill(CSR_Matrix& A, CSR_Matrix& M, Triangle::Integrator intr) const
 {
 	// 1. Build the gradient inner matrix
 	fill(A, intr);

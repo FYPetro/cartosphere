@@ -5,7 +5,7 @@
 #include "cartosphere/solver.hpp"
 
 /* Build a linear system for the demo program */
-void build_system(const Cartosphere::TriangularMesh& mesh, Matrix& A, Vector& b);
+void build_system(const Cartosphere::TriangularMesh& mesh, CSR_Matrix& A, Vector& b);
 
 /* Demo */
 int demo();

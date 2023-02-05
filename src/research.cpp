@@ -14,7 +14,7 @@ using Cartosphere::ShapeFile;
 
 #include "cartosphere/functions.hpp"
 
-void build_system(const TriangularMesh& mesh, Matrix& A, Vector& b)
+void build_system(const TriangularMesh& mesh, CSR_Matrix& A, Vector& b)
 {
 	mesh.fill(A);
 
@@ -57,10 +57,10 @@ int demo()
 	}
 
 	// Build and solve Ax=b
-	Matrix A;
+	CSR_Matrix A;
 	Vector b;
 	build_system(mesh, A, b);
-	Solver s(A);
+	BiCGSTAB_iLUT_Solver s(A);
 	Vector x = s.solve(b);
 
 
@@ -159,15 +159,15 @@ int demo_diffusion()
 	}
 
 	// Build relevant matrices
-	Matrix A, M;
+	CSR_Matrix A, M;
 	mesh.fill(A, M, Triangle::Integrator::Refinement5);
 
 	// Attempt to correct the matrix A
 	for (int k = 0; k < A.outerSize(); ++k)
 	{
-		Matrix::InnerIterator it_diag;
+		CSR_Matrix::InnerIterator it_diag;
 		FLP sum_offdiag = 0;
-		for (Matrix::InnerIterator it(A, k); it; ++it)
+		for (CSR_Matrix::InnerIterator it(A, k); it; ++it)
 		{
 			it.row();   // row index
 			it.col();   // col index (here it is equal to k)
@@ -214,10 +214,10 @@ int demo_diffusion()
 	{
 		FLP duration = time_elapsed / time_steps;
 
-		Matrix LHS = A + M / duration;
+		CSR_Matrix LHS = A + M / duration;
 		Vector RHS = b + M / duration * v_prev;
 
-		Solver s(LHS);
+		BiCGSTAB_iLUT_Solver s(LHS);
 		v_curr = s.solve(RHS);
 
 		// Convergence criterion
@@ -382,13 +382,13 @@ int convergence()
 
 		// Construct mesh and linear system
 		TriangularMesh mesh(path);
-		Matrix A;
+		CSR_Matrix A;
 		Vector b;
 		mesh.fill(A);
 		mesh.fill(b, f);
 
 		// Solve the linear system
-		Solver s(A);
+		BiCGSTAB_iLUT_Solver s(A);
 		Vector x = s.solve(b);
 
 		// Evaluate the exact solution at the given vertices
@@ -575,7 +575,7 @@ int research_a()
 		std::transform(vs.begin(), vs.end(), u_inf.begin(), u_inf_func);
 
 		// Build the linear system
-		Matrix A, M;
+		CSR_Matrix A, M;
 		Vector F;
 		m.fill(A, M);
 		m.fill(F, f_func);
@@ -591,10 +591,10 @@ int research_a()
 		{
 			FLP duration = time_elapsed / time_steps;
 
-			Matrix LHS = A + M / duration;
+			CSR_Matrix LHS = A + M / duration;
 			Vector RHS = F + M * u_prev / duration;
 
-			Solver s(LHS);
+			BiCGSTAB_iLUT_Solver s(LHS);
 			u_curr = s.solve(RHS);
 		}
 
@@ -1027,17 +1027,14 @@ int research_g(const std::string &folder)
 int
 benchmark()
 {
-	std::cout << "HERE WE GO AGAIN\n";
-
-	SpectralSolver s;
-	s.parse("population.csm");
-
-	std::cout << s.inputSummary() << std::endl;
-	s.execute();
-
-	std::cout << s.outputSummary() << std::endl;
-
-	std::cout << "EVERYTHING PASSED!\n";
-
+	// SpectralSolver s;
+	// s.parse("population.csm");
+	//
+	// std::cout << s.inputSummary() << std::endl;
+	// s.execute();
+	//
+	// std::cout << s.outputSummary() << std::endl;
+	//
+	// std::cout << "EVERYTHING PASSED!\n";
 	return 0;
 }

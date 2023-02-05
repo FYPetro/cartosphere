@@ -10,7 +10,7 @@ SteadyStateSolver::solve(Function f)
 	// Build the linear system
 	// ***********************
 
-	Matrix A;
+	CSR_Matrix A;
 	_mesh.fill(A);
 
 	Vector F;
@@ -20,7 +20,7 @@ SteadyStateSolver::solve(Function f)
 	// Solve the linear system
 	// ***********************
 
-	Solver kernel(A);
+	BiCGSTAB_iLUT_Solver kernel(A);
 	Vector x = kernel.solve(F);
 
 	// ******************
@@ -63,10 +63,10 @@ SteadyStateSolver::solve(Function f)
 FLP
 TimeDependentSolver::advanceCrankNicolson(FLP timestep)
 {
-	Matrix LHS = _A / 2 + _M / timestep;
+	CSR_Matrix LHS = _A / 2 + _M / timestep;
 	Vector RHS = _b + (_M / timestep - _A / 2) * _a;
 
-	Solver s(LHS);
+	BiCGSTAB_iLUT_Solver s(LHS);
 	Vector a = s.solve(RHS);
 
 	_a = a;
@@ -119,9 +119,21 @@ TimeDependentSolver::velocity(const std::vector<Point>& p) const
 	// return u;
 }
 
-SpectralSolver::~SpectralSolver()
+vector<FL3>
+SpectralSolver::velocity(vector<Cartosphere::Point>& points) const
 {
+	vector<FL3> v;
 
+	// TODO: compute velocity
+
+	return v;
+}
+
+
+void
+SpectralSolver::advance(double time)
+{
+	// TODO: advance time
 }
 
 void
