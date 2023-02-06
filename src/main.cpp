@@ -159,7 +159,8 @@ main(int argc, char* argv[])
 			<< "\t" << "| ## |  BW  | makews (s) | ids2ht (s) | fds2ht (s) |\n"
 			<< "\t" << "|---:|-----:|-----------:|-----------:|-----------:|\n";
 		// Save std::cout flags for later restoration
-		std::ios_base::fmtflags f(std::cout.flags());
+		std::ios oldCoutState(nullptr);
+		oldCoutState.copyfmt(std::cout);
 		
 		// Bandlimits with default treatment: (0 <= i < 9)
 		//  - 2, 4, 8, 16, 32, 64, 128, 256, 512
@@ -171,7 +172,8 @@ main(int argc, char* argv[])
 			std::cout << "\t"
 				<< "| " << std::setw(2) << (i + 1) << " "
 				<< "| " << std::setw(4) << bandlimit << " "
-				<< "| " << std::fixed << std::setprecision(3);
+				<< "| ";
+			std::cout.copyfmt(oldCoutState);
 
 			// Allocate data and randomize the harmonics (hats)
 			double* hats = fftw_alloc_real(bandlimit * bandlimit);
@@ -183,36 +185,41 @@ main(int argc, char* argv[])
 				auto begin = steady_clock::now();
 				ws2 = cs_make_ws2(bandlimit);
 				auto end = steady_clock::now();
+
 				auto elapsed = (double)
-					(duration_cast<milliseconds>(end - begin).count());
-				elapsed /= 1000;
-				std::cout << std::setw(10) << elapsed << " | ";
+					(duration_cast<milliseconds>(end - begin).count()) / 1000;
+				std::cout << std::setw(10)
+					<< std::fixed << std::setprecision(3) << elapsed << " | ";
+				std::cout.copyfmt(oldCoutState);
 			}
 			// Perform inverse transform (synthesis)
 			{
 				auto begin = steady_clock::now();
 				cs_ids2ht(bandlimit, hats, data, ws2);
 				auto end = steady_clock::now();
+
 				auto elapsed = (double)
-					(duration_cast<milliseconds>(end - begin).count());
-				elapsed /= 1000;
-				std::cout << std::setw(10) << elapsed << " | ";
+					(duration_cast<milliseconds>(end - begin).count()) / 1000;
+				std::cout << std::setw(10)
+					<< std::fixed << std::setprecision(3) << elapsed << " | ";
+				std::cout.copyfmt(oldCoutState);
 			}
 			// Perform forward transform (analysis)
 			{
 				auto begin = steady_clock::now();
 				cs_fds2ht(bandlimit, data, hats, ws2);
 				auto end = steady_clock::now();
+
 				auto elapsed = (double)
-					(duration_cast<milliseconds>(end - begin).count());
-				elapsed /= 1000;
-				std::cout << std::setw(10) << elapsed << " |\n";
+					(duration_cast<milliseconds>(end - begin).count()) / 1000;
+				std::cout << std::setw(10)
+					<< std::fixed << std::setprecision(3) << elapsed << " | \n";
+				std::cout.copyfmt(oldCoutState);
 			}
 			// Free memory and reset std::cout
 			cs_free_ws2(ws2);
 			fftw_free(hats);
 			fftw_free(data);
-			std::cout.flags(f);
 		}
 		std::exit(0);
 	}

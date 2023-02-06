@@ -21,6 +21,6 @@ double* cs_make_ws2(int B);
 void cs_free_ws2(double* ws2);
 
 // Fetch
-double* cs_ws2_cosPlms(int B, int l, int m, double* ws2);
+double* cs_ws2_reCosPlms(int B, int l, int m, double* ws2);
 
 #endif // !__DSHT_H__
