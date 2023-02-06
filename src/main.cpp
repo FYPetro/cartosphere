@@ -195,7 +195,7 @@ main(int argc, char* argv[])
 			// Perform inverse transform (synthesis)
 			{
 				auto begin = steady_clock::now();
-				cs_ids2ht(bandlimit, hats, data, ws2);
+				// cs_ids2ht(bandlimit, hats, data, ws2);
 				auto end = steady_clock::now();
 
 				auto elapsed = (double)
@@ -207,7 +207,7 @@ main(int argc, char* argv[])
 			// Perform forward transform (analysis)
 			{
 				auto begin = steady_clock::now();
-				cs_fds2ht(bandlimit, data, hats, ws2);
+				// cs_fds2ht(bandlimit, data, hats, ws2);
 				auto end = steady_clock::now();
 
 				auto elapsed = (double)
