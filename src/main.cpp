@@ -156,8 +156,8 @@ main(int argc, char* argv[])
 	{
 		std::cout << "[STARTING BENCHMARK]\n"
 			<< "#1: Discrete Real S2-Fourier Transforms\n\n"
-			<< "\t" << "| ## |  BW  | makews (s) | ids2ht (s) | fds2ht (s) |\n"
-			<< "\t" << "|---:|-----:|-----------:|-----------:|-----------:|\n";
+			<< "\t" << "| ## |  BW  | algorithm | makews (s) | ids2ht (s) | fds2ht (s) |\n"
+			<< "\t" << "|---:|-----:|:---------:|-----------:|-----------:|-----------:|\n";
 		// Save std::cout flags for later restoration
 		std::ios oldCoutState(nullptr);
 		oldCoutState.copyfmt(std::cout);
@@ -171,15 +171,31 @@ main(int argc, char* argv[])
 			int bandlimit = (int)pow(2, i + 1);
 			std::cout << "\t"
 				<< "| " << std::setw(2) << (i + 1) << " "
-				<< "| " << std::setw(4) << bandlimit << " "
-				<< "| ";
+				<< "| " << std::setw(4) << bandlimit;
 			std::cout.copyfmt(oldCoutState);
+			if (bandlimit <= 512)
+			{
+				std::cout << " | tablebase | ";
+			}
+			else
+			{
+				std::cout << " | recursive | ";
+			}
 
 			// Allocate data and randomize the harmonics (hats)
-			double* hats = fftw_alloc_real(bandlimit * bandlimit);
-			double* data = fftw_alloc_real(4 * bandlimit * bandlimit);
+			fftw_real* hats = fftw_alloc_real(bandlimit * bandlimit);
+			fftw_real* data = fftw_alloc_real(4 * bandlimit * bandlimit);
 
-			// Make workspace
+			// Experiment with a simple case and compare to matlab
+			for (int l = 0; l < bandlimit; ++l)
+			{
+				for (int m = -l; m <= l; ++m)
+				{
+					hats[cs_index2(bandlimit, l, m)] = 1.0 / (l + abs(m) + 1);
+				}
+			}
+
+			// Make scratchpad, plans, and workspace
 			double* ws2;
 			{
 				auto begin = steady_clock::now();
@@ -195,7 +211,14 @@ main(int argc, char* argv[])
 			// Perform inverse transform (synthesis)
 			{
 				auto begin = steady_clock::now();
-				// cs_ids2ht(bandlimit, hats, data, ws2);
+				int N = 2 * bandlimit;
+				fftw_real* scratchpad = fftw_alloc_real(N * N * 2);
+				fftw_plan idct, idst;
+				cs_make_plans2(bandlimit, scratchpad, &idct, &idst);
+				cs_ids2ht(bandlimit, hats, data, ws2, scratchpad, idct, idst);
+				fftw_destroy_plan(idct);
+				fftw_destroy_plan(idst);
+				fftw_free(scratchpad);
 				auto end = steady_clock::now();
 
 				auto elapsed = (double)

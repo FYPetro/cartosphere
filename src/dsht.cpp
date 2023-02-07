@@ -17,8 +17,38 @@ constexpr auto legendre = [](auto &&...args) {
 using std::legendre;
 #endif
 
+int
+cs_index2(int B, int l, int m)
+{
+	// Format of harmonics: (l,m) with l the degree, m the order
+	//
+	//     For each row in each triangular part, m is constant,
+	//     and as we move right in each row, l increments by 1.
+	//     |<-------------- B items, row-major -------------->|
+	//   - +--------------------------------------------------+
+	//   ^ |_h(__0,_____0)_  h(1, 0)      ...      h(B-1,  0) | UPPER
+	//   | | h(B-1,-(B-1)) |_h(1,_1)_     ...      h(B-1,  1) | TRIANGLE
+	//   B |      ...          ...   |____...____      ...    | IS FOR
+	//   v | h(  1,    -1)     ...     h(B-1,-1) | h(B-1,B-1) | m >= 0
+	//   - +-------------------------------------+------------+
+	//       STRICTLY LOWER TRIANGLE IS FOR m < 0
+
+	// The upper triangular part is indexed like a regular square
+	if (m >= 0)
+	{
+		return B * m + l;
+	}
+	// The strictly lower triangular part is indexed like a parallelogram
+	// For the row m: there are (B-|m|) rows above it, and degree begins at |m|
+	else
+	{
+		m = -m;
+		return B * (B - m) + (l - m);
+	}
+}
+
 void
-cs_fds2ht(int B, fftw_real* data, fftw_real* harmonics, double* ws2)
+cs_fds2ht(int B, double* data, double* harmonics, double* ws2)
 {
 	int N = 2 * B;
 
@@ -48,82 +78,273 @@ cs_fds2ht(int B, fftw_real* data, fftw_real* harmonics, double* ws2)
 
 void
 cs_ids2ht(int B, double* harmonics, double* data, double* ws2,
-	fftw_real* scratchpad, fftw_plan plan)
+	fftw_real* scratchpad, fftw_plan idct, fftw_plan idst)
 {
 	int N = 2 * B;
 
-	// Scratchpad consists of N * N inputs then N * N outputs
-	// Clear the input portion of the scratchpad
-	memset(scratchpad, 0, N * N * sizeof(double));
+	// if (B == 2)
+	// {
+	// 	std::cout << "\nDEBUG: print harmonics per format\n";
+	// 	for (int m = 0; m < B; ++m)
+	// 	{
+	// 		for (int l = B - m; l < B; ++l)
+	// 		{
+	// 			std::cout << "  "
+	// 				<< "B_{" << l << "," << (m - B) << "} = "
+	// 				<< harmonics[cs_index2(B, l, (m - B))];
+	// 		}
+	// 		for (int l = m; l < B; ++l)
+	// 		{
+	// 			std::cout << "  "
+	// 				<< "B_{" << l << "," << m << "} = "
+	// 				<< harmonics[cs_index2(B, l, m)];
+	// 		}
+	// 		std::cout << "\n";
+	// 	}
+	// }
 
-	// Format of harmonics: (l,m) with l the degree, m the order
-	//
-	//     For each row in each triangular part, m is constant,
-	//     and as we move right in each row, l increments by 1.
-	//     |<-------------- B items, row-major -------------->|
-	//   - +--------------------------------------------------+
-	//   ^ |_h(__0,_____0)_  h(1, 0)      ...      h(B-1,  0) | UPPER
-	//   | | h(B-1,-(B-1)) |_h(1,_1)_     ...      h(B-1,  1) | TRIANGLE
-	//   B |      ...          ...   |____...____      ...    | IS FOR
-	//   | | h(  1,    -1)     ...     h(B-1,-1) | h(B-1,B-1) | m >= 0
-	//   v +-------------------------------------+------------+
-	//       STRICTLY LOWER TRIANGLE IS FOR m < 0
-
-	// Retrieve renormalized P_{l,m} per x_{j}-file
-	// This file is already in upper triangular form
-	auto rePlmCosFile = cs_ws2_rePlmCosFile(B, 0, ws2);
+	// Clear output data and the entire scratchpad
+	memset(data, 0, N * N * sizeof(double));
+	memset(scratchpad, 0, N * N * 2 * sizeof(double));
 
 	// Compute 1D fourier coefficients for the northern hemisphere first
 	// Cosine and sine coefficients are interwoven in the same matrix!
-	fftw_real* amj = scratchpad;
-	fftw_real* bmj = scratchpad + 1;
-	for (int j = 0; j < B; ++j)
+	for (int j = 0; j < N; ++j)
 	{
-		auto rePlmCos = rePlmCosFile + (N * j);
+		fftw_real* amj = scratchpad + (2 * N * j);
+		fftw_real* bmj = amj + N;
+		// Retrieve renormalized P_{l,m} per x_{j}-file
+		// This file is already in upper triangular form
+		auto rePlmCos = cs_ws2_rePlmCosFile(B, j, ws2);
 		// Compute the cosine coefficients
-		for (int m = 0; m < B; ++m, amj += 2)
+		for (int m = 0; m < B; ++m, ++amj)
 		{
 			// Compute element-wise product between...
 			// 1: ROW m of UPPER TRIANGLE of HARMONICS
 			// 2: ROW m of UPPER TRIANGLE rePlmCosFile for x_{j}
 			auto row1 = harmonics + (B * m);
-			auto row2 = rePlmCos + (B * m);
+			auto row2 = rePlmCos + (2 * B - m + 1) * m / 2;
 			for (int l = m; l < B; ++l)
 			{
-				amj += row1[l] * row2[l];
+				*amj += row1[l] * row2[l - m];
 			}
 		}
 		// Compute the sine coefficients
-		for (int m = 1; m < B; ++m, bmj += 2)
+		for (int m = 1; m < B; ++m, ++bmj)
 		{
 			// Compute element-wise product between...
 			// 1: ROW B-m of LOWER TRIANGLE of HARMONICS, shifted by m
 			// 2: ROW   m of UPPER TRIANGLE rePlmCosFile for x_{j}
 			auto row1 = harmonics + (B * (B - m)) - m;
-			auto row2 = rePlmCos + (B * m);
+			auto row2 = rePlmCos + (2 * B - m + 1) * m / 2;
 			for (int l = m; l < B; ++l)
 			{
-				bmj += row1[l] * row2[l];
+				*bmj += row1[l] * row2[l - m];
 			}
 		}
 		// Zero out the final sine coefficient
-		*bmj = 0;
-		bmj += 2;
+		*bmj++ = 0;
 	}
-	// Account for FFTW normalization
-	// Perform split mixed DCT-III and DST-III
-	fftw_execute(plan);
-	// Copy results to the horthern hemisphere
-	// Tune 1D fourier coefficients for the southern hemisphere
-	// Perform split mixed DCT-III and DST-III
-	// Copy results to the southern hemisphere
+
+	// if (B == 2)
+	// {
+	// 	std::cout << "\nDEBUG: DCT-III coefficients\n";
+	// 	for (int j = 0; j < N; ++j)
+	// 	{
+	// 		for (int m = 0; m < B; ++m)
+	// 		{
+	// 			std::cout << "  "
+	// 				<< "a_{" << j << "," << m << "} = "
+	// 				<< scratchpad[2 * N * j + m];
+	// 		}
+	// 		std::cout << "\n";
+	// 	}
+	// }
+	// if (B == 2)
+	// {
+	// 	std::cout << "\nDEBUG: DST-III coefficients\n";
+	// 	for (int j = 0; j < N; ++j)
+	// 	{
+	// 		for (int m = 0; m < B; ++m)
+	// 		{
+	// 			std::cout << "  "
+	// 				<< "b_{" << j << "," << m << "} = "
+	// 				<< scratchpad[2 * N * j + N + m];
+	// 		}
+	// 		std::cout << "\n";
+	// 	}
+	// 	std::cout << "\n";
+	// }
+
+	// Account for normalization (FFTW to C++17)
+	for (int j = 0; j < N; ++j)
+	{
+		// All DCT-III coefficients with m != 0 must be divided by 2
+		auto* target = scratchpad + (2 * N * j + 1);
+		for (int k = 1; k < B; ++k)
+		{
+			*target++ *= 0.5;
+		}
+		// All DCT-III coefficients with m != B-1 must be divided by 2
+		// Note that the final coefficient is zero, so it need not be modified
+		target += B;
+		for (int k = 0; k < B - 1; ++k)
+		{
+			*target++ *= 0.5;
+		}
+	}
+	// Perform D{C,S}T-III
+	fftw_execute(idct); fftw_execute(idst);
+	// Copy results to the eastern hemisphere
+	for (int j = 0; j < N; ++j)
+	{
+		// Aggregate data due to DCT-III
+		auto* target = data + (N * j);
+		auto* source = scratchpad + (2 * N * j + B);
+		for (int k = 0; k < B; ++k)
+		{
+			*target++ += *source++;
+		}
+		// Aggregate data due to DST-III
+		target = data + (N * j);
+		source += B;
+		for (int k = 0; k < B; ++k)
+		{
+			*target++ += *source++;
+		}
+	}
+
+	// if (B == 2)
+	// {
+	// 	std::cout << "\nDEBUG: cosine contributions\n";
+	// 	for (int j = 0; j < N; ++j)
+	// 	{
+	// 		for (int m = 0; m < B; ++m)
+	// 		{
+	// 			std::cout << "  "
+	// 				<< "A_{" << j << "," << m << "} = "
+	// 				<< scratchpad[2 * N * j + B + m];
+	// 		}
+	// 		std::cout << "\n";
+	// 	}
+	// }
+	// if (B == 2)
+	// {
+	// 	std::cout << "\nDEBUG: sine contributions\n";
+	// 	for (int j = 0; j < N; ++j)
+	// 	{
+	// 		for (int m = 0; m < B; ++m)
+	// 		{
+	// 			std::cout << "  "
+	// 				<< "B_{" << j << "," << m << "} = "
+	// 				<< scratchpad[2 * N * j + N + B + m];
+	// 		}
+	// 		std::cout << "\n";
+	// 	}
+	// 	std::cout << "\n";
+	// }
+
+	// Tune coefficients for the western hemisphere
+	for (int j = 0; j < N; ++j)
+	{
+		// For every two DCT-III columns, negate the second
+		auto* target = scratchpad + (2 * N * j + 1);
+		for (int k = 0; k < B; k += 2, target += 2)
+		{
+			*target *= -1.0;
+		}
+		// For every two DST-III columns, negate the first
+		target += B - 1;
+		for (int k = B; k < N; k += 2, target += 2)
+		{
+			*target *= -1.0;
+		}
+	}
+	// Perform D{C,S}T-III
+	fftw_execute(idct); fftw_execute(idst);
+	// Copy results to the western hemisphere
+	for (int j = 0; j < N; ++j)
+	{
+		// Aggregate data due to DCT-III
+		auto* target = data + (N * j + B);
+		auto* source = scratchpad + (2 * N * j + B);
+		for (int k = B; k < N; ++k)
+		{
+			*target++ += *source++;
+		}
+		// Aggregate data due to DST-III
+		target = data + (N * j + B);
+		source += B;
+		for (int k = B; k < N; ++k)
+		{
+			*target++ += *source++;
+		}
+	}
+
+	// if (B == 2)
+	// {
+	// 	std::cout << "\nDEBUG: synthesized data\n";
+	// 	for (int j = 0; j < N; ++j)
+	// 	{
+	// 		for (int k = 0; k < N; ++k)
+	// 		{
+	// 			std::cout << "  u_{" << j << "," << k << "} = " << data[N * j + k];
+	// 		}
+	// 		std::cout << "\n";
+	// 	}
+	// 	std::cout << "\n";
+	// }
 }
 
-fftw_plan
-cs_ids2ht_plan(int B, fftw_real* scratchpad)
+void
+cs_make_plans2(int B,
+	fftw_real* scratchpad, fftw_plan* ptr_idct, fftw_plan* ptr_idst)
 {
-	fftw_plan plan;
-	return plan;
+	int N = 2 * B;
+
+	// For each D{C,S}T-III...
+	// Perform rank-1 (1-dimensional)
+	int rank = 1;
+	// ... of input length B
+	int n[] = { B };
+	// ... for N batches
+	int howmany = { N };
+
+	// The first input element is at
+	fftw_real* in = scratchpad;
+	// The input of each batch is n-shaped (hence NULL)
+	int* inembed = NULL;
+	// The stride of each element within each input batch
+	int istride = 1;
+	// The stride of the first input element across all batches
+	int idist = 2 * N;
+
+	// The first output element is at
+	fftw_real* out = in + B;
+	// The output of each batch is n-shaped (hence NULL)
+	int* onembed = NULL;
+	// The stride of each element within each output batch
+	int ostride = 1;
+	// The stride of the first output element across all batches
+	int odist = 2 * N;
+
+	// Perform DCT-III for each batch
+	fftw_r2r_kind kind[] = { FFTW_REDFT01 };
+	// Default runtime flags
+	auto flags = FFTW_ESTIMATE;
+
+	// Create DCT-III plan using the advanced real-to-real interface
+	*ptr_idct = fftw_plan_many_r2r(rank, n, howmany,
+		in, inembed, istride, idist,
+		out, onembed, ostride, odist,
+		kind, flags);
+
+	// Create DST-III plan using the advanced real-to-real interface
+	in += N; out += N; kind[0] = FFTW_RODFT01;
+	*ptr_idst = fftw_plan_many_r2r(rank, n, howmany,
+		in, inembed, istride, idist,
+		out, onembed, ostride, odist,
+		kind, flags);
 }
 
 double*
@@ -301,7 +522,7 @@ cs_make_ws2(int B)
 		for (int k = 0; k < N; ++k)
 		{
 			double phi = 2 * M_PI * ((k + 0.5) / N);
-			
+
 			// -B < m < 0
 			for (int m = B - 1; m > 0; --m)
 			{
@@ -319,16 +540,14 @@ cs_make_ws2(int B)
 		}
 	}
 
-	// Debug Block 5
-	// if (B == 4)
+	// if (B == 2)
 	// {
-	// 	std::cout << "\nDEBUG:\n";
+	// 	std::cout << "\nDEBUG: cs_make_ws2 workspace block 5\n";
 	// 	for (int l = 0; l < B; ++l)
 	// 	{
 	// 		for (int m = 0; m <= l; ++m)
 	// 		{
-	// 			double* Plms = cs_ws2_rePlmRank(B, l, m, ws2);
-	//
+	// 			double* Plms = cs_ws2_rePlmCosRank(B, l, m, ws2);
 	// 			std::cout << "~P_{" << l << "," << m << "} =\n";
 	// 			for (int j = 0; j < N; ++j)
 	// 			{
@@ -337,7 +556,6 @@ cs_make_ws2(int B)
 	// 			std::cout << "\n";
 	// 		}
 	// 	}
-	// 	std::cout << "\n";
 	// }
 
 	// [Block 6] Transposed table
@@ -346,13 +564,12 @@ cs_make_ws2(int B)
 	{
 		// Generate N-striding pointers
 		auto sourcePtr = blocks[5];
-		auto stridingPtr = samples;
+		auto sample = samples;
 		for (int m = 0; m < B; ++m)
 		{
-			for (int l = m; l < B; ++l)
+			for (int l = m; l < B; ++l, sourcePtr += N)
 			{
-				*(stridingPtr++) = sourcePtr;
-				sourcePtr += N;
+				*sample++ = sourcePtr;
 			}
 		}
 		// For each j, fetch from N-striding pointers
@@ -360,12 +577,12 @@ cs_make_ws2(int B)
 		for (int j = 0; j < N; ++j)
 		{
 			auto target = cs_ws2_rePlmCosFile(B, j, ws2);
-			auto stridingPtrPtr = samples;
+			auto fileSample = samples;
 			for (int m = 0; m < B; ++m)
 			{
 				for (int l = m; l < B; ++l)
 				{
-					*(target++) = **(stridingPtrPtr++);
+					*(target++) = **(fileSample++);
 				}
 			}
 			// Shift all N-striding pointers by 1
@@ -378,11 +595,10 @@ cs_make_ws2(int B)
 	free(samples);
 	samples = nullptr;
 
-	// Debug Block 6
-	// if (B == 4)
+	// if (B == 2)
 	// {
-	// 	std::cout << "\nDEBUG:\n";
-	// 	double* Plms = cs_ws2_rePlmFile(B, 0, ws2);
+	// 	std::cout << "\nDEBUG: cs_make_ws2 workspace block 6\n";
+	// 	double* Plms = cs_ws2_rePlmCosFile(B, 0, ws2);
 	// 	for (int j = 0; j < N; ++j)
 	// 	{
 	// 		std::cout << "For phi_{" << j << "}:\n";
@@ -395,7 +611,6 @@ cs_make_ws2(int B)
 	// 			std::cout << "\n";
 	// 		}
 	// 	}
-	// 	std::cout << "\n";
 	// }
 
 	return ws2;
@@ -423,7 +638,7 @@ cs_ws2_rePlmCosFile(int B, int j, double* ws2)
 {
 	int N = 2 * B;
 
-	double* file = cs_ws2_rePlmCosRank(B, B, 0, ws2) + j;
+	double* file = cs_ws2_rePlmCosRank(B, B, 0, ws2) + (B * (B + 1) / 2 * j);
 
 	return file;
 }
