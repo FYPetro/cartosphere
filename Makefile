@@ -10,6 +10,8 @@ export FFTWINC=-I/usr/local/opt/fftw/include
 export FFTWLIB=-L/usr/local/opt/fftw/lib -lfftw3
 export EIGENINC=-I/usr/local/include/eigen3
 
+export ROOT_DIR=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+
 all clean uninstall cartosphere:
 	$(MAKE) -C src $@
 .PHONY: all clean uninstall

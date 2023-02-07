@@ -1,17 +1,19 @@
-CC = g++
+CXX = /usr/local/opt/llvm/bin/clang++
 
-INCLUDE = -I../include -I/usr/local/include -I/usr
+INCLUDE = -I$(ROOT_DIR)/include \
+	-I/usr/local/include \
+	-I/usr/local/opt/llvm/include \
+	$(FFTWINC) $(EIGENINC)
 
-CFLAGS = -g $(INCLUDE) -std=c++17
+CPPFLAGS = -g -std=c++17 -O3 -fopenmp $(INCLUDE)
 
-CPPFLAGS = -O3
+LDFLAGS = -L/usr/local/opt/llvm/lib $(FFTWLIB)
 
 all: cartosphere
 
 cartosphere: main.cpp functions.cpp mesh.cpp solver.cpp research.cpp globe.cpp shapefile.cpp dsht.cpp
 	pwd
-	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $+ \
-		$(FFTWINC) $(FFTWLIB) $(EIGENINC)
+	$(CXX) $(CPPFLAGS) -o $@ $+ $(LDFLAGS)
 
 clean:
 	-rm cartosphere
