@@ -47,9 +47,83 @@ cs_fds2ht(int B, fftw_real* data, fftw_real* harmonics, double* ws2)
 }
 
 void
-cs_ids2ht(int B, double* harmonics, double* data, double* ws2)
+cs_ids2ht(int B, double* harmonics, double* data, double* ws2,
+	fftw_real* scratchpad, fftw_plan plan)
 {
 	int N = 2 * B;
+
+	// Scratchpad consists of N * N inputs then N * N outputs
+	// Clear the input portion of the scratchpad
+	memset(scratchpad, 0, N * N * sizeof(double));
+
+	// Format of harmonics: (l,m) with l the degree, m the order
+	//
+	//     For each row in each triangular part, m is constant,
+	//     and as we move right in each row, l increments by 1.
+	//     |<-------------- B items, row-major -------------->|
+	//   - +--------------------------------------------------+
+	//   ^ |_h(__0,_____0)_  h(1, 0)      ...      h(B-1,  0) | UPPER
+	//   | | h(B-1,-(B-1)) |_h(1,_1)_     ...      h(B-1,  1) | TRIANGLE
+	//   B |      ...          ...   |____...____      ...    | IS FOR
+	//   | | h(  1,    -1)     ...     h(B-1,-1) | h(B-1,B-1) | m >= 0
+	//   v +-------------------------------------+------------+
+	//       STRICTLY LOWER TRIANGLE IS FOR m < 0
+
+	// Retrieve renormalized P_{l,m} per x_{j}-file
+	// This file is already in upper triangular form
+	auto rePlmCosFile = cs_ws2_rePlmCosFile(B, 0, ws2);
+
+	// Compute 1D fourier coefficients for the northern hemisphere first
+	// Cosine and sine coefficients are interwoven in the same matrix!
+	fftw_real* amj = scratchpad;
+	fftw_real* bmj = scratchpad + 1;
+	for (int j = 0; j < B; ++j)
+	{
+		auto rePlmCos = rePlmCosFile + (N * j);
+		// Compute the cosine coefficients
+		for (int m = 0; m < B; ++m, amj += 2)
+		{
+			// Compute element-wise product between...
+			// 1: ROW m of UPPER TRIANGLE of HARMONICS
+			// 2: ROW m of UPPER TRIANGLE rePlmCosFile for x_{j}
+			auto row1 = harmonics + (B * m);
+			auto row2 = rePlmCos + (B * m);
+			for (int l = m; l < B; ++l)
+			{
+				amj += row1[l] * row2[l];
+			}
+		}
+		// Compute the sine coefficients
+		for (int m = 1; m < B; ++m, bmj += 2)
+		{
+			// Compute element-wise product between...
+			// 1: ROW B-m of LOWER TRIANGLE of HARMONICS, shifted by m
+			// 2: ROW   m of UPPER TRIANGLE rePlmCosFile for x_{j}
+			auto row1 = harmonics + (B * (B - m)) - m;
+			auto row2 = rePlmCos + (B * m);
+			for (int l = m; l < B; ++l)
+			{
+				bmj += row1[l] * row2[l];
+			}
+		}
+		// Zero out the final sine coefficient
+		*bmj = 0;
+		bmj += 2;
+	}
+	// Account for FFTW normalization
+	// Perform split mixed DCT-III and DST-III
+	fftw_execute(plan);
+	// Copy results to the horthern hemisphere
+	// Tune 1D fourier coefficients for the southern hemisphere
+	// Perform split mixed DCT-III and DST-III
+	// Copy results to the southern hemisphere
+}
+
+fftw_plan
+cs_ids2ht_plan(int B, fftw_real* scratchpad)
+{
+	fftw_plan plan;
+	return plan;
 }
 
 double*
