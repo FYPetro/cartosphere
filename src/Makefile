@@ -1,17 +1,17 @@
 CC = g++
 
-INCLUDE = -I../include -I/usr/local/include
+INCLUDE = -I../include -I/usr/local/include -I/usr
 
-CFLAGS = -g $(INCLUDE) -std=c++17 -Wswitch -Wclass-conversion
+CFLAGS = -g $(INCLUDE) -std=c++17
 
 CPPFLAGS = -O3
 
 all: cartosphere
 
-cartosphere: main.cpp functions.cpp mesh.cpp solver.cpp research.cpp globe.cpp shapefile.cpp
+cartosphere: main.cpp functions.cpp mesh.cpp solver.cpp research.cpp globe.cpp shapefile.cpp dsht.cpp
 	pwd
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $+ \
-		$(FFTWINC) $(FFTWLIB) $(S2KITINC) $(S2KITOBJ) $(EIGENINC)
+		$(FFTWINC) $(FFTWLIB) $(EIGENINC)
 
 clean:
 	-rm cartosphere

@@ -8,8 +8,6 @@ export prefix=/usr/local
 
 export FFTWINC=-I/usr/local/opt/fftw/include
 export FFTWLIB=-L/usr/local/opt/fftw/lib -lfftw3
-export S2KITINC=-I/usr/local/include/s2kit10
-export S2KITOBJ= 
 export EIGENINC=-I/usr/local/include/eigen3
 
 all clean uninstall cartosphere:

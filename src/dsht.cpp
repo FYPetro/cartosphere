@@ -7,6 +7,16 @@
 
 #include "cartosphere/utility.hpp"
 
+// MacOS: pull legendre from boost::math
+#if defined(APPLE_LIKE)
+#include <boost/math/special_functions/legendre.hpp>
+constexpr auto legendre = [](auto &&...args) {
+	return boost::math::legendre_p(std::forward<decltype(args)>(args)...);
+};
+#else
+using std::legendre;
+#endif
+
 void
 cs_fds2ht(int B, fftw_real* data, fftw_real* harmonics, double* ws2)
 {
@@ -106,7 +116,7 @@ cs_make_ws2(int B)
 			double* target = tempCosPls + (N * l);
 			for (int j = 0; j < N; ++j)
 			{
-				target[j] = std::legendre(l, x[j]);
+				target[j] = legendre(l, x[j]);
 			}
 		}
 
