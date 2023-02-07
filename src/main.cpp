@@ -214,7 +214,7 @@ main(int argc, char* argv[])
 				int N = 2 * bandlimit;
 				fftw_real* scratchpad = fftw_alloc_real(N * N * 2);
 				fftw_plan idct, idst;
-				cs_make_plans2(bandlimit, scratchpad, &idct, &idst);
+				cs_ids2ht_plans(bandlimit, scratchpad, &idct, &idst);
 				cs_ids2ht(bandlimit, hats, data, ws2, scratchpad, idct, idst);
 				fftw_destroy_plan(idct);
 				fftw_destroy_plan(idst);

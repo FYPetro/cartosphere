@@ -8,8 +8,11 @@
 #include "cartosphere/utility.hpp"
 
 // MacOS: pull legendre from boost::math
+// Other: pull legendre from std
 #if defined(APPLE_LIKE)
 #include <boost/math/special_functions/legendre.hpp>
+// [C++17] Using fold expressions to pass along arguments
+// Ref: https://en.cppreference.com/w/cpp/language/fold
 constexpr auto legendre = [](auto &&...args) {
 	return boost::math::legendre_p(std::forward<decltype(args)>(args)...);
 };
@@ -48,37 +51,21 @@ cs_index2(int B, int l, int m)
 }
 
 void
-cs_fds2ht(int B, double* data, double* harmonics, double* ws2)
+cs_fds2ht(int B, double* data, double* harmonics, double* ws2,
+	fftw_real* scratchpad, fftw_plan many_dct, fftw_plan manydst)
 {
 	int N = 2 * B;
 
-	// Perform DCT to resolve hats for m>=0
-	// {
-	// 	int rank = 2;
-	// 	int n[] = { N, 1 };
-	// 	int howmany = N;
-	//
-	// 	fftw_real* in;
-	// 	int* inembed = NULL;
-	// 	int istride = 1;
-	// 	int idist = N;
-	//
-	// 	fftw_real* out;
-	// 	int* onembed = NULL;
-	// 	int ostride = 1;
-	// 	int odist = N;
-	//
-	// 	fftw_r2r_kind kind[] = { FFTW_REDFT11 };
-	// 	auto flags = FFTW_MEASURE;
-	// 	fftw_plan_many_r2r(rank, n, howmany, in, inembed, istride, idist,
-	// 		out, onembed, ostride, odist, kind, flags);
-	// }
-	// // Perform DST to resolve hats for m<0
+	// Clear output data and the entire scratchpad
+	memset(harmonics, 0, B * B * sizeof(double));
+	memset(scratchpad, 0, N * N * 2 * sizeof(double));
+
+	// Compute 1D fourier coefficients for the northern hemisphere first
 }
 
 void
 cs_ids2ht(int B, double* harmonics, double* data, double* ws2,
-	fftw_real* scratchpad, fftw_plan idct, fftw_plan idst)
+	fftw_real* scratchpad, fftw_plan many_idct, fftw_plan many_idst)
 {
 	int N = 2 * B;
 
@@ -194,7 +181,7 @@ cs_ids2ht(int B, double* harmonics, double* data, double* ws2,
 		}
 	}
 	// Perform D{C,S}T-III
-	fftw_execute(idct); fftw_execute(idst);
+	fftw_execute(many_idct); fftw_execute(many_idst);
 	// Copy results to the eastern hemisphere
 	for (int j = 0; j < N; ++j)
 	{
@@ -261,7 +248,7 @@ cs_ids2ht(int B, double* harmonics, double* data, double* ws2,
 		}
 	}
 	// Perform D{C,S}T-III
-	fftw_execute(idct); fftw_execute(idst);
+	fftw_execute(many_idct); fftw_execute(many_idst);
 	// Copy results to the western hemisphere
 	for (int j = 0; j < N; ++j)
 	{
@@ -297,8 +284,8 @@ cs_ids2ht(int B, double* harmonics, double* data, double* ws2,
 }
 
 void
-cs_make_plans2(int B,
-	fftw_real* scratchpad, fftw_plan* ptr_idct, fftw_plan* ptr_idst)
+cs_ids2ht_plans(int B,
+	fftw_real* scratchpad, fftw_plan* ptr_many_idct, fftw_plan* ptr_many_idst)
 {
 	int N = 2 * B;
 
@@ -334,14 +321,14 @@ cs_make_plans2(int B,
 	auto flags = FFTW_ESTIMATE;
 
 	// Create DCT-III plan using the advanced real-to-real interface
-	*ptr_idct = fftw_plan_many_r2r(rank, n, howmany,
+	*ptr_many_idct = fftw_plan_many_r2r(rank, n, howmany,
 		in, inembed, istride, idist,
 		out, onembed, ostride, odist,
 		kind, flags);
 
 	// Create DST-III plan using the advanced real-to-real interface
 	in += N; out += N; kind[0] = FFTW_RODFT01;
-	*ptr_idst = fftw_plan_many_r2r(rank, n, howmany,
+	*ptr_many_idst = fftw_plan_many_r2r(rank, n, howmany,
 		in, inembed, istride, idist,
 		out, onembed, ostride, odist,
 		kind, flags);
