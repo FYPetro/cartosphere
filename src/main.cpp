@@ -32,7 +32,7 @@ main(int argc, char* argv[])
 		.help("Specify which demo to run")
 		.nargs(nargs_pattern::at_least_one)
 		.default_value(std::vector{ std::string{"list"} })
-#if __APPLE__
+#if defined(APPLE_LIKE)
 		.metavar("SCENARIO...")
 #endif
 		;
@@ -50,13 +50,13 @@ main(int argc, char* argv[])
 	vizCmd.add_description("Visualize cartographic file");
 	vizCmd.add_argument("input")
 		.help("Path of input file/folder")
-#if __APPLE__
+#if defined(APPLE_LIKE)
 		.metavar("INPUT")
 #endif
 		;
 	vizCmd.add_argument("output")
 		.help("Path to output file/folder")
-#if __APPLE__
+#if defined(APPLE_LIKE)
 		.metavar("OUTPUT")
 #endif
 		;
@@ -64,7 +64,7 @@ main(int argc, char* argv[])
 		.help("Input format")
 		.nargs(1)
 		.default_value(std::string{ "shapefile" })
-#if __APPLE__
+#if defined(APPLE_LIKE)
 		.metavar("INFMT")
 #endif
 		;
@@ -72,7 +72,7 @@ main(int argc, char* argv[])
 		.help("Output format")
 		.nargs(1)
 		.default_value(std::string{ "matlab" })
-#if __APPLE__
+#if defined(APPLE_LIKE)
 		.metavar("OUTFMT")
 #endif
 		;
@@ -90,13 +90,13 @@ main(int argc, char* argv[])
 	transformCmd.add_description("Generate a spherical cartogram.");
 	transformCmd.add_argument("input")
 		.help("Path of input file/folder")
-#if __APPLE__
+#if defined(APPLE_LIKE)
 		.metavar("INPUT")
 #endif
 		;
 	transformCmd.add_argument("output")
 		.help("Path to output file/folder")
-#if __APPLE__
+#if defined(APPLE_LIKE)
 		.metavar("OUTPUT")
 #endif
 		;
@@ -104,14 +104,14 @@ main(int argc, char* argv[])
 		.help("Input format")
 		.nargs(1)
 		.default_value(std::string{ "shapefile" })
-#if __APPLE__
+#if defined(APPLE_LIKE)
 		.metavar("INFMT")
 #endif
 		;
 	transformCmd.add_argument("-m", "--mesh")
 		.help("Set background mesh for FEM")
 		.nargs(1)
-#if __APPLE__
+#if defined(APPLE_LIKE)
 		.metavar("CSMFILE")
 #endif
 		;
@@ -119,7 +119,7 @@ main(int argc, char* argv[])
 		.help("Specify bandlimit for spectral solver")
 		.nargs(1)
 		.default_value(std::int16_t{ 32 })
-#if __APPLE__
+#if defined(APPLE_LIKE)
 		.metavar("B")
 #endif
 		;
@@ -155,9 +155,13 @@ main(int argc, char* argv[])
 	if (program.is_subcommand_used("benchmark"))
 	{
 		std::cout << "[STARTING BENCHMARK]\n"
-			<< "#1: Discrete Real S2-Fourier Transforms\n\n"
-			<< "\t" << "| ## |  BW  | algorithm | makews (s) | ids2ht (s) | fds2ht (s) |\n"
-			<< "\t" << "|---:|-----:|:---------:|-----------:|-----------:|-----------:|\n";
+			<< "#1: Discrete Real S2-Fourier Transforms\n"
+			<< "\n"
+			<< "  hat(l,m)=1/(1+l+|m|), gone through cs_ids2ht then cs_fds2ht.\n"
+			<< "  Max error is the largest absolute error among all harmonics.\n"
+			<< "\n"
+			<< "  | ## |  BW  | algorithm | makews (s) | ids2ht (s) | fds2ht (s) |  max error  |\n"
+			<< "  | --:| ----:|:---------:| ----------:| ----------:| ----------:| -----------:|\n";
 		// Save std::cout flags for later restoration
 		std::ios oldCoutState(nullptr);
 		oldCoutState.copyfmt(std::cout);
@@ -168,12 +172,12 @@ main(int argc, char* argv[])
 		//  - 1024, 2048
 		for (size_t i = 0; i < 9; ++i)
 		{
-			int bandlimit = (int)pow(2, i + 1);
-			std::cout << "\t"
+			int B = (int)pow(2, i + 1);
+			std::cout << "  "
 				<< "| " << std::setw(2) << (i + 1) << " "
-				<< "| " << std::setw(4) << bandlimit;
+				<< "| " << std::setw(4) << B;
 			std::cout.copyfmt(oldCoutState);
-			if (bandlimit <= 512)
+			if (B <= 512)
 			{
 				std::cout << " | tablebase | ";
 			}
@@ -181,62 +185,91 @@ main(int argc, char* argv[])
 			{
 				std::cout << " | recursive | ";
 			}
+			std::cout << std::flush;
 
 			// Allocate data and randomize the harmonics (hats)
-			fftw_real* hats = fftw_alloc_real(bandlimit * bandlimit);
-			fftw_real* data = fftw_alloc_real(4 * bandlimit * bandlimit);
+			fftw_real* hats = fftw_alloc_real(B * B);
+			fftw_real* data = fftw_alloc_real(4 * B * B);
 
 			// Experiment with a simple case and compare to matlab
-			for (int l = 0; l < bandlimit; ++l)
+			vector<double> coeffs(B * B);
+			for (int l = 0; l < B; ++l)
 			{
 				for (int m = -l; m <= l; ++m)
 				{
-					hats[cs_index2(bandlimit, l, m)] = 1.0 / (l + abs(m) + 1);
+					coeffs[cs_index2(B, l, m)] = 1.0 / (l + abs(m) + 1);
 				}
 			}
+			memcpy(hats, coeffs.data(), B * B * sizeof(double));
 
-			// Make scratchpad, plans, and workspace
+			// Make pad, plans, and workspace
 			double* ws2;
 			{
 				auto begin = steady_clock::now();
-				ws2 = cs_make_ws2(bandlimit);
+				ws2 = cs_make_ws2(B);
 				auto end = steady_clock::now();
 
 				auto elapsed = (double)
 					(duration_cast<milliseconds>(end - begin).count()) / 1000;
 				std::cout << std::setw(10)
-					<< std::fixed << std::setprecision(3) << elapsed << " | ";
+					<< std::fixed << std::setprecision(3) << elapsed << " | "
+					<< std::flush;
 				std::cout.copyfmt(oldCoutState);
 			}
 			// Perform inverse transform (synthesis)
 			{
 				auto begin = steady_clock::now();
-				int N = 2 * bandlimit;
-				fftw_real* scratchpad = fftw_alloc_real(N * N * 2);
-				fftw_plan idct, idst;
-				cs_ids2ht_plans(bandlimit, scratchpad, &idct, &idst);
-				cs_ids2ht(bandlimit, hats, data, ws2, scratchpad, idct, idst);
-				fftw_destroy_plan(idct);
-				fftw_destroy_plan(idst);
-				fftw_free(scratchpad);
+				int N = 2 * B;
+				fftw_real* pad = fftw_alloc_real(N * N * 2);
+				fftw_plan many_idct, many_idst;
+				cs_ids2ht_plans(B, pad, &many_idct, &many_idst);
+				cs_ids2ht(B, hats, data, ws2, pad, many_idct, many_idst);
+				fftw_destroy_plan(many_idct);
+				fftw_destroy_plan(many_idst);
+				fftw_free(pad);
 				auto end = steady_clock::now();
+
+				auto elapsed = (double)
+					(duration_cast<milliseconds>(end - begin).count()) / 1000;
+				std::cout << std::setw(10)
+					<< std::fixed << std::setprecision(3) << elapsed << " | "
+					<< std::flush;
+				std::cout.copyfmt(oldCoutState);
+			}
+			// Perform forward transform (analysis)
+			{
+				auto begin = steady_clock::now();
+				cs_fds2ht(B, data, hats, ws2);
+				auto end = steady_clock::now();
+
+				double maxError = 0;
+				for (int l = 0; l < B; ++l)
+				{
+					for (int m = -l; m <= l; ++m)
+					{
+						double error = abs(
+							coeffs[cs_index2(B, l, m)]
+							- hats[cs_index2(B, l, m)]
+						);
+						if (std::isnan(error))
+						{
+							maxError = std::numeric_limits<double>::quiet_NaN();
+							break;
+						}
+						else if (error > maxError)
+						{
+							maxError = error;
+						}
+					}
+				}
 
 				auto elapsed = (double)
 					(duration_cast<milliseconds>(end - begin).count()) / 1000;
 				std::cout << std::setw(10)
 					<< std::fixed << std::setprecision(3) << elapsed << " | ";
 				std::cout.copyfmt(oldCoutState);
-			}
-			// Perform forward transform (analysis)
-			{
-				auto begin = steady_clock::now();
-				// cs_fds2ht(bandlimit, data, hats, ws2);
-				auto end = steady_clock::now();
 
-				auto elapsed = (double)
-					(duration_cast<milliseconds>(end - begin).count()) / 1000;
-				std::cout << std::setw(10)
-					<< std::fixed << std::setprecision(3) << elapsed << " | \n";
+				std::cout << std::setw(11) << maxError << " | \n";
 				std::cout.copyfmt(oldCoutState);
 			}
 			// Free memory and reset std::cout

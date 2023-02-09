@@ -53,10 +53,14 @@ using std::chrono::milliseconds;
 #pragma warning(push)
 #pragma warning(disable: 4819)
 #include <Eigen/Core>
-using Vector = Eigen::Matrix<FLP, Eigen::Dynamic, 1>;
+using Vector = Eigen::Matrix<double, Eigen::Dynamic, 1>;
+using Eigen::ArrayXd;
+using Eigen::VectorXd;
+using Eigen::RowVectorXd;
+using Eigen::MatrixXd;
 
 #include <Eigen/Dense>
-using Matrix = Eigen::Matrix<FLP, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+using Matrix = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 
 #include <Eigen/SparseCore>
 using CSR_Matrix = Eigen::SparseMatrix<FLP, Eigen::RowMajor>;
