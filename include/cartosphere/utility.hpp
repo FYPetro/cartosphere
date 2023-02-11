@@ -15,9 +15,6 @@
 // Set the floating point used in core calculations
 using FLP = double;
 
-#include <complex>
-using FLC = std::complex<FLP>;
-
 #include <limits>
 static const FLP EPS = std::numeric_limits<FLP>::epsilon();
 

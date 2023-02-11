@@ -15,6 +15,9 @@ using Cartosphere::FiniteElementGlobe;
 
 #include "cartosphere/dsht.hpp"
 
+#define GLOG_NO_ABBREVIATED_SEVERITIES
+#include <glog/logging.h>
+
 int
 runDemo(const std::string&, const std::vector<std::string>&);
 
@@ -22,6 +25,8 @@ runDemo(const std::string&, const std::vector<std::string>&);
 int
 main(int argc, char* argv[])
 {
+	google::InitGoogleLogging(*argv);
+
 	ArgumentParser program("cartosphere", "0.1.0-dev");
 
 	// Demonstrative scenarios
@@ -151,6 +156,17 @@ main(int argc, char* argv[])
 		return runDemo(scenario, demoArgs);
 	}
 
+	// Check if verbose is used
+	if (program["--verbose"] == true)
+	{
+		std::cout << "Verbosity enabled\n";
+	}
+	else
+	{
+		// Set glog message level to ignore INFO items
+		FLAGS_minloglevel = 1;
+	}
+
 	// Benchmark the entire program
 	if (program.is_subcommand_used("benchmark"))
 	{
@@ -165,7 +181,7 @@ main(int argc, char* argv[])
 		// Save std::cout flags for later restoration
 		std::ios oldCoutState(nullptr);
 		oldCoutState.copyfmt(std::cout);
-		
+
 		// Bandlimits with default treatment: (0 <= i < 9)
 		//  - 2, 4, 8, 16, 32, 64, 128, 256, 512
 		// Bandlimits with special treatment: (9 <= i)
@@ -173,10 +189,18 @@ main(int argc, char* argv[])
 		for (size_t i = 0; i < 9; ++i)
 		{
 			int B = (int)pow(2, i + 1);
+			if (FLAGS_minloglevel == 0)
+			{
+				LOG(INFO) << "Benchmark #1: B = " << B;
+			}
+
+			// Print table header
 			std::cout << "  "
 				<< "| " << std::setw(2) << (i + 1) << " "
 				<< "| " << std::setw(4) << B;
 			std::cout.copyfmt(oldCoutState);
+
+			// Print the algorithm used for different bandlimits
 			if (B <= 512)
 			{
 				std::cout << " | tablebase | ";
@@ -188,8 +212,8 @@ main(int argc, char* argv[])
 			std::cout << std::flush;
 
 			// Allocate data and randomize the harmonics (hats)
-			fftw_real* hats = fftw_alloc_real(B * B);
-			fftw_real* data = fftw_alloc_real(4 * B * B);
+			double* hats = fftw_alloc_real(B * B);
+			double* data = fftw_alloc_real(4 * B * B);
 
 			// Experiment with a simple case and compare to matlab
 			vector<double> coeffs(B * B);

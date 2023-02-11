@@ -20,6 +20,9 @@ constexpr auto legendre = [](auto &&...args) {
 using std::legendre;
 #endif
 
+#define GLOG_NO_ABBREVIATED_SEVERITIES
+#include <glog/logging.h>
+
 int
 cs_index2(int B, int l, int m)
 {
@@ -58,60 +61,69 @@ cs_fds2ht(int B, double* data, double* harmonics, double* ws2)
 	// Clear output data and the entire scratchpad
 	memset(harmonics, 0, B * B * sizeof(double));
 
+	// Prepare for logging
+	Eigen::IOFormat OctaveFmt(Eigen::StreamPrecision, 0, ", ", ";\n", "", "", "[", "]");
+
 	// Retrieve relevant blocks from the workspace
 	auto weights = ws2 + 4;
 	auto trigs = ws2 + (4 + 3 * N);
 
 	// Put all data into a matrix
 	Eigen::Map<Matrix> M(data, N, N);
-
-	if (B == 0)
+	if (FLAGS_minloglevel == 0)
 	{
-		std::cout << "\nDEBUG: M\n" << M << "\n";
+		LOG(INFO) << "M\n" << M.format(OctaveFmt);
 	}
 
 	// Make an 1xN array of weights
 	Eigen::Map<Eigen::ArrayXXd> W(weights, 1, N);
-
-	if (B == 0)
+	if (FLAGS_minloglevel == 0)
 	{
-		std::cout << "\nDEBUG: W\n" << W << "\n";
+		LOG(INFO) << "W\n" << W.format(OctaveFmt);
 	}
 
 	// For each degree and order
-#pragma omp parallel for if (B >= 128)
+#pragma omp parallel for if (B >= 128 && FLAGS_minloglevel != 0)
 	for (int l = 0; l < B; ++l)
 	{
 		for (int m = -l; m <= l; ++m)
 		{
 			// W .* P
 			auto rank = cs_ws2_rePlmCosRank(B, l, abs(m), ws2);
-			Eigen::Map<Eigen::ArrayXXd> P(rank, 1, N);
 
-			if (B == 0)
+			Eigen::Map<Eigen::ArrayXXd> P(rank, 1, N);
+			if (FLAGS_minloglevel == 0)
 			{
-				std::cout << "\nDEBUG: P_{" << l << "," << m << "}\n" << P << "\n";
+				stringstream sst;
+				sst << "P_{" << l << "," << m << "} = "
+					<< P.format(OctaveFmt);
+				LOG(INFO) << sst.str();
 			}
 
 			RowVectorXd WP = (W * P).matrix();
-
-			if (B == 0)
+			if (FLAGS_minloglevel == 0)
 			{
-				std::cout << "\nDEBUG: W .* P\n" << WP << "\n";
+				stringstream sst;
+				sst << "                W.*P = "
+					<< WP.format(OctaveFmt);
+				LOG(INFO) << sst.str();
 			}
 
 			// (W .* P) * M
 			RowVectorXd WPM = WP * M;
-
-			if (B == 0)
+			if (FLAGS_minloglevel == 0)
 			{
-				std::cout << "\nDEBUG: (W .* P) * M\n" << WPM << "\n";
+				stringstream sst;
+				sst << "            (W.*P)*M = "
+					<< WPM.format(OctaveFmt);
+				LOG(INFO) << sst.str();
 			}
 
 			// ((W .* P) * M) .* T
 			if (m != 0)
 			{
 				int offset;
+				// Compute the offset of the azimuthal trigs in ws2
 				if (m > 0)
 				{
 					offset = N * (m - 1);
@@ -120,18 +132,24 @@ cs_fds2ht(int B, double* data, double* harmonics, double* ws2)
 				{
 					offset = N * (B - m - 2);
 				}
-				Eigen::Map<Eigen::ArrayXXd> T(trigs + offset, 1, N);
 
-				if (B == 0)
+				Eigen::Map<Eigen::ArrayXXd> T(trigs + offset, 1, N);
+				if (FLAGS_minloglevel == 0)
 				{
-					std::cout << "\nDEBUG: T\n" << T << "\n";
+					stringstream sst;
+					sst << "                   T = "
+						<< T.format(OctaveFmt);
+					LOG(INFO) << sst.str();
 				}
 
 				WPM.array() *= T.array();
 
-				if (B == 0)
+				if (FLAGS_minloglevel == 0)
 				{
-					std::cout << "\nDEBUG: ((W .* P) * M) .* T\n" << WPM << "\n";
+					stringstream sst;
+					sst << "       ((W.*P)*M).*T = "
+						<< WPM.format(OctaveFmt);
+					LOG(INFO) << sst.str();
 				}
 			}
 
@@ -140,26 +158,27 @@ cs_fds2ht(int B, double* data, double* harmonics, double* ws2)
 		}
 	}
 	
-	if (B == 0)
+	if (FLAGS_minloglevel == 0)
 	{
-		std::cout << "\nDEBUG: print harmonics per format\n";
+		stringstream sst;
+		sst << "print harmonics per format\n";
 		for (int m = 0; m < B; ++m)
 		{
 			for (int l = B - m; l < B; ++l)
 			{
-				std::cout << "  "
+				sst << "  "
 					<< "B_{" << l << "," << (m - B) << "} = "
 					<< harmonics[cs_index2(B, l, (m - B))];
 			}
 			for (int l = m; l < B; ++l)
 			{
-				std::cout << "  "
+				sst << "  "
 					<< "B_{" << l << "," << m << "} = "
 					<< harmonics[cs_index2(B, l, m)];
 			}
-			std::cout << "\n";
+			sst << "\n";
 		}
-		std::cout << "\n";
+		LOG(INFO) << sst.str();
 	}
 }
 
@@ -169,24 +188,29 @@ cs_ids2ht(int B, double* harmonics, double* data, double* ws2,
 {
 	int N = 2 * B;
 
-	if (B == 0)
+	// Prepare for logging
+	Eigen::IOFormat OctaveFmt(Eigen::StreamPrecision, 0, ", ", ";\n", "", "", "[", "]");
+
+	if (FLAGS_minloglevel == 0)
 	{
-		std::cout << "\nDEBUG: print harmonics per format\n";
+		LOG(INFO) << "cs_ids2ht print harmonics per format";
 		for (int m = 0; m < B; ++m)
 		{
+			stringstream sst;
+			sst << "\t";
 			for (int l = B - m; l < B; ++l)
 			{
-				std::cout << "  "
-					<< "B_{" << l << "," << (m - B) << "} = "
-					<< harmonics[cs_index2(B, l, (m - B))];
+				sst << "h_{" << l << "," << (m - B) << "} = "
+					<< harmonics[cs_index2(B, l, (m - B))]
+					<< ", ";
 			}
 			for (int l = m; l < B; ++l)
 			{
-				std::cout << "  "
-					<< "B_{" << l << "," << m << "} = "
-					<< harmonics[cs_index2(B, l, m)];
+				sst << "h_{" << l << "," << m << "} = "
+					<< harmonics[cs_index2(B, l, m)]
+					<< ", ";
 			}
-			std::cout << "\n";
+			LOG(INFO) << sst.str();
 		}
 	}
 
@@ -196,6 +220,11 @@ cs_ids2ht(int B, double* harmonics, double* data, double* ws2,
 
 	// Compute 1D fourier coefficients for the northern hemisphere first
 	// Cosine and sine coefficients are interwoven in the same matrix!
+	// The structure of the scratchpad:
+	//      +-----+-----+-----+-----+
+	//      | NxB | NxB | NxB | NxB |
+	//      | amj | cos | bmj | sin |
+	//      +-----+-----+-----+-----+
 	for (int j = 0; j < N; ++j)
 	{
 		fftw_real* amj = pad + (2 * N * j);
@@ -233,34 +262,37 @@ cs_ids2ht(int B, double* harmonics, double* data, double* ws2,
 		*bmj++ = 0;
 	}
 
-	if (B == 0)
+	if (FLAGS_minloglevel == 0)
 	{
-		std::cout << "\nDEBUG: DCT-III coefficients\n";
+		LOG(INFO) << "DCT-III coefficients\n";
 		for (int j = 0; j < N; ++j)
 		{
+			stringstream sst;
+			sst << "\t";
 			for (int m = 0; m < B; ++m)
 			{
-				std::cout << "  "
-					<< "a_{" << j << "," << m << "} = "
-					<< pad[2 * N * j + m];
+				sst << "a_{" << m << "}^{(" << j << ")} = "
+					<< pad[2 * N * j + m]
+					<< ", ";
 			}
-			std::cout << "\n";
+			LOG(INFO) << sst.str();
 		}
 	}
-	if (B == 0)
+	if (FLAGS_minloglevel == 0)
 	{
-		std::cout << "\nDEBUG: DST-III coefficients\n";
+		LOG(INFO) << "DST-III coefficients\n";
 		for (int j = 0; j < N; ++j)
 		{
+			stringstream sst;
+			sst << "\t";
 			for (int m = 0; m < B; ++m)
 			{
-				std::cout << "  "
-					<< "b_{" << j << "," << m << "} = "
-					<< pad[2 * N * j + N + m];
+				sst << "b_{" << m << "}^{(" << j << ")} = "
+					<< pad[2 * N * j + N + m]
+					<< ", ";
 			}
-			std::cout << "\n";
+			LOG(INFO) << sst.str();
 		}
-		std::cout << "\n";
 	}
 
 	// Account for normalization (FFTW to C++17)
@@ -301,34 +333,25 @@ cs_ids2ht(int B, double* harmonics, double* data, double* ws2,
 		}
 	}
 
-	if (B == 0)
+	if (FLAGS_minloglevel == 0)
 	{
-		std::cout << "\nDEBUG: cosine contributions\n";
+		LOG(INFO) << "Cosine contributions\n";
 		for (int j = 0; j < N; ++j)
 		{
-			for (int m = 0; m < B; ++m)
-			{
-				std::cout << "  "
-					<< "A_{" << j << "," << m << "} = "
-					<< pad[2 * N * j + B + m];
-			}
-			std::cout << "\n";
+			LOG(INFO) << "\t"
+				<< "a_{" << j << ", : } = "
+				<< Eigen::Map<RowVectorXd>(pad + (2 * N * j + B), B).format(OctaveFmt);
 		}
 	}
-	if (B == 0)
+	if (FLAGS_minloglevel == 0)
 	{
-		std::cout << "\nDEBUG: sine contributions\n";
+		LOG(INFO) << "Sine contributions\n";
 		for (int j = 0; j < N; ++j)
 		{
-			for (int m = 0; m < B; ++m)
-			{
-				std::cout << "  "
-					<< "B_{" << j << "," << m << "} = "
-					<< pad[2 * N * j + N + B + m];
-			}
-			std::cout << "\n";
+			LOG(INFO) << "\t"
+				<< "b_{" << j << ", : } = "
+				<< Eigen::Map<RowVectorXd>(pad + (2 * N * j + N + B), B).format(OctaveFmt);
 		}
-		std::cout << "\n";
 	}
 
 	// Tune coefficients for the western hemisphere
@@ -368,18 +391,19 @@ cs_ids2ht(int B, double* harmonics, double* data, double* ws2,
 		}
 	}
 
-	if (B == 0)
+	if (FLAGS_minloglevel == 0)
 	{
-		std::cout << "\nDEBUG: synthesized data\n";
+		stringstream sst;
+		sst << "synthesized data\n";
 		for (int j = 0; j < N; ++j)
 		{
 			for (int k = 0; k < N; ++k)
 			{
-				std::cout << "  u_{" << j << "," << k << "} = " << data[N * j + k];
+				sst << "  u_{" << j << "," << k << "} = " << data[N * j + k];
 			}
-			std::cout << "\n";
+			sst << "\n";
 		}
-		std::cout << "\n";
+		sst << "\n";
 	}
 }
 
@@ -438,6 +462,9 @@ double*
 cs_make_ws2(int B)
 {
 	int N = 2 * B;
+
+	// Prepare for logging
+	Eigen::IOFormat OctaveFmt(Eigen::StreamPrecision, 0, ", ", ";\n", "", "", "[", "]");
 
 	// Allocate workspace
 	double* const ws2 = new double
@@ -545,7 +572,6 @@ cs_make_ws2(int B)
 			{
 				Plp1_lp1s[j] = (2 * l + 1) * y[j] * Plls[j];
 			}
-			double* offDiagonal = cs_ws2_rePlmCosRank(B, l + 1, l + 1, ws2);
 			Plls = Plp1_lp1s;
 		}
 
@@ -631,30 +657,27 @@ cs_make_ws2(int B)
 		}
 	}
 
-	if (B == 0)
+	if (FLAGS_minloglevel == 0)
 	{
-		std::cout << "\nDEBUG: cs_make_ws2 workspace block 5\n";
+		LOG(INFO) << "cs_make_ws2 workspace block 5\n";
 		for (int l = 0; l < B; ++l)
 		{
 			for (int m = 0; m <= l; ++m)
 			{
 				double* Plms = cs_ws2_rePlmCosRank(B, l, m, ws2);
-				std::cout << "~P_{" << l << "," << m << "} =\n";
-				for (int j = 0; j < N; ++j)
-				{
-					std::cout << "  " << Plms[j];
-				}
-				std::cout << "\n";
+				LOG(INFO) << "\t"
+					<< "~P_{" << l << "," << m << "} = "
+					<< Eigen::Map<RowVectorXd>(Plms, 1, N).format(OctaveFmt);
 			}
 		}
 	}
 
 	// [Block 6] Transposed table
 	// Memory intensive (lots of strides), consider generating this from scratch
-	double** samples = (double **)malloc(B * (B + 1) / 2 * sizeof(double *));
+	const int fileSize = B * (B + 1) / 2;
+	double** samples = (double **)malloc(fileSize * sizeof(double *));
 	{
 		// Generate N-striding pointers
-		auto sourcePtr = blocks[5];
 		auto ptr_target = samples;
 		for (int m = 0; m < B; ++m)
 		{
@@ -664,43 +687,40 @@ cs_make_ws2(int B)
 			}
 		}
 		// For each j, fetch from N-striding pointers
+		
 #pragma omp parallel for if (B >= 128)
 		for (int j = 0; j < N; ++j)
 		{
 			auto target = cs_ws2_rePlmCosFile(B, j, ws2);
 			auto ptr_source = samples;
-			for (int m = 0; m < B; ++m)
+			for (int i = 0; i < fileSize; ++i)
 			{
-				for (int l = m; l < B; ++l)
-				{
-					*(target++) = *(*ptr_source++);
-				}
-			}
-			// Shift all N-striding pointers by 1
-			for (int i = 0; i < B * (B + 1) / 2; ++i)
-			{
-				samples[i] += 1;
+				// Copy value, 1-off the source pointer per file
+				target[i] = *(ptr_source[i] + j);
 			}
 		}
 	}
 	free(samples);
 	samples = nullptr;
 
-	if (B == 0)
+	if (FLAGS_minloglevel == 0)
 	{
-		std::cout << "\nDEBUG: cs_make_ws2 workspace block 6\n";
+		LOG(INFO) << "cs_make_ws2 workspace block 6\n";
 		double* Plms = cs_ws2_rePlmCosFile(B, 0, ws2);
 		for (int j = 0; j < N; ++j)
 		{
-			std::cout << "For phi_{" << j << "}:\n";
+			stringstream sst;
+			sst << "\t"
+				<< "For theta_{" << j << "}: ";
 			for (int m = 0; m < B; ++m)
 			{
 				for (int l = m; l < B; ++l)
 				{
-					std::cout << "  ~P_{" << l << "," << m << "} = " << *Plms++;
+					sst << "  ~P_{" << l << "," << m << "} = " << *Plms++;
 				}
-				std::cout << "\n";
+				sst << ", ";
 			}
+			LOG(INFO) << sst.str();
 		}
 	}
 
@@ -718,6 +738,17 @@ cs_ws2_rePlmCosRank(int B, int l, int m, double* ws2)
 {
 	int N = 2 * B;
 
+	// Structure of rePlmCosRank block (j=1,...,N in each block)
+	//      +--l-m--+ -> indexing
+	//      | (0,0) |
+	//      +-------+--l-m--+
+	//      | (1,0) | (1,1) |
+	//      +-------+-------+-------+
+	//      |  ...  |  ...  |  ...  |
+	//      +-------+-------+-------+---l-m---+
+	//      |(B-1,0)|(B-1,1)|  ...  |(B-1,B-1)|
+	//      +-------+-------+-------+---------+
+
 	double* rank = ws2 +
 		(4 + 3 * N + (N - 2) * N + N * (l * (l + 1) / 2 + m));
 
@@ -728,6 +759,17 @@ double*
 cs_ws2_rePlmCosFile(int B, int j, double* ws2)
 {
 	int N = 2 * B;
+
+	// Structure of rePlmCosFile block for each polar angle
+	//      +-------+-------+-------+---------+ ---> indexing
+	//      | (0,0) | (1,0) |  ...  | (B-1,0) |
+	//      +-------+-------+-------+---------+
+	//              | (1,1) |  ...  | (B-1,1) |
+	//              +-------+-------+---------+
+	//                      |  ...  |   ...   |
+	//                      +-------+---------+
+	//                              |(B-1,B-1)|
+	//                              +---------+
 
 	double* file = cs_ws2_rePlmCosRank(B, B, 0, ws2) + (B * (B + 1) / 2 * j);
 

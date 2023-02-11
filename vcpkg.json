@@ -3,6 +3,7 @@
   "version-string": "0.1.0-dev",
   "description": "Spherical cartogram generating library.",
   "dependencies": [
+    "glog",
     "fftw3",
     "eigen3",
     {
