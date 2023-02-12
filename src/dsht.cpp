@@ -339,7 +339,7 @@ cs_ids2ht(int B, double* harmonics, double* data, double* ws2,
 		for (int j = 0; j < N; ++j)
 		{
 			LOG(INFO) << "\t"
-				<< "a_{" << j << ", : } = "
+				<< "a_{" << j << ",:} = "
 				<< Eigen::Map<RowVectorXd>(pad + (2 * N * j + B), B).format(OctaveFmt);
 		}
 	}
@@ -349,7 +349,7 @@ cs_ids2ht(int B, double* harmonics, double* data, double* ws2,
 		for (int j = 0; j < N; ++j)
 		{
 			LOG(INFO) << "\t"
-				<< "b_{" << j << ", : } = "
+				<< "b_{" << j << ",:} = "
 				<< Eigen::Map<RowVectorXd>(pad + (2 * N * j + N + B), B).format(OctaveFmt);
 		}
 	}
@@ -501,7 +501,8 @@ cs_make_ws2(int B)
 		ws2 + (4 + 3 * N + (N - 2) * N),
 
 		// Block 6: N*B*(B+1)/2 elements
-		// Permutes the block above
+		// Permutes the block above to perform the inverse transform
+		// Dimensions: First m, then l, then j
 		ws2 + (4 + 3 * N + (N - 2) * N + N * B * (B + 1) / 2)
 	};
 	
@@ -545,15 +546,20 @@ cs_make_ws2(int B)
 	double* y = blocks[3];
 	double* reCosPlms = blocks[5];
 	{
-		// Move tempCosPls to correct location.
-		for (int l = B - 1; l >= 0; --l)
+		// Normalize tempCosPls=P_{l}^{0} to ~P_{l}^{0}
+		// Move tempCosPls to correct location
+		for (int l = 0; l <= B; ++l)
 		{
-			double* source = tempCosPls + (N * l);
 			double* target = cs_ws2_rePlmCosRank(B, l, 0, ws2);
+			double* source = tempCosPls + (N * l);
+			
+			// q_{l,0} = 1/sqrt(2) * sqrt((2l+1)/pi)
+			double q_l_0 = M_SQRT1_2 / sqrt(M_PI) * sqrt(l + 0.5);
 			for (int j = 0; j < N; ++j)
 			{
-				memcpy(target, source, N * sizeof(double));
+				source[j] *= q_l_0;
 			}
+			memcpy(target, source, N * sizeof(double));
 		}
 		tempCosPls = nullptr;
 
@@ -564,26 +570,44 @@ cs_make_ws2(int B)
 		}
 
 		// Populate diagonal: P_{l}^{l} => P_{l+1}^{l^1}
-		double* Plls = cs_ws2_rePlmCosRank(B, 0, 0, ws2);
+		double* rP_l_ls = cs_ws2_rePlmCosRank(B, 0, 0, ws2);
 		for (int l = 0; l < B - 1; ++l)
 		{
-			double* Plp1_lp1s = cs_ws2_rePlmCosRank(B, l + 1, l + 1, ws2);
+			// pointer to ~P_{l+1,l+1}
+			double* rP_lp1_lp1s = cs_ws2_rePlmCosRank(B, l + 1, l + 1, ws2);
+
+			// r_{l,l} = q_{l+1,l+1} / q_{l,l}
+			//         = sqrt(1+delta_l) * sqrt((2l+3)/(2l+2)) / (2l+1)
+			// a_{l,l} = r_{l,l} * (2l+1)
+			double a_l_l = sqrt((1 + (l == 0)) * (l + 1.5) / (l + 1));
+
+			// ~P_{l+1,l+1}(x) = a_{l,l} y ~P_{l,l}(x)
 			for (int j = 0; j < N; ++j)
 			{
-				Plp1_lp1s[j] = (2 * l + 1) * y[j] * Plls[j];
+				rP_lp1_lp1s[j] = a_l_l * y[j] * rP_l_ls[j];
 			}
-			Plls = Plp1_lp1s;
+
+			// Advance
+			rP_l_ls = rP_lp1_lp1s;
 		}
 
 		// Populate off-diagonal: P_{l}^{l} => P_{l+1}^{l}
 		for (int l = 1; l < B - 1; ++l)
 		{
-			Plls = cs_ws2_rePlmCosRank(B, l, l, ws2);
+			// Pointer to ~P_{l,l}
+			rP_l_ls = cs_ws2_rePlmCosRank(B, l, l, ws2);
+			// Pointer to ~P_{l+1,l}
+			double* rP_lp1_ls = cs_ws2_rePlmCosRank(B, l + 1, l, ws2);
 
-			double* Plp1_ls = cs_ws2_rePlmCosRank(B, l + 1, l, ws2);
+			// r_{l,l} = q_{l+1,l}/q_{l,l}
+			//         = sqrt(1+delta_l)*sqrt(2l+3)/(2l+1)
+			// b_{l,l} = r_{l,l} (2l+1) because l>0
+			double b_l_l = sqrt(2 * l + 3);
+
+			// ~P_{l+1,l}(x) = b_{l,l} x ~P_{l,l}(x)
 			for (int j = 0; j < N; ++j)
 			{
-				Plp1_ls[j] = (2 * l + 1) * x[j] * Plls[j];
+				rP_lp1_ls[j] = b_l_l * x[j] * rP_l_ls[j];
 			}
 		}
 
@@ -591,43 +615,37 @@ cs_make_ws2(int B)
 #pragma omp parallel for if (B >= 128)
 		for (int m = 1; m < B - 1; ++m)
 		{
-			double* Plm1_ms = cs_ws2_rePlmCosRank(B, m, m, ws2);
-			double* Plms = cs_ws2_rePlmCosRank(B, m + 1, m, ws2);
+			// Pointer to ~P_{l-1,m}
+			double* rP_lm1_ms = cs_ws2_rePlmCosRank(B, m, m, ws2);
+			// Pointer to ~P_{l,m}
+			double* rP_l_ms = cs_ws2_rePlmCosRank(B, m + 1, m, ws2);
 			for (int l = m + 1; l < B - 1; ++l)
 			{
-				double* Plp1_ms = cs_ws2_rePlmCosRank(B, l + 1, m, ws2);
+				// Pointer to ~P_{l+1,m}
+				double* rP_lp1_ms = cs_ws2_rePlmCosRank(B, l + 1, m, ws2);
+
+				// r_{l,m} = q_{l+1,m}/q_{l,m}
+				//         = sqrt((2l+3)/(2l+1)) sqrt((l+1-m)/(l+1+m))
+				// c_{l,m} = r_{l,m} (2l+1) / (l-m+1)
+				//         = sqrt((2l+3)(2l+1)/((l+1-m)*(l+1+m))
+				double c_l_m = sqrt(double(2 * l + 3) * (2 * l + 1) / ((l + 1 - m) * (l + 1 + m)));
+
+				// r_{l-1,m} = q_{l+1,m}/q_{l-1,m}
+				//           = sqrt((2l+3)/(2l-1)) sqrt((l+1-m)(l-m)/((l+1+m)/(l+m)))
+				// c_{l-1,m} = r_{l-1,m} (l+m) / (l-m+1)
+				//           = sqrt((2l+3)/(2l-1)*(l+m)*(l-m)/(l+1-m)/(l+1+m))
+				double c_lm1_m = sqrt((l + 1.5) / (l - 0.5)
+					* (l + m) / (l + 1 + m) * (l - m) / (l + 1 - m));
+
+				// ~P_{l+1,m}(x) = c_{l,m} x ~P_{l,m}(x) - c_{l-1,m} ~P_{l-1,m}(x)
 				for (int j = 0; j < N; ++j)
 				{
-					Plp1_ms[j] = ((2 * l + 1) * x[j] * Plms[j] - (l + m) * Plm1_ms[j])
-						/ (l - m + 1);
-				}
-				Plm1_ms = Plms;
-				Plms = Plp1_ms;
-			}
-		}
-
-		// Divide stuff
-#pragma omp parallel for if (B >= 128)
-		for (int l = 0; l < B; ++l)
-		{
-			for (int m = 0; m <= l; ++m)
-			{
-				double qlm = sqrt((l + 0.5) / M_PI);
-				if (m == 0)
-				{
-					qlm /= sqrt(2);
+					rP_lp1_ms[j] = c_l_m * x[j] * rP_l_ms[j] - c_lm1_m * rP_lm1_ms[j];
 				}
 
-				for (int i = l - m + 1; i <= l + m; ++i)
-				{
-					qlm /= sqrt(i);
-				}
-
-				double* Plms = cs_ws2_rePlmCosRank(B, l, m, ws2);
-				for (int j = 0; j < N; ++j)
-				{
-					Plms[j] *= qlm;
-				}
+				// Prepare for the next iteration
+				rP_lm1_ms = rP_l_ms;
+				rP_l_ms = rP_lp1_ms;
 			}
 		}
 	}
@@ -687,7 +705,6 @@ cs_make_ws2(int B)
 			}
 		}
 		// For each j, fetch from N-striding pointers
-		
 #pragma omp parallel for if (B >= 128)
 		for (int j = 0; j < N; ++j)
 		{

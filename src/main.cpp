@@ -194,6 +194,10 @@ main(int argc, char* argv[])
 				LOG(INFO) << "Benchmark #1: B = " << B;
 			}
 
+			// Force logging output for a certain B
+			// On Windows, the output file is stored under %APPDATA%/../Local/Temp/
+			// FLAGS_minloglevel = B != 4;
+
 			// Print table header
 			std::cout << "  "
 				<< "| " << std::setw(2) << (i + 1) << " "
