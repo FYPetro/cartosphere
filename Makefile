@@ -6,11 +6,17 @@ DISTDIR = $(TARNAME)-$(VERSION)
 
 export prefix=/usr/local
 
+export ROOT_DIR=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+
+# FFTW 3
 export FFTWINC=-I/usr/local/opt/fftw/include
-export FFTWLIB=-L/usr/local/opt/fftw/lib -lfftw3
+export FFTWLIB=-L/usr/local/opt/fftw/lib
+
+# Eigen 3
 export EIGENINC=-I/usr/local/include/eigen3
 
-export ROOT_DIR=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+# glog
+export LOCALIB=-L/usr/local/lib
 
 all clean uninstall cartosphere:
 	$(MAKE) -C src $@

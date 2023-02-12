@@ -7,7 +7,9 @@ INCLUDE = -I$(ROOT_DIR)/include \
 
 CPPFLAGS = -g -std=c++17 -O3 -fopenmp $(INCLUDE)
 
-LDFLAGS = -L/usr/local/opt/llvm/lib $(FFTWLIB)
+LDFLAGS = -L/usr/local/opt/llvm/lib \
+	$(FFTWLIB) -lfftw3 \
+	$(LOCALIB) -lglog
 
 all: cartosphere
 
