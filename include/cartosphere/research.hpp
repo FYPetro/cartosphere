@@ -51,7 +51,4 @@ int research_f();
 // Jan 24, 2023. Read shapefiles
 int research_g(const string &folder);
 
-// Jun 06, 2022. To replicate the original paper
-int benchmark();
-
 #endif // !__RESEARCH_HPP__

@@ -166,6 +166,7 @@
     <ClInclude Include="..\include\cartosphere\utility.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\cartosphere.cpp" />
     <ClCompile Include="..\src\dsht.cpp" />
     <ClCompile Include="..\src\functions.cpp" />
     <ClCompile Include="..\src\globe.cpp" />

@@ -53,8 +53,19 @@ cs_index2(int B, int l, int m)
 	}
 }
 
+int
+cs_index2_assoc(int B, int l, int m)
+{
+	// Number of items before order m:
+	//      First term: B
+	//      Final term: B-(m-1)
+	//      Number of terms: m
+	// Number of items with order m but before degree l:
+	return (2 * B + 1 - m) * m / 2 + (l - m);
+}
+
 void
-cs_fds2ht(int B, double* data, double* harmonics, double* ws2)
+cs_fds2ht(int B, const double* data, double* harmonics, const double* ws2)
 {
 	int N = 2 * B;
 
@@ -69,21 +80,21 @@ cs_fds2ht(int B, double* data, double* harmonics, double* ws2)
 	auto trigs = ws2 + (4 + 3 * N);
 
 	// Put all data into a matrix
-	Eigen::Map<Matrix> M(data, N, N);
+	Eigen::Map<const Matrix> M(data, N, N);
 	if (FLAGS_minloglevel == 0)
 	{
 		LOG(INFO) << "M\n" << M.format(OctaveFmt);
 	}
 
 	// Make an 1xN array of weights
-	Eigen::Map<Eigen::ArrayXXd> W(weights, 1, N);
+	Eigen::Map<const Eigen::ArrayXXd> W(weights, 1, N);
 	if (FLAGS_minloglevel == 0)
 	{
 		LOG(INFO) << "W\n" << W.format(OctaveFmt);
 	}
 
 	// For each degree and order
-#pragma omp parallel for if (B >= 128 && FLAGS_minloglevel != 0)
+#pragma omp parallel for if (B >= 128)
 	for (int l = 0; l < B; ++l)
 	{
 		for (int m = -l; m <= l; ++m)
@@ -91,7 +102,7 @@ cs_fds2ht(int B, double* data, double* harmonics, double* ws2)
 			// W .* P
 			auto rank = cs_ws2_rePlmCosRank(B, l, abs(m), ws2);
 
-			Eigen::Map<Eigen::ArrayXXd> P(rank, 1, N);
+			Eigen::Map<const Eigen::ArrayXXd> P(rank, 1, N);
 			if (FLAGS_minloglevel == 0)
 			{
 				stringstream sst;
@@ -133,7 +144,7 @@ cs_fds2ht(int B, double* data, double* harmonics, double* ws2)
 					offset = N * (B - m - 2);
 				}
 
-				Eigen::Map<Eigen::ArrayXXd> T(trigs + offset, 1, N);
+				Eigen::Map<const Eigen::ArrayXXd> T(trigs + offset, 1, N);
 				if (FLAGS_minloglevel == 0)
 				{
 					stringstream sst;
@@ -183,7 +194,7 @@ cs_fds2ht(int B, double* data, double* harmonics, double* ws2)
 }
 
 void
-cs_ids2ht(int B, double* harmonics, double* data, double* ws2,
+cs_ids2ht(int B, const double* harmonics, double* data, const double* ws2,
 	fftw_real* pad, fftw_plan many_idct, fftw_plan many_idst)
 {
 	int N = 2 * B;
@@ -261,6 +272,191 @@ cs_ids2ht(int B, double* harmonics, double* data, double* ws2,
 		// Zero out the final sine coefficient
 		*bmj++ = 0;
 	}
+
+	// Turn coefficients into data
+	cs_ids2ht_execute(B, pad, data, many_idct, many_idst);
+}
+
+void
+cs_ids2ht_dp(int B, const double* harmonics, double* partials, const double* ws2,
+	fftw_real* pad, fftw_plan many_idct, fftw_plan many_idst)
+{
+	int N = 2 * B;
+
+	// Prepare for logging
+	Eigen::IOFormat OctaveFmt(Eigen::StreamPrecision, 0, ", ", ";\n", "", "", "[", "]");
+
+	// Clear output data and the entire scratchpad
+	memset(partials, 0, N * N * sizeof(double));
+	memset(pad, 0, N * N * 2 * sizeof(double));
+
+	// Compute 1D fourier coefficients for the northern hemisphere
+	// The cs_ids2ht_execute will run two passes of idct & idst, and between
+	// the two passes, the Coefficients will be modified to account for the
+	// southern hemisphere
+	for (int j = 0; j < N; ++j)
+	{
+		fftw_real* amj = pad + (2 * N * j);
+		fftw_real* bmj = amj + N;
+		// Retrieve d~P_{l,m} per x_{j}-file
+		// This file is already in upper triangular form
+		auto drePlmCos = cs_ws2_drePlmCosFile(B, j, ws2);
+		// Compute the cosine coefficients
+		// Note that the l=0 coefficient is zero
+		*amj++ = 0;
+		for (int m = 1; m < B; ++m, ++amj)
+		{
+			// Compute element-wise product between...
+			// 1: ROW m of UPPER TRIANGLE of HARMONICS
+			// 2: ROW m of UPPER TRIANGLE drePlmCosFile for x_{j}
+			auto row1 = harmonics + (B * m);
+			auto row2 = drePlmCos + (2 * B - m + 1) * m / 2;
+			for (int l = m; l < B; ++l)
+			{
+				*amj += row1[l] * row2[l - m];
+			}
+		}
+		// Compute the sine coefficients
+		for (int m = 1; m < B; ++m, ++bmj)
+		{
+			// Compute element-wise product between...
+			// 1: ROW B-m of LOWER TRIANGLE of HARMONICS, shifted by m
+			// 2: ROW   m of UPPER TRIANGLE drePlmCosFile for x_{j}
+			auto row1 = harmonics + (B * (B - m)) - m;
+			auto row2 = drePlmCos + (2 * B - m + 1) * m / 2;
+			for (int l = m; l < B; ++l)
+			{
+				*bmj += row1[l] * row2[l - m];
+			}
+		}
+		// Zero out the final sine coefficient
+		*bmj++ = 0;
+	}
+
+	// Turn coefficients into partials
+	cs_ids2ht_execute(B, pad, partials, many_idct, many_idst);
+}
+
+void
+cs_ids2ht_da(int B, const double* harmonics, double* partials, const double* ws2,
+	fftw_real* pad, fftw_plan many_idct, fftw_plan many_idst)
+{
+	int N = 2 * B;
+
+	// Prepare for logging
+	Eigen::IOFormat OctaveFmt(Eigen::StreamPrecision, 0, ", ", ";\n", "", "", "[", "]");
+
+	// Clear output data and the entire scratchpad
+	memset(partials, 0, N * N * sizeof(double));
+	memset(pad, 0, N * N * 2 * sizeof(double));
+
+	// Compute 1D fourier coefficients for the northern hemisphere
+	// The cs_ids2ht_execute will run two passes of idct & idst, and between
+	// the two passes, the Coefficients will be modified to account for the
+	// southern hemisphere
+	for (int j = 0; j < N; ++j)
+	{
+		fftw_real* amj = pad + (2 * N * j);
+		fftw_real* bmj = amj + N;
+		// Retrieve P_{l,m} per x_{j}-file
+		// This file is already in upper triangular form
+		// Unlike the polar derivatives, the derivatives aren't needed here!
+		auto rePlmCos = cs_ws2_rePlmCosFile(B, j, ws2);
+		// Compute the cosine coefficients
+		for (int m = 0; m < B; ++m, ++amj)
+		{
+			// Compute element-wise product between...
+			// 1: ROW m of UPPER TRIANGLE of HARMONICS
+			// 2: ROW m of UPPER TRIANGLE rePlmCosFile for x_{j}
+			auto row1 = harmonics + (B * m);
+			auto row2 = rePlmCos + (2 * B - m + 1) * m / 2;
+			for (int l = m; l < B; ++l)
+			{
+				// Extra m due to partial derivative w.r.t. phi
+				*amj += m * row1[l] * row2[l - m];
+			}
+		}
+		// Compute the sine coefficients
+		for (int m = 1; m < B; ++m, ++bmj)
+		{
+			// Compute element-wise product between...
+			// 1: ROW B-m of LOWER TRIANGLE of HARMONICS, shifted by m
+			// 2: ROW   m of UPPER TRIANGLE rePlmCosFile for x_{j}
+			auto row1 = harmonics + (B * (B - m)) - m;
+			auto row2 = rePlmCos + (2 * B - m + 1) * m / 2;
+			for (int l = m; l < B; ++l)
+			{
+				// Extra m due to partial derivative w.r.t. phi
+				*bmj += m * row1[l] * row2[l - m];
+			}
+		}
+		// Zero out the final sine coefficient
+		*bmj++ = 0;
+	}
+
+	// Turn coefficients into partials
+	cs_ids2ht_execute(B, pad, partials, many_idct, many_idst);
+}
+
+void
+cs_ids2ht_plans(int B,
+	fftw_real* pad, fftw_plan* ptr_many_idct, fftw_plan* ptr_many_idst)
+{
+	int N = 2 * B;
+
+	// For each D{C,S}T-III...
+	// Perform rank-1 (1-dimensional)
+	int rank = 1;
+	// ... of input length B
+	int n[] = { B };
+	// ... for N batches
+	int howmany = { N };
+
+	// The first input element is at
+	fftw_real* in = pad;
+	// The input of each batch is n-shaped (hence NULL)
+	int* inembed = NULL;
+	// The stride of each element within each input batch
+	int istride = 1;
+	// The stride of the first input element across all batches
+	int idist = 2 * N;
+
+	// The first output element is at
+	fftw_real* out = in + B;
+	// The output of each batch is n-shaped (hence NULL)
+	int* onembed = NULL;
+	// The stride of each element within each output batch
+	int ostride = 1;
+	// The stride of the first output element across all batches
+	int odist = 2 * N;
+
+	// Perform DCT-III for each batch
+	fftw_r2r_kind kind[] = { FFTW_REDFT01 };
+	// Default runtime flags
+	auto flags = FFTW_ESTIMATE;
+
+	// Create DCT-III plan using the advanced real-to-real interface
+	*ptr_many_idct = fftw_plan_many_r2r(rank, n, howmany,
+		in, inembed, istride, idist,
+		out, onembed, ostride, odist,
+		kind, flags);
+
+	// Create DST-III plan using the advanced real-to-real interface
+	in += N; out += N; kind[0] = FFTW_RODFT01;
+	*ptr_many_idst = fftw_plan_many_r2r(rank, n, howmany,
+		in, inembed, istride, idist,
+		out, onembed, ostride, odist,
+		kind, flags);
+}
+
+void
+cs_ids2ht_execute(int B, fftw_real* pad, fftw_real* data,
+	fftw_plan many_idct, fftw_plan many_idst)
+{
+	int N = 2 * B;
+
+	// Prepare for logging
+	Eigen::IOFormat OctaveFmt(Eigen::StreamPrecision, 0, ", ", ";\n", "", "", "[", "]");
 
 	if (FLAGS_minloglevel == 0)
 	{
@@ -407,57 +603,6 @@ cs_ids2ht(int B, double* harmonics, double* data, double* ws2,
 	}
 }
 
-void
-cs_ids2ht_plans(int B,
-	fftw_real* pad, fftw_plan* ptr_many_idct, fftw_plan* ptr_many_idst)
-{
-	int N = 2 * B;
-
-	// For each D{C,S}T-III...
-	// Perform rank-1 (1-dimensional)
-	int rank = 1;
-	// ... of input length B
-	int n[] = { B };
-	// ... for N batches
-	int howmany = { N };
-
-	// The first input element is at
-	fftw_real* in = pad;
-	// The input of each batch is n-shaped (hence NULL)
-	int* inembed = NULL;
-	// The stride of each element within each input batch
-	int istride = 1;
-	// The stride of the first input element across all batches
-	int idist = 2 * N;
-
-	// The first output element is at
-	fftw_real* out = in + B;
-	// The output of each batch is n-shaped (hence NULL)
-	int* onembed = NULL;
-	// The stride of each element within each output batch
-	int ostride = 1;
-	// The stride of the first output element across all batches
-	int odist = 2 * N;
-
-	// Perform DCT-III for each batch
-	fftw_r2r_kind kind[] = { FFTW_REDFT01 };
-	// Default runtime flags
-	auto flags = FFTW_ESTIMATE;
-
-	// Create DCT-III plan using the advanced real-to-real interface
-	*ptr_many_idct = fftw_plan_many_r2r(rank, n, howmany,
-		in, inembed, istride, idist,
-		out, onembed, ostride, odist,
-		kind, flags);
-
-	// Create DST-III plan using the advanced real-to-real interface
-	in += N; out += N; kind[0] = FFTW_RODFT01;
-	*ptr_many_idst = fftw_plan_many_r2r(rank, n, howmany,
-		in, inembed, istride, idist,
-		out, onembed, ostride, odist,
-		kind, flags);
-}
-
 double*
 cs_make_ws2(int B)
 {
@@ -468,10 +613,12 @@ cs_make_ws2(int B)
 
 	// Allocate workspace
 	double* const ws2 = new double
-		[(4 + 3 * N + (N - 2) * N + N * B * (B + 1))];
+		[(4 + 3 * N
+			+ (N - 2) * N
+			+ N * B * (B + 1) / 2 * 3)];
 
 	// Segmentize the workspace into multiple blocks
-	double* const blocks[7] = {
+	double* const blocks[8] = {
 		// Block 0: 4 elements
 		// Element 0: bandlimit
 		// Element 1-3: unused
@@ -502,8 +649,13 @@ cs_make_ws2(int B)
 
 		// Block 6: N*B*(B+1)/2 elements
 		// Permutes the block above to perform the inverse transform
-		// Dimensions: First m, then l, then j
-		ws2 + (4 + 3 * N + (N - 2) * N + N * B * (B + 1) / 2)
+		// Dimensions: First l, then m, then j
+		ws2 + (4 + 3 * N + (N - 2) * N + N * B * (B + 1) / 2),
+
+		// Block 7: N*(B*(B+1)/2) elements
+		// Stores the coefficients used to compute the gradient field
+		// Dimensions: First l, then m, then j
+		ws2 + (4 + 3 * N + (N - 2) * N + N * B * (B + 1)),
 	};
 	
 	// [Block 0] Bandlimit
@@ -741,6 +893,34 @@ cs_make_ws2(int B)
 		}
 	}
 
+	// [Block 7] Blocks for derivatives
+#pragma omp parallel for if (B >= 128)
+	for (int j = 0; j < N; ++j)
+	{
+		double* rP = cs_ws2_rePlmCosFile(B, j, ws2);
+		double* drP = cs_ws2_drePlmCosFile(B, j, ws2);
+		double* target = drP;
+		// The first element in each file will not be used
+		// But it will be cleared to facilitate inverse discrete transforms
+		*target++ = 0;
+		double x_j = x[j];
+		double y_j = y[j];
+		// D_theta (~P_{l,m}(cos(theta)))
+		//    = (x ~P_{l,m}(x) - (l+m)q_{l,m}/q_{l-1,m} ~P_{l-1,m}(x))/y
+		for (int m = 1; m < B; ++m)
+		{
+			for (int l = m; l < B; ++l, ++target)
+			{
+				// q_{l,m}/q_{l-1,m} = sqrt((2l+1)/(2l-1)*(l-m)/(l+m))
+				// d_{l-1,m} = (l+m) q_{l,m}/q_{l-1,m}
+				//           = sqrt((2l+1/(2l-1)*(l-m)*(l+m))
+				double d_lm1_m = sqrt((l + 0.5) / (l - 0.5) * (l - m) * (l + m));
+				*target = (x_j * rP[cs_index2_assoc(B, l, m)]
+					- d_lm1_m * rP[cs_index2_assoc(B, l - 1, m)]) / y_j;
+			}
+		}
+	}
+
 	return ws2;
 }
 
@@ -772,6 +952,13 @@ cs_ws2_rePlmCosRank(int B, int l, int m, double* ws2)
 	return rank;
 }
 
+const double*
+cs_ws2_rePlmCosRank(int B, int l, int m, const double* ws2)
+{
+	auto rank = cs_ws2_rePlmCosRank(B, l, m, const_cast<double*>(ws2));
+	return const_cast<const double*>(rank);
+}
+
 double*
 cs_ws2_rePlmCosFile(int B, int j, double* ws2)
 {
@@ -791,4 +978,28 @@ cs_ws2_rePlmCosFile(int B, int j, double* ws2)
 	double* file = cs_ws2_rePlmCosRank(B, B, 0, ws2) + (B * (B + 1) / 2 * j);
 
 	return file;
+}
+
+const double*
+cs_ws2_rePlmCosFile(int B, int j, const double* ws2)
+{
+	auto file = cs_ws2_rePlmCosFile(B, j, const_cast<double*>(ws2));
+	return const_cast<const double*>(file);
+}
+
+double*
+cs_ws2_drePlmCosFile(int B, int j, double* ws2)
+{
+	int N = 2 * B;
+
+	double* file = cs_ws2_rePlmCosFile(B, j, ws2) + N * B * (B + 1) / 2;
+
+	return file;
+}
+
+const double*
+cs_ws2_drePlmCosFile(int B, int j, const double* ws2)
+{
+	auto file = cs_ws2_drePlmCosFile(B, j, const_cast<double*>(ws2));
+	return const_cast<const double*>(file);
 }

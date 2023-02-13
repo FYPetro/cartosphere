@@ -2,12 +2,15 @@
 #ifndef __CARTOSPHERE_HPP__
 #define __CARTOSPHERE_HPP__
 
+#include <fftw3.h>
+typedef double fftw_real;
+
 #include "cartosphere/solver.hpp"
 
 namespace Cartosphere
 {
 	// Spherical cartogram scheme
-	template <typename _Solver>
+	template <typename DerivedType>
 	class SolverWrapper
 	{
 	public:
@@ -15,30 +18,30 @@ namespace Cartosphere
 		void transform(vector<Cartosphere::Point>& points)
 		{
 			int iteration = 0;
-			FLP timeElapsed = 0;
+			double timeElapsed = 0;
 
 			// Prepare to loop
-			FLP timestep = firstTimestep;
-			FLP epsilon = std::numeric_limits<FLP>::max();
-			FLP maxDistance = std::numeric_limits<FLP>::max();
+			double timestep = firstTimestep;
+			double epsilon = std::numeric_limits<double>::max();
+			double maxDistance = std::numeric_limits<double>::max();
 			vector<Cartosphere::Point> previousPoints;
 
 			// Loop while conditions unchange
 			bool notExpired = true;
-			bool notDivergent = true;
-			while (notExpired && notDivergent)
+			bool notConvergent = true;
+			while (notExpired && notConvergent)
 			{
 				// Compute velocity field
 				previousPoints = points;
-				vector<FL3> velocity = solver.velocity(points);
+				vector<FL3> velocities = velocity(points);
 
 				// Use velocity field to perform time step.
 				FL3 travel;
-				FLP travelDistance;
+				double travelDistance;
 				maxDistance = 0;
 				for (size_t i = 0; i < points.size(); ++i)
 				{
-					travel = timestep * velocity[i];
+					travel = timestep * velocities[i];
 					points[i].move(travel);
 
 					travelDistance = travel.norm2();
@@ -50,62 +53,127 @@ namespace Cartosphere
 
 				// Prepare for next iteration
 				++iteration;
-				solver.advance(timestep);
+				advance_solver(timeElapsed, timestep);
 				timeElapsed += timestep;
 				timestep *= ratioTimestep;
 
 				// Judge loop criterions
 				notExpired = true;
-				notDivergent = maxDistance > epsDistance;
+				notConvergent = maxDistance > epsDistance;
 
-				std::cout << "Iteration #" << iteration << "\n"
-					<< "\t" << "Time Elapsed " << timeElapsed << "\n"
-					<< "\t" << "Max Distance " << maxDistance << "\n";
+				// std::cout << "Iteration #" << iteration << "\n"
+				// 	<< "\t" << "Time Elapsed " << timeElapsed << "\n"
+				// 	<< "\t" << "Max Distance " << maxDistance << "\n";
 			}
 
-			std::cout << "Iteration stopped.\n";
+			// std::cout << "Iteration stopped.\n";
 		}
 
 	protected:
-		// Solver instance
-		_Solver solver;
+		// Initial condition, defaults the zero function
+		Cartosphere::Function initFunction =
+			[](const Cartosphere::Point& x) { return 0; };
 
-		// Initial timestep size
-		FLP firstTimestep;
+		// Initial timestep size, defaults to 1
+		double firstTimestep = 1;
 
-		// Timestep common ratio
-		FLP ratioTimestep;
+		// Timestep size common ratio, defaults to uniform marching
+		double ratioTimestep = 1;
 
 		// Convergence criterion: maximum distance
-		FLP epsDistance;
+		double epsDistance = 1e-6;
 
 	public:
-		// Initialize solver
-		void initialize_solver() const;
+		// Advance solver
+		void advance_solver(double time, double delta)
+		{
+			(reinterpret_cast<DerivedType*>(this))->advance_solver(time, delta);
+		}
+
+		// Advance solver
+		vector<FL3> velocity(const vector<Cartosphere::Point>& points) const
+		{
+			return (reinterpret_cast<const DerivedType*>(this))->velocity(points);
+		}
+
+		// Get/Set func_ic
+		Cartosphere::Function get_initial_condition() const { return initFunction; }
+		void set_initial_condition(const Cartosphere::Function& f) { initFunction = f; }
 
 		// Get/Set firstTimeStep
-		FLP get_first_timestep() const { return firstTimestep; }
-		void set_first_timestep(FLP timestep) { firstTimestep = timestep; }
+		double get_first_timestep() const { return firstTimestep; }
+		void set_first_timestep(double t) { if (t > 0) firstTimestep = t; }
 
-		// Get/Set ratioTimeSTep
-		FLP get_ratio_timestep() const { return ratioTimestep; }
-		void set_ratio_timestep(FLP ratio) { if (ratio > 0) ratioTimestep = ratio; }
+		// Get/Set ratioTimeStep
+		double get_ratio_timestep() const { return ratioTimestep; }
+		void set_ratio_timestep(double r) { if (r > 0) ratioTimestep = r; }
 
 		// Get/Set epsDistance
-		FLP get_eps_distance() const { return epsDistance; }
-		void set_eps_distance(FLP eps) { if (eps > 0) epsDistance = eps; }
+		double get_eps_distance() const { return epsDistance; }
+		void set_eps_distance(double e) { if (e > 0) epsDistance = e; }
 	};
 
 	// Spectral cartogram generator
-	class SpectralGlobe : public SolverWrapper<Cartosphere::SpectralSolver>
+	class SpectralGlobe : public SolverWrapper<Cartosphere::SpectralGlobe>
 	{
+	public:
+		// Default constructor
+		SpectralGlobe(int bandlimit = 128) : B(bandlimit), N(0)
+		{
+			initialize_solver();
+		}
 
+	public:
+		// Initialize solver
+		void initialize_solver();
+
+		// Advance solver
+		void advance_solver(double time, double delta);
+
+		// Compute velocity
+		vector<FL3> velocity(const vector<Cartosphere::Point>& points) const;
+
+	protected:
+		// Data at time 0 and time t
+		vector<double> init_data;
+		vector<double> time_data;
+		
+		// Fourier at time 0 and time t
+		vector<double> init_hats;
+		vector<double> time_hats;
+
+		// Temporary allocations for S2 transformations
+		double* ws2;
+		fftw_real* ipad;
+		fftw_plan idct, idst;
+
+		// Gradient field at cell centers (theta_j^*,phi_k^*)
+		vector<double> time_dp;
+		vector<double> time_da;
+		vector<FL3> time_grad;
+
+		// Bandlimit and data size
+		int B;
+		int N;
+
+	public:
+		// Get/Set bandlimit: must be a whole power of 2 and even
+		int get_bandlimit() const { return B; }
+		void set_bandlimit(int B) { if (B > 0) this->B = B; }
 	};
 
 	// Finite element cartogram generator
-	class FiniteElementGlobe : public SolverWrapper<Cartosphere::TimeDependentSolver>
+	class FiniteElementGlobe : public SolverWrapper<Cartosphere::FiniteElementGlobe>
 	{
+	public:
+		// Initialize solver
+		void initialize_solver();
+		
+		// Advance solver
+		void advance_solver(double time, double delta);
 
+		// Compute velocity
+		vector<FL3> velocity(const vector<Cartosphere::Point>& points) const;
 	};
 }
 

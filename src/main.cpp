@@ -15,8 +15,13 @@ using Cartosphere::FiniteElementGlobe;
 
 #include "cartosphere/dsht.hpp"
 
+#include "cartosphere/functions.hpp"
+
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 #include <glog/logging.h>
+
+int
+runBenchmark();
 
 int
 runDemo(const std::string&, const std::vector<std::string>&);
@@ -170,142 +175,7 @@ main(int argc, char* argv[])
 	// Benchmark the entire program
 	if (program.is_subcommand_used("benchmark"))
 	{
-		std::cout << "[STARTING BENCHMARK]\n"
-			<< "#1: Discrete Real S2-Fourier Transforms\n"
-			<< "\n"
-			<< "  hat(l,m)=1/(1+l+|m|), gone through cs_ids2ht then cs_fds2ht.\n"
-			<< "  Max error is the largest absolute error among all harmonics.\n"
-			<< "\n"
-			<< "  | ## |  BW  | algorithm | makews (s) | ids2ht (s) | fds2ht (s) |  max error  |\n"
-			<< "  | --:| ----:|:---------:| ----------:| ----------:| ----------:| -----------:|\n";
-		// Save std::cout flags for later restoration
-		std::ios oldCoutState(nullptr);
-		oldCoutState.copyfmt(std::cout);
-
-		// Bandlimits with default treatment: (0 <= i < 9)
-		//  - 2, 4, 8, 16, 32, 64, 128, 256, 512
-		// Bandlimits with special treatment: (9 <= i)
-		//  - 1024, 2048
-		for (size_t i = 0; i < 9; ++i)
-		{
-			int B = (int)pow(2, i + 1);
-			if (FLAGS_minloglevel == 0)
-			{
-				LOG(INFO) << "Benchmark #1: B = " << B;
-			}
-
-			// Force logging output for a certain B
-			// On Windows, the output file is stored under %APPDATA%/../Local/Temp/
-			// FLAGS_minloglevel = B != 4;
-
-			// Print table header
-			std::cout << "  "
-				<< "| " << std::setw(2) << (i + 1) << " "
-				<< "| " << std::setw(4) << B;
-			std::cout.copyfmt(oldCoutState);
-
-			// Print the algorithm used for different bandlimits
-			if (B <= 512)
-			{
-				std::cout << " | tablebase | ";
-			}
-			else
-			{
-				std::cout << " | recursive | ";
-			}
-			std::cout << std::flush;
-
-			// Allocate data and randomize the harmonics (hats)
-			double* hats = fftw_alloc_real(B * B);
-			double* data = fftw_alloc_real(4 * B * B);
-
-			// Experiment with a simple case and compare to matlab
-			vector<double> coeffs(B * B);
-			for (int l = 0; l < B; ++l)
-			{
-				for (int m = -l; m <= l; ++m)
-				{
-					coeffs[cs_index2(B, l, m)] = 1.0 / (l + abs(m) + 1);
-				}
-			}
-			memcpy(hats, coeffs.data(), B * B * sizeof(double));
-
-			// Make pad, plans, and workspace
-			double* ws2;
-			{
-				auto begin = steady_clock::now();
-				ws2 = cs_make_ws2(B);
-				auto end = steady_clock::now();
-
-				auto elapsed = (double)
-					(duration_cast<milliseconds>(end - begin).count()) / 1000;
-				std::cout << std::setw(10)
-					<< std::fixed << std::setprecision(3) << elapsed << " | "
-					<< std::flush;
-				std::cout.copyfmt(oldCoutState);
-			}
-			// Perform inverse transform (synthesis)
-			{
-				auto begin = steady_clock::now();
-				int N = 2 * B;
-				fftw_real* pad = fftw_alloc_real(N * N * 2);
-				fftw_plan many_idct, many_idst;
-				cs_ids2ht_plans(B, pad, &many_idct, &many_idst);
-				cs_ids2ht(B, hats, data, ws2, pad, many_idct, many_idst);
-				fftw_destroy_plan(many_idct);
-				fftw_destroy_plan(many_idst);
-				fftw_free(pad);
-				auto end = steady_clock::now();
-
-				auto elapsed = (double)
-					(duration_cast<milliseconds>(end - begin).count()) / 1000;
-				std::cout << std::setw(10)
-					<< std::fixed << std::setprecision(3) << elapsed << " | "
-					<< std::flush;
-				std::cout.copyfmt(oldCoutState);
-			}
-			// Perform forward transform (analysis)
-			{
-				auto begin = steady_clock::now();
-				cs_fds2ht(B, data, hats, ws2);
-				auto end = steady_clock::now();
-
-				double maxError = 0;
-				for (int l = 0; l < B; ++l)
-				{
-					for (int m = -l; m <= l; ++m)
-					{
-						double error = abs(
-							coeffs[cs_index2(B, l, m)]
-							- hats[cs_index2(B, l, m)]
-						);
-						if (std::isnan(error))
-						{
-							maxError = std::numeric_limits<double>::quiet_NaN();
-							break;
-						}
-						else if (error > maxError)
-						{
-							maxError = error;
-						}
-					}
-				}
-
-				auto elapsed = (double)
-					(duration_cast<milliseconds>(end - begin).count()) / 1000;
-				std::cout << std::setw(10)
-					<< std::fixed << std::setprecision(3) << elapsed << " | ";
-				std::cout.copyfmt(oldCoutState);
-
-				std::cout << std::setw(11) << maxError << " | \n";
-				std::cout.copyfmt(oldCoutState);
-			}
-			// Free memory and reset std::cout
-			cs_free_ws2(ws2);
-			fftw_free(hats);
-			fftw_free(data);
-		}
-		std::exit(0);
+		std::exit(runBenchmark());
 	}
 
 	// Visualize a file
@@ -411,6 +281,265 @@ main(int argc, char* argv[])
 }
 
 int
+runBenchmark()
+{
+	std::cout << "[STARTING BENCHMARK]\n"
+		<< "#1: Discrete Real S2-Fourier Transforms\n"
+		<< "\n"
+		<< "  hat(l,m)=1/(1+l+|m|), gone through cs_ids2ht then cs_fds2ht.\n"
+		<< "  Max error is the largest absolute error among all harmonics.\n"
+		<< "\n"
+		<< "  | ## |  BW  | algorithm | makews (s) | ids2ht (s) | fds2ht (s) |  max error  |\n"
+		<< "  | --:| ----:|:---------:| ----------:| ----------:| ----------:| -----------:|\n";
+	// Save std::cout flags for later restoration
+	std::ios oldCoutState(nullptr);
+	oldCoutState.copyfmt(std::cout);
+
+	// Bandlimits with default treatment: (0 <= i < 9)
+	//  - 2, 4, 8, 16, 32, 64, 128, 256, 512
+	// Bandlimits with special treatment: (9 <= i)
+	//  - 1024, 2048
+	for (int i = 0; i < 7; ++i)
+	{
+		int B = (int)pow(2, i + 1);
+		if (FLAGS_minloglevel == 0)
+		{
+			LOG(INFO) << "Benchmark #1: B = " << B;
+		}
+
+		// Force logging output for a certain B
+		// On Windows, the output file is stored under %APPDATA%/../Local/Temp/
+		// FLAGS_minloglevel = B != 4;
+
+		// Print row headers
+		std::cout << "  "
+			<< "| " << std::setw(2) << (i + 1) << " "
+			<< "| " << std::setw(4) << B;
+		std::cout.copyfmt(oldCoutState);
+
+		// Print the algorithm used for different bandlimits
+		if (B <= 512)
+		{
+			std::cout << " | tablebase | ";
+		}
+		else
+		{
+			std::cout << " | recursive | ";
+		}
+		std::cout << std::flush;
+
+		// Allocate data and randomize the harmonics (hats)
+		double* hats = fftw_alloc_real(B * B);
+		double* data = fftw_alloc_real(4 * B * B);
+
+		// Experiment with a simple case and compare to matlab
+		vector<double> coeffs(B * B);
+		for (int l = 0; l < B; ++l)
+		{
+			for (int m = -l; m <= l; ++m)
+			{
+				coeffs[cs_index2(B, l, m)] = 1.0 / (l + abs(m) + 1);
+			}
+		}
+		memcpy(hats, coeffs.data(), B * B * sizeof(double));
+
+		// Make pad, plans, and workspace
+		double* ws2;
+		{
+			auto begin = steady_clock::now();
+			ws2 = cs_make_ws2(B);
+			auto end = steady_clock::now();
+
+			auto elapsed = (double)
+				(duration_cast<milliseconds>(end - begin).count()) / 1000;
+			std::cout << std::setw(10)
+				<< std::fixed << std::setprecision(3) << elapsed << " | "
+				<< std::flush;
+			std::cout.copyfmt(oldCoutState);
+		}
+		// Perform inverse transform (synthesis)
+		{
+			auto begin = steady_clock::now();
+			int N = 2 * B;
+			fftw_real* pad = fftw_alloc_real(N * N * 2);
+			fftw_plan many_idct, many_idst;
+			cs_ids2ht_plans(B, pad, &many_idct, &many_idst);
+			cs_ids2ht(B, hats, data, ws2, pad, many_idct, many_idst);
+			fftw_destroy_plan(many_idct);
+			fftw_destroy_plan(many_idst);
+			fftw_free(pad);
+			auto end = steady_clock::now();
+
+			auto elapsed = (double)
+				(duration_cast<milliseconds>(end - begin).count()) / 1000;
+			std::cout << std::setw(10)
+				<< std::fixed << std::setprecision(3) << elapsed << " | "
+				<< std::flush;
+			std::cout.copyfmt(oldCoutState);
+		}
+		// Perform forward transform (analysis)
+		{
+			auto begin = steady_clock::now();
+			cs_fds2ht(B, data, hats, ws2);
+			auto end = steady_clock::now();
+
+			double maxError = 0;
+			for (int l = 0; l < B; ++l)
+			{
+				for (int m = -l; m <= l; ++m)
+				{
+					double error = abs(
+						coeffs[cs_index2(B, l, m)]
+						- hats[cs_index2(B, l, m)]
+					);
+					if (std::isnan(error))
+					{
+						maxError = std::numeric_limits<double>::quiet_NaN();
+						break;
+					}
+					else if (error > maxError)
+					{
+						maxError = error;
+					}
+				}
+			}
+
+			auto elapsed = (double)
+				(duration_cast<milliseconds>(end - begin).count()) / 1000;
+			std::cout << std::setw(10)
+				<< std::fixed << std::setprecision(3) << elapsed << " | ";
+			std::cout.copyfmt(oldCoutState);
+
+			std::cout << std::setw(11) << maxError << " | \n";
+			std::cout.copyfmt(oldCoutState);
+		}
+		// Free memory and reset std::cout
+		delete[] ws2;
+		fftw_free(hats);
+		fftw_free(data);
+	}
+
+	std::cout << "#2: Orientation Test for Fourier-based Cartogram\n"
+		<< "\n"
+		<< "  At various bandlimits, displace the following three circles:\n"
+		<< "  CX: x=0, f=2+x; CY: y=0, f=2+y; CZ: z=0, f=2+z;\n"
+		<< "  Max error is the largest absolute error among all points.\n"
+		<< "\n"
+		<< "  | ## |  BW  |  error x=0  |  error Y=0  |  error Z=0  | Z time (s) |  max error  |\n"
+		<< "  | --:| ----:|:-----------:| -----------:| -----------:|:----------:| -----------:|\n";
+	for (int i = 0; i < 9; ++i)
+	{
+		int B = (int)pow(2, i + 1);
+		if (FLAGS_minloglevel == 0)
+		{
+			LOG(INFO) << "Benchmark #2: B = " << B;
+		}
+
+		// Force logging output for a certain B
+		// FLAGS_minloglevel = B != 4;
+		
+		// Print row headers
+		std::cout << "  "
+			<< "| " << std::setw(2) << (i + 1) << " "
+			<< "| " << std::setw(4) << B << " "
+			<< "| ";
+		std::cout.copyfmt(oldCoutState);
+		
+		// Initialize the spherical cartogram
+		SpectralGlobe globe;
+
+		// Construct the three cases
+		vector<Cartosphere::Point> initial_points(360);
+		Cartosphere::Function initial_condition;
+		double maxError = 0;
+		for (int j = 0; j < 3; ++j)
+		{
+			// Points: x=0
+			// Initial condition: 2+x
+			if (j == 0)
+			{
+				for (int k = 0; k < 360; ++k)
+				{
+					double x = 0;
+					double y = sin(deg2rad(k));
+					double z = cos(deg2rad(k));
+					initial_points[k] = Cartosphere::Point(x, y, z);
+				}
+				initial_condition = [](const Cartosphere::Point& P) {
+					return 2 + P.x();
+				};
+			}
+			// Points: y=0
+			// Initial condition: 2+y
+			else if (j == 1)
+			{
+				for (int k = 0; k < 360; ++k)
+				{
+					double x = sin(deg2rad(k));
+					double y = 0;
+					double z = cos(deg2rad(k));
+					initial_points[k] = Cartosphere::Point(x, y, z);
+				}
+				initial_condition = [](const Cartosphere::Point& P) {
+					return 2 + P.y();
+				};
+			}
+			// Points: z=0
+			// Initial condition: 2+z
+			else
+			{
+				for (int k = 0; k < 360; ++k)
+				{
+					double x = cos(deg2rad(k));
+					double y = sin(deg2rad(k));
+					double z = 0;
+					initial_points[k] = Cartosphere::Point(x, y, z);
+				}
+				initial_condition = [](const Cartosphere::Point& P) {
+					return 2 + P.z();
+				};
+			}
+
+			// Perform the spherical cartogram transformation
+			auto begin = steady_clock::now();
+			globe.set_initial_condition(initial_condition);
+			globe.initialize_solver();
+			auto points = initial_points;
+			globe.transform(points);
+			auto end = steady_clock::now();
+
+			auto elapsed = (double)
+				(duration_cast<milliseconds>(end - begin).count()) / 1000;
+
+			// Error calculation
+			double caseError = 0;
+			for (int k = 0; k < initial_points.size(); ++k)
+			{
+				double error = distance(points[k], initial_points[k]);
+				caseError = max(caseError, error);
+			}
+			std::cout << std::setw(11) << caseError << " | ";
+			std::cout.copyfmt(oldCoutState);
+
+			// Print duration for only the z=0 test because it is presumed
+			// that all three transformations have the same complexity
+			if (j == 2)
+			{
+				std::cout << std::setw(10)
+					<< std::fixed << std::setprecision(3) << elapsed << " | "
+					<< std::flush;
+				std::cout.copyfmt(oldCoutState);
+			}
+
+			maxError = max(maxError, caseError);
+		}
+		std::cout << std::setw(11) << maxError << " |\n";
+		std::cout.copyfmt(oldCoutState);
+	}
+	return 0;
+}
+
+int
 runDemo(const std::string& name, const std::vector<std::string>& args)
 {
 	if (name == "default")
@@ -427,9 +556,6 @@ runDemo(const std::string& name, const std::vector<std::string>& args)
 
 	if (name == "testobj")
 		return test_obj();
-
-	// if (name == "benchmark")
-	// 	return benchmark();
 
 	if (name == "precompute")
 	{
@@ -523,7 +649,6 @@ runDemo(const std::string& name, const std::vector<std::string>& args)
 		<< "seminar            [---]\n"
 		<< "quadrature         [---]\n"
 		<< "testobj            [---]\n"
-		// << "benchmark          [---]\n"
 		<< "precompute         [---]\n"
 		<< "refine LEVEL       [---]\n"
 		<< "A                  [Research A]\n"
@@ -533,6 +658,7 @@ runDemo(const std::string& name, const std::vector<std::string>& args)
 		<< "D                  [Research D]\n"
 		<< "F                  [Research F]\n"
 		<< "G SHAPEFILE        [Research G]\n\n"
-		<< "Usage: cartosphere demo SCENARIO [ARGS...]\n";
+		<< "Usage: cartosphere demo SCENARIO [ARGS...]\n"
+		<< "Most demos are subject to cleaning.\n";
 	return 0;
 }

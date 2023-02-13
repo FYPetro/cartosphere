@@ -7,7 +7,6 @@ using Cartosphere::Triangle;
 using Cartosphere::TriangularMesh;
 using Cartosphere::SteadyStateSolver;
 using Cartosphere::TimeDependentSolver;
-using Cartosphere::SpectralSolver;
 
 #include "cartosphere/shapefile.hpp"
 using Cartosphere::ShapeFile;
@@ -743,7 +742,6 @@ int research_c(int l, int m, bool silent)
 
 int research_d()
 {
-
 	if (true)
 	{
 		Point A(0, 0);
@@ -790,7 +788,6 @@ int research_d()
 		std::cout
 			<< "2T = <" << (2 * T).x << ", " << (2 * T).y << ", " << (2 * T).z << ">\n";
 	}
-
 	{
 		Point B(0, 0);
 		Point C(M_PI / 3, 0);
@@ -806,7 +803,6 @@ int research_d()
 		std::cout
 			<< "T<" << T.x << ", " << T.y << ", " << T.z << ">\n";
 	}
-
 	{
 		Point C(0, 0);
 		Point A(M_PI / 3, 0);
@@ -822,8 +818,6 @@ int research_d()
 		std::cout
 			<< "T<" << T.x << ", " << T.y << ", " << T.z << ">\n";
 	}
-
-
 	{
 		Point A(0, 0);
 		Point B(M_PI / 3, 0);
@@ -869,11 +863,8 @@ int research_d()
 			p[i].move(duration * u[i]);
 		}
 		// std::cout << "k = " << k << '\n';
-
 		// std::cout << p[1].x() << " " << p[1].y() << " " << p[1].z() << ";\n";
-
 	}
-
 
 	std::vector<FLP> ps;
 
@@ -1021,20 +1012,5 @@ int research_g(const std::string &folder)
 	
 	std::cout << "Shapes loaded: " << file.count() << "\n";
 
-	return 0;
-}
-
-int
-benchmark()
-{
-	// SpectralSolver s;
-	// s.parse("population.csm");
-	//
-	// std::cout << s.inputSummary() << std::endl;
-	// s.execute();
-	//
-	// std::cout << s.outputSummary() << std::endl;
-	//
-	// std::cout << "EVERYTHING PASSED!\n";
 	return 0;
 }
