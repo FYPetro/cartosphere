@@ -55,25 +55,27 @@ SpectralGlobe::initialize_solver()
 
 		// Compute initial Fourier coefficients
 		cs_fds2ht(B, init_data.data(), init_hats.data(), ws2);
+		// Update initial data and gradient
+		advance_solver(0, 0);
 	}
 }
 
 void
 SpectralGlobe::advance_solver(double time, double delta)
 {
-	// Interval: [t_0, t_1]
-	double t_0 = time;
-	double t_1 = time + delta;
+	// Interval: [0, t]
+	double t = time + delta;
 
 	// Compute decayed coefficients
 	{
 		int l, m, i;
 		for (l = 0; l < B; ++l)
 		{
+			double omega = l * (l + 1);
 			for (m = -l; m <= l; ++m)
 			{
 				i = cs_index2(B, l, m);
-				time_hats[i] = init_hats[i] * exp(-l * (l + 1));
+				time_hats[i] = init_hats[i] * exp((-omega) * t);
 			}
 		}
 	}
@@ -87,7 +89,7 @@ SpectralGlobe::advance_solver(double time, double delta)
 	{
 		int i = 0;
 		double theta, phi;
-		double cos_theta, sin_theta, cos_phi, sin_phi, temp;
+		double cos_theta, sin_theta, cos_phi, sin_phi;
 		// Turn dp e_theta + da e_phi into cartesian coordinates
 		for (int j = 0; j < N; ++j)
 		{
@@ -96,26 +98,22 @@ SpectralGlobe::advance_solver(double time, double delta)
 			sin_theta = sin(theta);
 			for (int k = 0; k < N; ++k, ++i)
 			{
-				phi = M_PI / B * (k + 1 / 2);
+				phi = M_PI / B * (k + 0.5);
 				cos_phi = cos(phi);
 				sin_phi = sin(phi);
 				// Convert gradient!
 				auto& grad = time_grad[i];
-				temp = (time_dp[i] * cos_theta + time_da[i] * sin_theta);
-				grad.x = cos_phi * temp;
-				grad.y = sin_phi * temp;
-				grad.z = -sin_theta * time_dp[i] + cos_theta * time_da[i];
+				grad.x = time_dp[i] * cos_theta * cos_phi - time_da[i] * sin_phi;
+				grad.y = time_dp[i] * cos_theta * sin_phi - time_da[i] * cos_phi;
+				grad.z = time_dp[i] * (-sin_theta);
 			}
 		}
 	}
 }
 
-vector<FL3>
-SpectralGlobe::velocity(const vector<Point>& points) const
+void
+SpectralGlobe::velocity(const vector<Point>& points, vector<FL3>& velocities) const
 {
-	vector<FL3> velocity;
-	velocity.resize(points.size());
-
 	// Compute data and velocities at the poles
 	double data_north = 0;
 	double data_south = 0;
@@ -140,8 +138,6 @@ SpectralGlobe::velocity(const vector<Point>& points) const
 			grad_south.x += diff * cos(phi);
 			grad_south.y += diff * sin(phi);
 		}
-		grad_north *= 2;
-		grad_south *= 2;
 	}
 
 	// Calculate the j, k index of the cell that contains each point
@@ -151,17 +147,17 @@ SpectralGlobe::velocity(const vector<Point>& points) const
 		const Point& P = points[i];
 		
 		// Compute the fractional j, k indices aligned with cell centers
-		double j_frac = P.p() / (2 * M_PI) - 0.5;
-		double k_frac = P.a() / M_PI - 0.5;
+		double j_frac = P.p() * N * M_1_PI - 0.5;
+		double k_frac = P.a() * B * M_1_PI - 0.5;
 		if (k_frac < 0)
 		{
 			k_frac += N;
 		}
 		
 		// Compute whole j, k indices aligned with cell centers
-		int j_n = (int)j_frac;
+		int j_n = (int)floor(j_frac);
 		int j_s = (j_n + 1);
-		int k_w = (int)k_frac % N;
+		int k_w = (int)floor(k_frac) % N;
 		int k_e = (k_w + 1) % N;
 		
 		// Compute remainder coordinates for later bilinear interpolation
@@ -171,11 +167,13 @@ SpectralGlobe::velocity(const vector<Point>& points) const
 		// Obtain data and gradient on the northern side
 		double data_n;
 		FL3 grad_n;
-		if (j_s == 0)
+		if (j_n == -1)
 		{
 			// The northern edge is degenerate; it is the north pole
 			data_n = data_north;
 			grad_n = grad_north;
+			// Scale j_frac from [0.5,1] to [0,1]
+			j_frac = 2 * j_frac - 1;
 		}
 		else
 		{
@@ -189,11 +187,13 @@ SpectralGlobe::velocity(const vector<Point>& points) const
 		// Obtain data and gradient on the southern side
 		double data_s;
 		FL3 grad_s;
-		if (j_n == N)
+		if (j_s == N)
 		{
 			// The southern edge is degenerate; it is the north pole
 			data_s = data_south;
 			grad_s = grad_south;
+			// Scale j_frac from [0,0.5] to [0,1]
+			j_frac = 2 * j_frac;
 		}
 		else
 		{
@@ -209,10 +209,8 @@ SpectralGlobe::velocity(const vector<Point>& points) const
 		FL3 grad = (1 - j_frac) * grad_n + j_frac * grad_s;
 
 		// Compute the velocity
-		velocity[i] = grad * (-1 / data);
+		velocities[i] = grad * (-1 / data);
 	}
-
-	return velocity;
 }
 
 void
@@ -227,13 +225,9 @@ FiniteElementGlobe::advance_solver(double time, double delta)
 	// TODO: Implement
 }
 
-vector<FL3>
-FiniteElementGlobe::velocity(const vector<Cartosphere::Point>& points) const
+void
+FiniteElementGlobe::velocity(const vector<Cartosphere::Point>& points,
+	vector<FL3>& velocities) const
 {
-	vector<FL3> velocity;
-	velocity.resize(points.size());
-
 	// TODO: Implement
-
-	return velocity;
 }

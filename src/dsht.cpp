@@ -69,21 +69,21 @@ cs_fds2ht(int B, const double* data, double* harmonics, const double* ws2)
 	auto trigs = ws2 + (4 + 3 * N);
 
 	// Put all data into a matrix
-	Eigen::Map<const Matrix> M(data, N, N);
+	Eigen::Map<const MatrixRowMajor> M(data, N, N);
 	if (FLAGS_minloglevel == 0)
 	{
 		LOG(INFO) << "M\n" << M.format(OctaveFmt);
 	}
 
 	// Make an 1xN array of weights
-	Eigen::Map<const Eigen::ArrayXXd> W(weights, 1, N);
+	Eigen::Map<const RowArray> W(weights, N);
 	if (FLAGS_minloglevel == 0)
 	{
 		LOG(INFO) << "W\n" << W.format(OctaveFmt);
 	}
 
 	// For each degree and order
-#pragma omp parallel for if (B >= 128)
+#pragma omp parallel for if (B >= 128 || FLAGS_minloglevel > 0)
 	for (int l = 0; l < B; ++l)
 	{
 		for (int m = -l; m <= l; ++m)
@@ -91,7 +91,7 @@ cs_fds2ht(int B, const double* data, double* harmonics, const double* ws2)
 			// W .* P
 			auto rank = cs_ws2_rePlmCosRank(B, l, abs(m), ws2);
 
-			Eigen::Map<const Eigen::ArrayXXd> P(rank, 1, N);
+			Eigen::Map<const RowArray> P(rank, N);
 			if (FLAGS_minloglevel == 0)
 			{
 				stringstream sst;
@@ -133,7 +133,7 @@ cs_fds2ht(int B, const double* data, double* harmonics, const double* ws2)
 					offset = N * (B - m - 2);
 				}
 
-				Eigen::Map<const Eigen::ArrayXXd> T(trigs + offset, 1, N);
+				Eigen::Map<const RowArray> T(trigs + offset, N);
 				if (FLAGS_minloglevel == 0)
 				{
 					stringstream sst;
@@ -291,15 +291,13 @@ cs_ids2ht_dp(int B, const double* harmonics, double* partials, const double* ws2
 		// This file is already in upper triangular form
 		auto drePlmCos = cs_ws2_drePlmCosFile(B, j, ws2);
 		// Compute the cosine coefficients
-		// Note that the l=0 coefficient is zero
-		*amj++ = 0;
-		for (int m = 1; m < B; ++m, ++amj)
+		for (int m = 0; m < B; ++m, ++amj)
 		{
 			// Compute element-wise product between...
 			// 1: ROW m of UPPER TRIANGLE of HARMONICS
 			// 2: ROW m of UPPER TRIANGLE drePlmCosFile for x_{j}
 			auto row1 = harmonics + (B * m);
-			auto row2 = drePlmCos + (2 * B - m + 1) * m / 2;
+			auto row2 = drePlmCos + cs_index2_assoc(B, m, m);
 			for (int l = m; l < B; ++l)
 			{
 				*amj += row1[l] * row2[l - m];
@@ -312,7 +310,7 @@ cs_ids2ht_dp(int B, const double* harmonics, double* partials, const double* ws2
 			// 1: ROW B-m of LOWER TRIANGLE of HARMONICS, shifted by m
 			// 2: ROW   m of UPPER TRIANGLE drePlmCosFile for x_{j}
 			auto row1 = harmonics + (B * (B - m)) - m;
-			auto row2 = drePlmCos + (2 * B - m + 1) * m / 2;
+			auto row2 = drePlmCos + cs_index2_assoc(B, m, m);
 			for (int l = m; l < B; ++l)
 			{
 				*bmj += row1[l] * row2[l - m];
@@ -674,13 +672,25 @@ cs_make_ws2(int B)
 		}
 
 		// Fill Eigen matrices A, b, solve Au=b, extract results
-		Matrix A = Eigen::Map<Matrix>(tempCosPls, N, N);
+		auto A = Eigen::Map<MatrixRowMajor>(tempCosPls, N, N);
 		ColVector b(N);
 		memset(b.data(), 0, N * sizeof(double));
 		b[0] = 2 * M_PI / B;
 		
 		ColVector u = A.partialPivLu().solve(b); // PartialPivLU suffices
 		memcpy(w, u.data(), N * sizeof(double));
+	}
+	
+	if (FLAGS_minloglevel == 0)
+	{
+		LOG(INFO) << "cs_make_ws2 workspace block 1";
+		LOG(INFO) << "  w = " << Eigen::Map<RowArray>(w, N);
+	}
+
+	if (FLAGS_minloglevel == 0)
+	{
+		LOG(INFO) << "cs_make_ws2 workspace block 2";
+		LOG(INFO) << "  x = " << Eigen::Map<RowArray>(x, N);
 	}
 
 	// [Block 3, 5] Populate associated Legendre table recursively
@@ -791,6 +801,12 @@ cs_make_ws2(int B)
 		}
 	}
 
+	if (FLAGS_minloglevel == 0)
+	{
+		LOG(INFO) << "cs_make_ws2 workspace block 3";
+		LOG(INFO) << "  y = " << Eigen::Map<RowArray>(y, N);
+	}
+
 	// [Block 4] Populate trig values for inverse transform
 	double* trigs = blocks[4];
 	{
@@ -896,17 +912,49 @@ cs_make_ws2(int B)
 		double y_j = y[j];
 		// D_theta (~P_{l,m}(cos(theta)))
 		//    = (x ~P_{l,m}(x) - (l+m)q_{l,m}/q_{l-1,m} ~P_{l-1,m}(x))/y
-		for (int m = 1; m < B; ++m)
+		for (int m = 0; m < B; ++m)
 		{
-			for (int l = m; l < B; ++l, ++target)
+			for (int l = std::max(1, m); l < B; ++l, ++target)
 			{
-				// q_{l,m}/q_{l-1,m} = sqrt((2l+1)/(2l-1)*(l-m)/(l+m))
-				// d_{l-1,m} = (l+m) q_{l,m}/q_{l-1,m}
-				//           = sqrt((2l+1/(2l-1)*(l-m)*(l+m))
-				double d_lm1_m = sqrt((l + 0.5) / (l - 0.5) * (l - m) * (l + m));
-				*target = (x_j * rP[cs_index2_assoc(B, l, m)]
-					- d_lm1_m * rP[cs_index2_assoc(B, l - 1, m)]) / y_j;
+				// Separate treatment for when l=m
+				if (l == m)
+				{
+					// q_{l,l}/q_{l,l-1} = sqrt(1+delta(l-1)) sqrt(2l)/y
+					double e_l_lm1 = sqrt(1 + (m == 1)) * sqrt(2 * l);
+					*target = e_l_lm1 / y_j * rP[cs_index2_assoc(B, l, l - 1)]
+						+ l * x_j / pow(y_j, 2) * rP[cs_index2_assoc(B, l, l)];
+				}
+				else
+				{
+					// q_{l,m}/q_{l-1,m} = sqrt((2l+1)/(2l-1)*(l-m)/(l+m))
+					// d_{l-1,m} = (l+m) q_{l,m}/q_{l-1,m}
+					//           = sqrt((2l+1)/(2l-1)*(l-m)*(l+m))
+					double d_lm1_m = sqrt((l + 0.5) / (l - 0.5) * ((l - m) * (l + m)));
+					*target = (x_j * rP[cs_index2_assoc(B, l, m)]
+						- d_lm1_m * rP[cs_index2_assoc(B, l - 1, m)]) / y_j;
+				}
 			}
+		}
+	}
+
+	if (FLAGS_minloglevel == 0)
+	{
+		LOG(INFO) << "cs_make_ws2 workspace block 7\n";
+		double* Plms = cs_ws2_drePlmCosFile(B, 0, ws2);
+		for (int j = 0; j < N; ++j)
+		{
+			stringstream sst;
+			sst << "\t"
+				<< "For theta_{" << j << "}: ";
+			for (int m = 0; m < B; ++m)
+			{
+				for (int l = m; l < B; ++l)
+				{
+					sst << "  d~P_{" << l << "," << m << "} = " << *Plms++;
+				}
+				sst << ", ";
+			}
+			LOG(INFO) << sst.str();
 		}
 	}
 

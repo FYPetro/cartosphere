@@ -1,7 +1,7 @@
 CXX = /usr/local/opt/llvm/bin/clang++
 
 INCLUDE = -I$(ROOT_DIR)/include \
-	-I/usr/local/include \
+	-isystem/usr/local/include \
 	-I/usr/local/opt/llvm/include \
 	$(FFTWINC) $(EIGENINC)
 
@@ -13,7 +13,7 @@ LDFLAGS = -L/usr/local/opt/llvm/lib \
 
 all: cartosphere
 
-cartosphere: main.cpp functions.cpp mesh.cpp solver.cpp research.cpp globe.cpp shapefile.cpp dsht.cpp
+cartosphere: main.cpp functions.cpp mesh.cpp solver.cpp research.cpp globe.cpp shapefile.cpp dsht.cpp cartosphere.cpp
 	pwd
 	$(CXX) $(CPPFLAGS) -o $@ $+ $(LDFLAGS)
 

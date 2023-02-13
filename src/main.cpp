@@ -425,7 +425,7 @@ runBenchmark()
 		<< "  CX: x=0, f=2+x; CY: y=0, f=2+y; CZ: z=0, f=2+z;\n"
 		<< "  Max error is the largest absolute error among all points.\n"
 		<< "\n"
-		<< "  | ## |  BW  |  error x=0  |  error Y=0  |  error Z=0  | Z time (s) |  max error  |\n"
+		<< "  | ## |  BW  |  error z=0  |  error x=0  |  error y=0  |  time (s)  |  max error  |\n"
 		<< "  | --:| ----:|:-----------:| -----------:| -----------:|:----------:| -----------:|\n";
 	for (int i = 0; i < 9; ++i)
 	{
@@ -447,23 +447,32 @@ runBenchmark()
 		
 		// Initialize the spherical cartogram
 		SpectralGlobe globe;
+		globe.set_bandlimit(B);
 
 		// Construct the three cases
 		vector<Cartosphere::Point> initial_points(360);
+		vector<Cartosphere::Point> exact_location(360);
+		double target_angle = std::acos(-0.25);
 		Cartosphere::Function initial_condition;
 		double maxError = 0;
 		for (int j = 0; j < 3; ++j)
 		{
 			// Points: x=0
 			// Initial condition: 2+x
-			if (j == 0)
+			if (j == 1)
 			{
+				double x, y, z;
 				for (int k = 0; k < 360; ++k)
 				{
-					double x = 0;
-					double y = sin(cs_deg2rad(k));
-					double z = cos(cs_deg2rad(k));
+					x = 0;
+					y = cos(cs_deg2rad(k));
+					z = sin(cs_deg2rad(k));
 					initial_points[k] = Cartosphere::Point(x, y, z);
+
+					x = cos(target_angle);
+					y *= sin(target_angle);
+					z *= sin(target_angle);
+					exact_location[k] = Cartosphere::Point(x, y, z);
 				}
 				initial_condition = [](const Cartosphere::Point& P) {
 					return 2 + P.x();
@@ -471,14 +480,20 @@ runBenchmark()
 			}
 			// Points: y=0
 			// Initial condition: 2+y
-			else if (j == 1)
+			else if (j == 2)
 			{
+				double x, y, z;
 				for (int k = 0; k < 360; ++k)
 				{
-					double x = sin(cs_deg2rad(k));
-					double y = 0;
-					double z = cos(cs_deg2rad(k));
+					x = sin(cs_deg2rad(k));
+					y = 0;
+					z = cos(cs_deg2rad(k));
 					initial_points[k] = Cartosphere::Point(x, y, z);
+
+					x *= sin(target_angle);
+					y = cos(target_angle);
+					z *= sin(target_angle);
+					exact_location[k] = Cartosphere::Point(x, y, z);
 				}
 				initial_condition = [](const Cartosphere::Point& P) {
 					return 2 + P.y();
@@ -488,12 +503,18 @@ runBenchmark()
 			// Initial condition: 2+z
 			else
 			{
+				double x, y, z;
 				for (int k = 0; k < 360; ++k)
 				{
-					double x = cos(cs_deg2rad(k));
-					double y = sin(cs_deg2rad(k));
-					double z = 0;
+					x = cos(cs_deg2rad(k));
+					y = sin(cs_deg2rad(k));
+					z = 0;
 					initial_points[k] = Cartosphere::Point(x, y, z);
+
+					x *= sin(target_angle);
+					y *= sin(target_angle);
+					z = cos(target_angle);
+					exact_location[k] = Cartosphere::Point(x, y, z);
 				}
 				initial_condition = [](const Cartosphere::Point& P) {
 					return 2 + P.z();
@@ -513,9 +534,9 @@ runBenchmark()
 
 			// Error calculation
 			double caseError = 0;
-			for (int k = 0; k < initial_points.size(); ++k)
+			for (int k = 0; k < points.size(); ++k)
 			{
-				double error = distance(points[k], initial_points[k]);
+				double error = distance(points[k], exact_location[k]);
 				caseError = std::max(caseError, error);
 			}
 			std::cout << std::setw(11) << caseError << " | ";

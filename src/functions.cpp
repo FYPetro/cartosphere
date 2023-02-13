@@ -2,7 +2,7 @@
 #include "cartosphere/functions.hpp"
 
 #ifdef APPLE_LIKE
-#include <boost/math/special_functions/spheric_harmonic.hpp>
+#include <boost/math/special_functions/spherical_harmonic.hpp>
 using boost::math::spherical_harmonic_r;
 using boost::math::spherical_harmonic_i;
 #endif

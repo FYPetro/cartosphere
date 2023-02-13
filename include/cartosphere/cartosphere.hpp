@@ -29,11 +29,12 @@ namespace Cartosphere
 			// Loop while conditions unchange
 			bool notExpired = true;
 			bool notConvergent = true;
+			vector<FL3> velocities(points.size());
 			while (notExpired && notConvergent)
 			{
 				// Compute velocity field
 				previousPoints = points;
-				vector<FL3> velocities = velocity(points);
+				velocity(points, velocities);
 
 				// Use velocity field to perform time step.
 				FL3 travel;
@@ -74,8 +75,8 @@ namespace Cartosphere
 		Cartosphere::Function initFunction =
 			[](const Cartosphere::Point& x) { return 0; };
 
-		// Initial timestep size, defaults to 1
-		double firstTimestep = 1;
+		// Initial timestep size
+		double firstTimestep = 1e-2;
 
 		// Timestep size common ratio, defaults to uniform marching
 		double ratioTimestep = 1;
@@ -91,9 +92,9 @@ namespace Cartosphere
 		}
 
 		// Advance solver
-		vector<FL3> velocity(const vector<Cartosphere::Point>& points) const
+		void velocity(const vector<Cartosphere::Point>& points, vector<FL3>& velocities) const
 		{
-			return (reinterpret_cast<const DerivedType*>(this))->velocity(points);
+			return (reinterpret_cast<const DerivedType*>(this))->velocity(points, velocities);
 		}
 
 		// Get/Set func_ic
@@ -118,10 +119,7 @@ namespace Cartosphere
 	{
 	public:
 		// Default constructor
-		SpectralGlobe(int bandlimit = 128) : B(bandlimit), N(0)
-		{
-			initialize_solver();
-		}
+		SpectralGlobe() : B(0), N(0) {}
 
 	public:
 		// Initialize solver
@@ -131,7 +129,8 @@ namespace Cartosphere
 		void advance_solver(double time, double delta);
 
 		// Compute velocity
-		vector<FL3> velocity(const vector<Cartosphere::Point>& points) const;
+		void velocity(const vector<Cartosphere::Point>& points,
+			vector<FL3>& velocities) const;
 
 	protected:
 		// Data at time 0 and time t
@@ -173,7 +172,8 @@ namespace Cartosphere
 		void advance_solver(double time, double delta);
 
 		// Compute velocity
-		vector<FL3> velocity(const vector<Cartosphere::Point>& points) const;
+		void velocity(const vector<Cartosphere::Point>& points,
+			vector<FL3>& velocities) const;
 	};
 }
 

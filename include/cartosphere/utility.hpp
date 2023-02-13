@@ -60,6 +60,8 @@ using std::chrono::milliseconds;
 #include <Eigen/Dense>
 // Import Eigen column arrays
 using ColArray = Eigen::ArrayXd;
+// Import Eigen row arrays
+using RowArray = Eigen::Array<double, 1, Eigen::Dynamic>;
 // Import Eigen column vector
 using ColVector = Eigen::VectorXd;
 // Import Eigen row vector
