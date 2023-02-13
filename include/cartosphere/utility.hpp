@@ -12,17 +12,23 @@
 #   error "Unknown compiler"
 #endif
 
-// Set the floating point used in core calculations
-using FLP = double;
+#ifdef IS_WINDOWS
+#define NOMINMAX
+#endif
 
+// Use std::forward
+#include <utility>
+
+// Lifecycle management for dynamically allocated objects
+#include <memory>
+using std::shared_ptr;
+using std::make_shared;
+
+// Obtain a few numeric limits
 #include <limits>
-static const FLP EPS = std::numeric_limits<FLP>::epsilon();
-
-// Use core math functionality
-#ifndef _USE_MATH_DEFINES
-#define _USE_MATH_DEFINES
-#endif // !_USE_MATH_DEFINES
-#include <cmath>
+static const double DoubleEpsilon = std::numeric_limits<double>::epsilon();
+static const double DoubleMinimum = std::numeric_limits<double>::min();
+static const double DoubleMaximum = std::numeric_limits<double>::max();
 
 // Commonly used templates
 #include <vector>
@@ -37,96 +43,49 @@ using std::ofstream;
 
 #include <sstream>
 using std::stringstream;
+using std::istringstream;
 
 // Terminal output
 #include <iostream>
 #include <iomanip>
+
+// Timing
 #include <chrono>
 using std::chrono::steady_clock;
 using std::chrono::duration_cast;
 using std::chrono::milliseconds;
 
-// Eigen classes
 #pragma warning(push)
 #pragma warning(disable: 4819)
-#include <Eigen/Core>
-using Vector = Eigen::Matrix<double, Eigen::Dynamic, 1>;
-using Eigen::ArrayXd;
-using Eigen::VectorXd;
-using Eigen::RowVectorXd;
-using Eigen::MatrixXd;
-
 #include <Eigen/Dense>
-using Matrix = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+// Import Eigen column arrays
+using ColArray = Eigen::ArrayXd;
+// Import Eigen column vector
+using ColVector = Eigen::VectorXd;
+// Import Eigen row vector
+using RowVector = Eigen::RowVectorXd;
+// Import Eigen dense matrix (column-major)
+using Matrix = Eigen::MatrixXd;
+// Import Eigen dense matrix (row-major)
+using MatrixRowMajor = Eigen::Matrix<
+	double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor
+>;
 
 #include <Eigen/SparseCore>
-using CSR_Matrix = Eigen::SparseMatrix<FLP, Eigen::RowMajor>;
-using Entry = Eigen::Triplet<FLP>;
+// Import Eigen sparse matrix (row-major)
+using SparseMatrixRowMajor = Eigen::SparseMatrix<double, Eigen::RowMajor>;
+// Provide convenient typedef for coordinates
+using SparseMatrixEntry = Eigen::Triplet<double>;
 
 #include <Eigen/IterativeLinearSolvers>
-using BiCGSTAB_iLUT_Solver = Eigen::BiCGSTAB<CSR_Matrix, Eigen::IncompleteLUT<CSR_Matrix::Scalar>>;
+using SolverBiCGSTAB = Eigen::BiCGSTAB<
+	SparseMatrixRowMajor, Eigen::IncompleteLUT<SparseMatrixRowMajor::Scalar>
+>;
 #pragma warning(pop)
 
 // Numerics, algorithms, and functionals
 #include <numeric>
 #include <algorithm>
 #include <functional>
-
-// Character types to support string manipulations
-#include <cctype>
-#include <locale>
-
-// trim from start (in place)
-static inline void ltrim(std::string& s) {
-	s.erase(s.begin(),
-		std::find_if(s.begin(), s.end(),
-		[](unsigned char ch) {
-			return !std::isspace(ch);
-		})
-	);
-}
-
-// trim from end (in place)
-static inline void rtrim(std::string& s) {
-	s.erase(std::find_if(s.rbegin(), s.rend(),
-		[](unsigned char ch) {
-			return !std::isspace(ch);
-		}
-	).base(),s.end());
-}
-
-// Trim from both ends (in place)
-static inline void trim(std::string& s) {
-	ltrim(s);
-	rtrim(s);
-}
-
-// Trim from start (copying)
-static inline std::string ltrim_copy(std::string s) {
-	ltrim(s);
-	return s;
-}
-
-// Trim from end (copying)
-static inline std::string rtrim_copy(std::string s) {
-	rtrim(s);
-	return s;
-}
-
-// Trim from both ends (copying)
-static inline std::string trim_copy(std::string s) {
-	trim(s);
-	return s;
-}
-
-// Switch endian.
-// By default, little endian is used on Windows.
-// Ref: https://stackoverflow.com/a/3824338
-template <class T>
-void endswap(T *objp)
-{
-  unsigned char *memp = reinterpret_cast<unsigned char*>(objp);
-  std::reverse(memp, memp + sizeof(T));
-}
 
 #endif // !__UTILITY_HPP__

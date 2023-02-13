@@ -4,12 +4,6 @@
 
 #include "cartosphere/mesh.hpp"
 
-#include <memory>
-
-#include <vector>
-
-#include <string>
-
 namespace Cartosphere
 {
 	// ESRI-compliant ShapeFile Class
@@ -43,11 +37,11 @@ namespace Cartosphere
 
 		public:
 			// Print to matlab
-			virtual std::string to_matlab() const = 0;
+			virtual string to_matlab() const = 0;
 		};
 
 		// Alias for shared pointers to Shape
-		typedef std::shared_ptr<Shape> MyShapePtr;
+		typedef shared_ptr<Shape> MyShapePtr;
 
 		// Type Point (1)
 		class Point : public Shape
@@ -61,7 +55,7 @@ namespace Cartosphere
 
 		public:
 			// Print to matlab
-			std::string to_matlab() const;
+			string to_matlab() const;
 		};
 
 		// Type Polygon (5)
@@ -78,25 +72,25 @@ namespace Cartosphere
 			int numPoints;
 
 			// Index to first point in part
-			std::vector<int> parts;
+			vector<int> parts;
 
 			// Points for all parts
-			std::vector<Point> points;
+			vector<Point> points;
 
 		public:
 			// Output to matlab
-			virtual std::string to_matlab() const;
+			virtual string to_matlab() const;
 		};
 
 	public:
 		// Opens shape file
-		bool open(const std::string &folder, std::string &error);
+		bool open(const string &folder, string &error);
 
 		// Outputs shape file as a matlab file
-		void to_matlab(const std::string &path) const;
+		void to_matlab(const string &path) const;
 
 		// Offloads all points into a single vector
-		std::vector<Cartosphere::Point> gather() const;
+		vector<Cartosphere::Point> gather() const;
 
 		// Count number of shapes
 		size_t count() const { return shapes.size(); }
@@ -115,7 +109,7 @@ namespace Cartosphere
 		double zMin, zMax, mMin, mMax;
 
 		// Shapes parsed
-		std::vector<MyShapePtr> shapes;
+		vector<MyShapePtr> shapes;
 	};
 }
 

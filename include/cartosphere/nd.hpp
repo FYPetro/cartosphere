@@ -8,14 +8,14 @@ class FL3
 {
 public:
 	// Components
-	FLP x, y, z;
+	double x, y, z;
 
 public:
 	// Default Constructor
 	FL3() : x(0), y(0), z(0) {}
 
 	// Construct from components
-	FL3(FLP a, FLP b, FLP c) : x(a), y(b), z(c) {}
+	FL3(double a, double b, double c) : x(a), y(b), z(c) {}
 
 	// Copy constructor
 	FL3(const FL3& that) = default;
@@ -34,7 +34,7 @@ public:
 
 public:
 	// Scalar multiplication
-	FL3 operator*(FLP c) const { return FL3(x * c, y * c, z * c); }
+	FL3 operator*(double c) const { return FL3(x * c, y * c, z * c); }
 
 	// Negation
 	FL3 operator-() const { return FL3(-x, -y, -z); }
@@ -49,7 +49,7 @@ public:
 	}
 
 	// Scalar multiplication by constant
-	FL3& operator*=(FLP b)
+	FL3& operator*=(double b)
 	{
 		x *= b;
 		y *= b;
@@ -58,7 +58,7 @@ public:
 	}
 
 	// Component-wise division by constant
-	FL3& operator/=(FLP b)
+	FL3& operator/=(double b)
 	{
 		x /= b;
 		y /= b;
@@ -79,19 +79,19 @@ public:
 	}
 
 	// Scalar multiplication
-	friend FL3 operator*(FLP c, const FL3& b)
+	friend FL3 operator*(double c, const FL3& b)
 	{
 		return b * c;
 	}
 
 	// Component-wise division by constant
-	friend FL3 operator/(const FL3& a, FLP b)
+	friend FL3 operator/(const FL3& a, double b)
 	{
 		return FL3(a.x / b, a.y / b, a.z / b);
 	}
 
 	// Dot product
-	friend FLP dot(const FL3& a, const FL3& b)
+	friend double dot(const FL3& a, const FL3& b)
 	{
 		return a.x * b.x + a.y * b.y + a.z * b.z;
 	}
@@ -99,14 +99,14 @@ public:
 	// Cross product
 	friend FL3 cross(const FL3& a, const FL3& b)
 	{
-		FLP x = a.y * b.z - a.z * b.y;
-		FLP y = a.z * b.x - a.x * b.z;
-		FLP z = a.x * b.y - a.y * b.x;
+		double x = a.y * b.z - a.z * b.y;
+		double y = a.z * b.x - a.x * b.z;
+		double z = a.x * b.y - a.y * b.x;
 		return FL3(x, y, z);
 	}
 
 	// Triple product
-	friend FLP triple(const FL3& a, const FL3& b, const FL3& c)
+	friend double triple(const FL3& a, const FL3& b, const FL3& c)
 	{
 		return a.x * b.y * c.z + a.y * b.z * c.x + a.z * b.x * c.y
 			- (a.z * b.y * c.x + a.x * b.z * c.y + a.y * b.x * c.z);
@@ -121,10 +121,10 @@ public:
 
 public:
 	// Returns the square of the 2-norm
-	FLP norm2sq() const { return pow(x, 2) + pow(y, 2) + pow(z, 2); }
+	double norm2sq() const { return pow(x, 2) + pow(y, 2) + pow(z, 2); }
 
 	// Returns the 2-norm
-	FLP norm2() const { return sqrt(norm2sq()); }
+	double norm2() const { return sqrt(norm2sq()); }
 
 	// Normalizes the vector
 	FL3& normalize() { (*this) /= norm2(); return *this; }

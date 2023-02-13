@@ -13,15 +13,15 @@ namespace Cartosphere
 	{
 	public:
 		// Polar angle
-		FLP p;
+		double p;
 		// Azimuthal
-		FLP a;
+		double a;
 
 	public:
 		// Default constructor
 		Preimage() : p(0), a(0) {}
 		// Constructor from two angles
-		Preimage(FLP polar, FLP azimuthal) : p(polar), a(azimuthal) {}
+		Preimage(double polar, double azimuthal) : p(polar), a(azimuthal) {}
 		// Copy constructor
 		Preimage(const Preimage& that) = default;
 		// Copy assignment
@@ -49,7 +49,7 @@ namespace Cartosphere
 		// Construct from FL3
 		Image(const FL3& f) : FL3(f) {}
 		// Constructor from coordinates
-		Image(FLP x, FLP y, FLP z) : FL3(x, y, z) {}
+		Image(double x, double y, double z) : FL3(x, y, z) {}
 		// Copy constructor
 		Image(const Image& that) = default;
 		// Assignment constructor
@@ -74,9 +74,9 @@ namespace Cartosphere
 
 	public:
 		// Calculate the spherical distance between two points
-		friend FLP distance(const Image& a, const Image& b);
+		friend double distance(const Image& a, const Image& b);
 		// Calculate the angle spanned by three points
-		friend FLP angle(const Image& a, const Image& b, const Image& c);
+		friend double angle(const Image& a, const Image& b, const Image& c);
 	};
 
 	// A point keeps track of both coordinates
@@ -91,13 +91,13 @@ namespace Cartosphere
 		Point(const Preimage& preimage) :
 			_preimage(preimage), _image(preimage.toImage()) {}
 		// Construct from Preimage parameters
-		Point(FLP polar, FLP azimuthal) :
+		Point(double polar, double azimuthal) :
 			Point(Preimage(polar, azimuthal)) {}
 		// Construct from Image
 		Point(const Image& image) :
 			_preimage(image.to_preimage()), _image(image) {}
 		// Construct from Image parameters
-		Point(FLP x, FLP y, FLP z) :
+		Point(double x, double y, double z) :
 			Point(Image(x, y, z)) {}
 
 	public:
@@ -106,15 +106,15 @@ namespace Cartosphere
 		// Get image
 		inline Image const& image() const { return _image; }
 		// Obtain polar angle
-		inline FLP p() const { return _preimage.p; }
+		inline double p() const { return _preimage.p; }
 		// Obtain azimuthal angle
-		inline FLP a() const { return _preimage.a; }
+		inline double a() const { return _preimage.a; }
 		// Obtain x-coordinate
-		inline FLP x() const { return _image.x; }
+		inline double x() const { return _image.x; }
 		// Obtain y-coordinate
-		inline FLP y() const { return _image.y; }
+		inline double y() const { return _image.y; }
 		// Obtain z-coordinate
-		inline FLP z() const { return _image.z; }
+		inline double z() const { return _image.z; }
 
 	public:
 		// Flip to the antipode
@@ -149,14 +149,14 @@ namespace Cartosphere
 		operator Image() const { return image(); }
 		// Obtain the azimuth of a different given point relative to this point
 		// Returns values in the interval (-pi,pi)
-		FLP azimuth(const Point& other) const;
+		double azimuth(const Point& other) const;
 		// Obtain distance
-		friend FLP distance(const Point& a, const Point& b)
+		friend double distance(const Point& a, const Point& b)
 		{
 			return distance(a.image(), b.image());
 		}
 		// Calculate the angle spanned by three points
-		friend FLP angle(const Point& a, const Point& b, const Point& c)
+		friend double angle(const Point& a, const Point& b, const Point& c)
 		{
 			return angle(a.image(), b.image(), c.image());
 		}
@@ -176,7 +176,7 @@ namespace Cartosphere
 		void _populate_image() { _image = _preimage.toImage(); }
 	};
 
-	typedef std::function<FLP(const Point&)> Function;
+	typedef std::function<double(const Point&)> Function;
 
 	// Representation of a directional minor arc and its local coordinate system
 	class Arc
@@ -195,7 +195,7 @@ namespace Cartosphere
 
 	public:
 		// Return the signed distance of a point to the arc
-		FLP distance(const Point& p) const
+		double distance(const Point& p) const
 		{
 			return M_PI_2 - acos(dot(_n, p));
 		}
@@ -205,22 +205,22 @@ namespace Cartosphere
 			return dot(_n, p) >= 0;
 		}
 		// Return the angle spanned by the arc
-		FLP span() const
+		double span() const
 		{
 			return length();
 		}
 		// Returns a tangent vector at a local coordinate
-		FL3 tangent(FLP u) const
+		FL3 tangent(double u) const
 		{
 			return _a.image() * (-sin(u)) + _c * cos(u);
 		}
 		// Return the length of the arc (on S2)
-		FLP chord() const
+		double chord() const
 		{
 			return (_a.image() - _b.image()).norm2();
 		}
 		// Return the length of the arc (on S2)
-		FLP length() const
+		double length() const
 		{
 			return atan2(_sin, _cos);
 		}
@@ -229,12 +229,12 @@ namespace Cartosphere
 		// Return the pole of the arc
 		Image pole() const { return Image(_n); }
 		// Return the (t,0) local coordinates
-		Image local(FLP u) const
+		Image local(double u) const
 		{
 			return _a.image() * cos(u) + _c * sin(u);
 		}
 		// Return the (t,n) local coordinates
-		Image local(FLP u, FLP v) const
+		Image local(double u, double v) const
 		{
 			Arc arc(local(u), Point(Image(_n)));
 			return arc.local(v);
@@ -272,7 +272,7 @@ namespace Cartosphere
 		// The point pi/2 radians away in the direction of the arc
 		FL3 _c;
 		// Trigs of angle
-		FLP _cos, _sin;
+		double _cos, _sin;
 	};
 
 	// Representation of a spherical cap by its cente and radius
@@ -282,7 +282,7 @@ namespace Cartosphere
 		// Default constructor
 		Cap() = default;
 		// Constructor from apex and spherical radius
-		Cap(const Point& apex, FLP radius) : _a(apex), _r(radius) {}
+		Cap(const Point& apex, double radius) : _a(apex), _r(radius) {}
 
 	public:
 		// Circumscription calculation
@@ -299,7 +299,7 @@ namespace Cartosphere
 		// Returns the apex
 		Point apex() const { return _a; }
 		// Returns the radius
-		FLP radius() const { return _r; }
+		double radius() const { return _r; }
 		// Combines with another cap
 		//Cap combine(const Cap& other) const;
 
@@ -307,7 +307,7 @@ namespace Cartosphere
 		// Apex
 		Point _a;
 		// Radius
-		FLP _r = 0;
+		double _r = 0;
 	};
 
 	// A (spherical) triangle
@@ -350,13 +350,13 @@ namespace Cartosphere
 		int orientation() const;
 		// Calculate the area as a non-oriented spherical triangle
 		// Returns an output in (0,pi)
-		FLP area() const;
+		double area() const;
 		// Returns the area of the oriented spherical triangle
 		// Returns an output in (-pi,pi)
-		FLP areaOriented() const { return orientation() * area(); }
+		double areaOriented() const { return orientation() * area(); }
 		// Calculate the area as a Euclidean triangle
 		// Returns a positive output
-		FLP areaEuclidean() const;
+		double areaEuclidean() const;
 		// Compute the barycentric coordinates
 		FL3 barycentric(const Point& p) const;
 		// Calculate the location of the center of mass
@@ -364,7 +364,7 @@ namespace Cartosphere
 		// Check for point containment
 		bool contains(const Point& p) const;
 		// Calculate the diameter of the circumcircle
-		FLP diameter() const;
+		double diameter() const;
 		// Compute a circumcircle
 		Cap circumcircle() const;
 		// Obtain a finite element
@@ -374,7 +374,7 @@ namespace Cartosphere
 		// Obtain a gradient vector element at an interior point
 		FL3 gradient(size_t index, const Point &p) const;
 		// Numerically integrate a scalar function
-		FLP integrate(const Function& f, Integrator intr) const;
+		double integrate(const Function& f, Integrator intr) const;
 	};
 
 	// A (spherical) polygon
@@ -391,24 +391,24 @@ namespace Cartosphere
 		Polygon() {}
 
 		// Construct from a list of points
-		Polygon(const std::vector<Point>& points) : _V(points) {}
+		Polygon(const vector<Point>& points) : _V(points) {}
 
 	public:
 		// Calculate the area as a spherical polygon
-		FLP area() const;
+		double area() const;
 
 		// Check if a point is in the interior.
 		Relation interior(const Point& point) const;
 
 	public:
 		// Emplace a point using spherical coordinates
-		inline void emplace_back(FLP polar, FLP azimuth)
+		inline void emplace_back(double polar, double azimuth)
 		{
 			_V.emplace_back(polar, azimuth);
 		}
 
 		// Emplace a point using Cartesian coordinates
-		inline void emplace_back(FLP x, FLP y, FLP z)
+		inline void emplace_back(double x, double y, double z)
 		{
 			_V.emplace_back(x, y, z);
 		}
@@ -421,7 +421,7 @@ namespace Cartosphere
 
 	protected:
 		// Input data: List of vertices
-		std::vector<Point> _V;
+		vector<Point> _V;
 	};
 
 	// A triangular mesh
@@ -444,13 +444,13 @@ namespace Cartosphere
 			// The number of triangles
 			size_t F;
 			// The area of the largest triangle
-			FLP areaElementMax;
+			double areaElementMax;
 			// The area of the smallest triangle
-			FLP areaElementMin;
+			double areaElementMin;
 			// The area ratio of the largest and smallest triangles
-			FLP areaElementDisparity;
+			double areaElementDisparity;
 			// The diameter of the largest circumcircle
-			FLP diameterElementMax;
+			double diameterElementMax;
 		} Stats;
 		// Integrator rules
 		enum class Quadrature {
@@ -466,9 +466,9 @@ namespace Cartosphere
 			{
 			public:
 				// Type: Node Pointer
-				typedef std::shared_ptr<Node> Pointer;
+				typedef shared_ptr<Node> Pointer;
 				// Type: Vector of pointers type
-				typedef std::vector<Pointer> Pointers;
+				typedef vector<Pointer> Pointers;
 				// Why not?
 				static const size_t npos = (size_t)-1;
 
@@ -486,7 +486,7 @@ namespace Cartosphere
 				// Update count without refresh values
 				size_t _updates = 0;
 				// The sum of squared distance
-				FLP _variance = 0;
+				double _variance = 0;
 				// Circumcircle, containing the centroid and a radius (S2-metric)
 				Cap _cap;
 
@@ -521,7 +521,7 @@ namespace Cartosphere
 				void update(const Node::Pointers& nodes)
 				{
 					_children = nodes;
-					std::vector<Cap> caps;
+					vector<Cap> caps;
 					std::transform(_children.begin(), _children.end(), std::back_inserter(caps),
 						[](const Pointer& p) {
 							return p->cap();
@@ -553,7 +553,7 @@ namespace Cartosphere
 			// Clear the tree
 			void clear();
 			// Build from triangles
-			void build(const std::vector<Triangle>& vt)
+			void build(const vector<Triangle>& vt)
 			{
 				// Clear the tree
 				clear();
@@ -566,7 +566,7 @@ namespace Cartosphere
 			// Insert a circumcircle with its index
 			void insert(size_t index, const Cap& cap)
 			{
-				_insert(std::make_shared<Tree::Node>(index, cap));
+				_insert(make_shared<Tree::Node>(index, cap));
 			}
 
 		protected:
@@ -585,7 +585,7 @@ namespace Cartosphere
 			// Root node
 			Node _root;
 			// Overflow calls
-			std::vector<bool> _overflown;
+			vector<bool> _overflown;
 		};
 
 	public:
@@ -594,17 +594,17 @@ namespace Cartosphere
 		// Construct triangular mesh with a single triangle
 		TriangularMesh(const Triangle& t) { load(t); }
 		// Construct triangular mesh from file
-		TriangularMesh(const std::string& path) { load(path); }
+		TriangularMesh(const string& path) { load(path); }
 
 	public:
 		// Get file load state
 		bool isReady() const { return _bParseSuccess; }
 		// Get file load messages
-		std::vector<std::string> getMessages() const { return _vInfo; }
+		vector<string> getMessages() const { return _vInfo; }
 		// Get total area (spherical)
-		FLP area() const;
+		double area() const;
 		// Get total area (Euclidean)
-		FLP areaEuclidean() const;
+		double areaEuclidean() const;
 		// Return barycentric coordinates and provide the triangle through reference
 		FL3 barycentric(const Triangle& t) const;
 
@@ -614,15 +614,15 @@ namespace Cartosphere
 		// Load triangle
 		bool load(const Triangle& t);
 		// Load file from path
-		bool load(const std::string& path);
+		bool load(const string& path);
 		// Save mesh to file
-		bool save(const std::string& path) const;
+		bool save(const string& path) const;
 		// Export mesh to OBJ format
-		bool format(const std::string& path,
-			const std::vector<FLP> &values = std::vector<FLP>()) const;
+		bool format(const string& path,
+			const vector<double> &values = vector<double>()) const;
 		// Export colored polyhedral object to OBJ format
-		bool formatPoly(const std::string& path,
-			const std::vector<FLP>& values) const;
+		bool formatPoly(const string& path,
+			const vector<double>& values) const;
 		// Apply mid-point refinement to the mesh
 		void refine();
 		// Refine the mesh to a certain number of divisions
@@ -630,19 +630,19 @@ namespace Cartosphere
 		// Report the area of each triangle
 		void reportAreas();
 		// Compute the gradient field at the vertices
-		void set(const std::vector<FLP>& values);
+		void set(const vector<double>& values);
 		// Interpolate the function value of a point
-		FLP interpolate(const Point& p) const;
+		double interpolate(const Point& p) const;
 		// Interpolate the gradient value at a point
 		FL3 gradient(const Point& p) const;
 		// Numerically integrate a scalar function
-		FLP integrate(const Function& f,
+		double integrate(const Function& f,
 			Quadrature rule = Quadrature::AreaWeighted,
 			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
 		// Return the index vertices of the triangles
 		UI3 indexTriangleVertices(size_t triangleIndex) const
 		{
-			std::vector<size_t> V = _FV[triangleIndex];
+			vector<size_t> V = _FV[triangleIndex];
 			UI3 index;
 			index.a = V[0];
 			index.b = V[1];
@@ -650,25 +650,25 @@ namespace Cartosphere
 			return index;
 		}
 		// Numerically integrate function values at vertices
-		FLP integrate(const std::vector<FLP>& values,
+		double integrate(const vector<double>& values,
 			Quadrature rule = Quadrature::DualAreaWeighted,
 			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
 		// L2 error
-		FLP lebesgue(const std::vector<FLP>& weights, const Function& func,
+		double lebesgue(const vector<double>& weights, const Function& func,
 			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
 		// FEM: Generate inner products of the gradients of finite elements
-		void fill(CSR_Matrix& A,
+		void fill(SparseMatrixRowMajor& A,
 			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
 		// FEM: Generate inner products of finite elements and their gradients
-		void fill(CSR_Matrix& A, CSR_Matrix& M,
+		void fill(SparseMatrixRowMajor& A, SparseMatrixRowMajor& M,
 			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
 		// FEM: Discretize an external force parametrized by x, y, and z.
-		void fill(Vector& b, Function f,
+		void fill(ColVector& b, Function f,
 			Triangle::Integrator intr = Triangle::DefaultIntegrator) const;
 		// Generate statistics
 		Stats statistics() const;
 		// Return a list of vertices
-		std::vector<Point> vertices() const
+		vector<Point> vertices() const
 		{
 			return _V;
 		}
@@ -677,29 +677,29 @@ namespace Cartosphere
 		// Refresh redundant states
 		void _populate();
 		// Compute the gradient given nodal values
-		void _gradient(const std::vector<FLP>& a);
+		void _gradient(const vector<double>& a);
 		// Lookup triangle index from a point
 		size_t _lookup(const Point& p) const;
 
 	private:
 		// Input data: List of points
-		std::vector<Point> _V;
+		vector<Point> _V;
 		// Input data: List of edges (using point indices)
-		std::vector<UndirectedEdge> _E;
+		vector<UndirectedEdge> _E;
 		// Input data: List of faces (each a triplet of directed edge indices)
-		std::vector<DirectedEdgeTriplet> _F;
+		vector<DirectedEdgeTriplet> _F;
 		// Redundant state: List of triangles (owning coordinates)
-		std::vector<Triangle> _vt;
+		vector<Triangle> _vt;
 		// Redundant state: List of edges sharing a vertex
-		std::vector<std::vector<size_t>> _VE;
+		vector<vector<size_t>> _VE;
 		// Redundant state: List of faces sharing a vertex
-		std::vector<std::vector<size_t>> _VF;
+		vector<vector<size_t>> _VF;
 		// Redundant state: List of vertices in each face
-		std::vector<std::vector<size_t>> _FV;
+		vector<vector<size_t>> _FV;
 		// State: Nodal values
-		std::vector<FLP> _a;
+		vector<double> _a;
 		// State: gradient vectors
-		std::vector<FL3> _grad;
+		vector<FL3> _grad;
 		// State: SS-tree for lookup
 		// Tree _tree;
 
@@ -709,7 +709,7 @@ namespace Cartosphere
 		// File parse flag
 		bool _bParseSuccess = false;
 		// Messages
-		std::vector<std::string> _vInfo;
+		vector<string> _vInfo;
 	};
 
 	// Parallel transport of a vector

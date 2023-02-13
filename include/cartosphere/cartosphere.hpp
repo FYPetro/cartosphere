@@ -22,8 +22,8 @@ namespace Cartosphere
 
 			// Prepare to loop
 			double timestep = firstTimestep;
-			double epsilon = std::numeric_limits<double>::max();
-			double maxDistance = std::numeric_limits<double>::max();
+			double epsilon = DoubleMaximum;
+			double maxDistance = DoubleMaximum;
 			vector<Cartosphere::Point> previousPoints;
 
 			// Loop while conditions unchange

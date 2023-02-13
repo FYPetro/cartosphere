@@ -7,18 +7,7 @@
 
 #include "cartosphere/utility.hpp"
 
-// MacOS: pull legendre from boost::math
-// Other: pull legendre from std
-#if defined(APPLE_LIKE)
-#include <boost/math/special_functions/legendre.hpp>
-// [C++17] Using fold expressions to pass along arguments
-// Ref: https://en.cppreference.com/w/cpp/language/fold
-constexpr auto legendre = [](auto &&...args) {
-	return boost::math::legendre_p(std::forward<decltype(args)>(args)...);
-};
-#else
-using std::legendre;
-#endif
+#include "cartosphere/functions.hpp"
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 #include <glog/logging.h>
@@ -111,7 +100,7 @@ cs_fds2ht(int B, const double* data, double* harmonics, const double* ws2)
 				LOG(INFO) << sst.str();
 			}
 
-			RowVectorXd WP = (W * P).matrix();
+			RowVector WP = (W * P).matrix();
 			if (FLAGS_minloglevel == 0)
 			{
 				stringstream sst;
@@ -121,7 +110,7 @@ cs_fds2ht(int B, const double* data, double* harmonics, const double* ws2)
 			}
 
 			// (W .* P) * M
-			RowVectorXd WPM = WP * M;
+			RowVector WPM = WP * M;
 			if (FLAGS_minloglevel == 0)
 			{
 				stringstream sst;
@@ -536,7 +525,7 @@ cs_ids2ht_execute(int B, fftw_real* pad, fftw_real* data,
 		{
 			LOG(INFO) << "\t"
 				<< "a_{" << j << ",:} = "
-				<< Eigen::Map<RowVectorXd>(pad + (2 * N * j + B), B).format(OctaveFmt);
+				<< Eigen::Map<RowVector>(pad + (2 * N * j + B), B).format(OctaveFmt);
 		}
 	}
 	if (FLAGS_minloglevel == 0)
@@ -546,7 +535,7 @@ cs_ids2ht_execute(int B, fftw_real* pad, fftw_real* data,
 		{
 			LOG(INFO) << "\t"
 				<< "b_{" << j << ",:} = "
-				<< Eigen::Map<RowVectorXd>(pad + (2 * N * j + N + B), B).format(OctaveFmt);
+				<< Eigen::Map<RowVector>(pad + (2 * N * j + N + B), B).format(OctaveFmt);
 		}
 	}
 
@@ -680,17 +669,17 @@ cs_make_ws2(int B)
 			double* target = tempCosPls + (N * l);
 			for (int j = 0; j < N; ++j)
 			{
-				target[j] = legendre(l, x[j]);
+				target[j] = cs_legendre(l, x[j]);
 			}
 		}
 
 		// Fill Eigen matrices A, b, solve Au=b, extract results
 		Matrix A = Eigen::Map<Matrix>(tempCosPls, N, N);
-		Vector b(N);
+		ColVector b(N);
 		memset(b.data(), 0, N * sizeof(double));
 		b[0] = 2 * M_PI / B;
 		
-		Vector u = A.partialPivLu().solve(b); // PartialPivLU suffices
+		ColVector u = A.partialPivLu().solve(b); // PartialPivLU suffices
 		memcpy(w, u.data(), N * sizeof(double));
 	}
 
@@ -837,7 +826,7 @@ cs_make_ws2(int B)
 				double* Plms = cs_ws2_rePlmCosRank(B, l, m, ws2);
 				LOG(INFO) << "\t"
 					<< "~P_{" << l << "," << m << "} = "
-					<< Eigen::Map<RowVectorXd>(Plms, 1, N).format(OctaveFmt);
+					<< Eigen::Map<RowVector>(Plms, 1, N).format(OctaveFmt);
 			}
 		}
 	}

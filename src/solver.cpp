@@ -10,30 +10,30 @@ SteadyStateSolver::solve(Function f)
 	// Build the linear system
 	// ***********************
 
-	CSR_Matrix A;
+	SparseMatrixRowMajor A;
 	_mesh.fill(A);
 
-	Vector F;
+	ColVector F;
 	_mesh.fill(F, f);
 
 	// ***********************
 	// Solve the linear system
 	// ***********************
 
-	BiCGSTAB_iLUT_Solver kernel(A);
-	Vector x = kernel.solve(F);
+	SolverBiCGSTAB kernel(A);
+	ColVector x = kernel.solve(F);
 
 	// ******************
 	// Process the output
 	// ******************
 	std::transform(x.begin(), x.end(), _solution.begin(),
-		[](auto& v) -> FLP { return v; }
+		[](auto& v) -> double { return v; }
 	);
 
 	// DEBUG
 	if (!_debug.empty())
 	{
-		std::ofstream ofs(_debug);
+		ofstream ofs(_debug);
 		// Print A
 		ofs << "\n";
 		{
@@ -60,19 +60,19 @@ SteadyStateSolver::solve(Function f)
 	}
 }
 
-FLP
-TimeDependentSolver::advanceCrankNicolson(FLP timestep)
+double
+TimeDependentSolver::advanceCrankNicolson(double timestep)
 {
-	CSR_Matrix LHS = _A / 2 + _M / timestep;
-	Vector RHS = _b + (_M / timestep - _A / 2) * _a;
+	SparseMatrixRowMajor LHS = _A / 2 + _M / timestep;
+	ColVector RHS = _b + (_M / timestep - _A / 2) * _a;
 
-	BiCGSTAB_iLUT_Solver s(LHS);
-	Vector a = s.solve(RHS);
+	SolverBiCGSTAB s(LHS);
+	ColVector a = s.solve(RHS);
 
 	_a = a;
 
-	// Update the nodal values but convert Vector to std::vector<FLP>
-	std::vector<FLP> a_vec(_a.size(), 0);
+	// Update the nodal values but convert Vector to vector<double>
+	vector<double> a_vec(_a.size(), 0);
 	for (int i = 0; i < _a.size(); ++i)
 	{
 		a_vec[i] = _a[i];
@@ -82,15 +82,15 @@ TimeDependentSolver::advanceCrankNicolson(FLP timestep)
 	return 0;
 }
 
-std::vector<FL3>
-TimeDependentSolver::velocity(const std::vector<Point>& p) const
+vector<FL3>
+TimeDependentSolver::velocity(const vector<Point>& p) const
 {
-	std::vector<FL3> u;
+	vector<FL3> u;
 	u.reserve(p.size());
 	for (size_t k = 0; k < p.size(); ++k)
 	{
 		FL3 gradient = _m.gradient(p[k]);
-		FLP value = _m.interpolate(p[k]);
+		double value = _m.interpolate(p[k]);
 		u.push_back(-gradient / value);
 	}
 	return u;
@@ -100,7 +100,7 @@ TimeDependentSolver::velocity(const std::vector<Point>& p) const
 	//	u.push_back(-_m.gradient(x)/_m.interpolate(x));
 	// }
 	// return u;
-	// std::vector<FL3> u;
+	// vector<FL3> u;
 	//
 	// // Interpolation should happen here
 	// for (int i = 0; i < p.size(); ++i)

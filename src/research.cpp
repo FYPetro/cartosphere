@@ -13,11 +13,11 @@ using Cartosphere::ShapeFile;
 
 #include "cartosphere/functions.hpp"
 
-void build_system(const TriangularMesh& mesh, CSR_Matrix& A, Vector& b)
+void build_system(const TriangularMesh& mesh, SparseMatrixRowMajor& A, ColVector& b)
 {
 	mesh.fill(A);
 
-	auto f = [](const Point& p)->FLP {
+	auto f = [](const Point& p)->double {
 		return p.x() + p.y() + p.z();
 	};
 	mesh.fill(b, f);
@@ -25,7 +25,7 @@ void build_system(const TriangularMesh& mesh, CSR_Matrix& A, Vector& b)
 
 int demo()
 {
-	std::string file = "icosahedron.csm";
+	string file = "icosahedron.csm";
 
 	// Load mesh from file
 	TriangularMesh mesh(file);
@@ -56,11 +56,11 @@ int demo()
 	}
 
 	// Build and solve Ax=b
-	CSR_Matrix A;
-	Vector b;
+	SparseMatrixRowMajor A;
+	ColVector b;
 	build_system(mesh, A, b);
-	BiCGSTAB_iLUT_Solver s(A);
-	Vector x = s.solve(b);
+	SolverBiCGSTAB s(A);
+	ColVector x = s.solve(b);
 
 
 	if (A.rows() < 0)
@@ -86,7 +86,7 @@ int demo()
 	}
 	else
 	{
-		std::ofstream ofs;
+		ofstream ofs;
 		ofs.open("temp.m");
 		// Print A
 		ofs << "\n";
@@ -114,7 +114,7 @@ int demo()
 	std::cout << "# Iterations:    " << s.iterations() << std::endl;
 	std::cout << "Estimated Error: " << s.error() << std::endl;
 
-	std::vector<FLP> solution;
+	vector<double> solution;
 	solution.reserve(x.size());
 	for (int k = 0; k < x.size(); ++k)
 	{
@@ -127,7 +127,7 @@ int demo()
 
 int demo_diffusion()
 {
-	std::string file = "icosahedron.csm";
+	string file = "icosahedron.csm";
 
 	// Load mesh from file
 	TriangularMesh mesh(file);
@@ -158,15 +158,15 @@ int demo_diffusion()
 	}
 
 	// Build relevant matrices
-	CSR_Matrix A, M;
+	SparseMatrixRowMajor A, M;
 	mesh.fill(A, M, Triangle::Integrator::Refinement5);
 
 	// Attempt to correct the matrix A
 	for (int k = 0; k < A.outerSize(); ++k)
 	{
-		CSR_Matrix::InnerIterator it_diag;
-		FLP sum_offdiag = 0;
-		for (CSR_Matrix::InnerIterator it(A, k); it; ++it)
+		SparseMatrixRowMajor::InnerIterator it_diag;
+		double sum_offdiag = 0;
+		for (SparseMatrixRowMajor::InnerIterator it(A, k); it; ++it)
 		{
 			it.row();   // row index
 			it.col();   // col index (here it is equal to k)
@@ -184,48 +184,48 @@ int demo_diffusion()
 		it_diag.valueRef() = -sum_offdiag;
 	}
 
-	auto f = [](const Point& p)->FLP { return 0; };
-	Vector b;
+	auto f = [](const Point& p)->double { return 0; };
+	ColVector b;
 	mesh.fill(b, f, Triangle::Integrator::Refinement5);
 
 	// Design an initial condition
-	Vector v_init(A.cols());
+	ColVector v_init(A.cols());
 	auto vs = mesh.vertices();
 
-	Function v_init_f = [](const Point& p)->FLP {
+	Function v_init_f = [](const Point& p)->double {
 		return 2 + p.z();
 	};
 	std::transform(vs.begin(), vs.end(), v_init.begin(), v_init_f);
 
 	// Start!
-	FLP tolerance = 1e-6;
-	FLP indicator = 1;
+	double tolerance = 1e-6;
+	double indicator = 1;
 	int time_steps = 20;
-	FLP time_elapsed = 20;
+	double time_elapsed = 20;
 
 	int iteration = 0;
-	Vector v_prev = v_init, v_curr;
+	ColVector v_prev = v_init, v_curr;
 
 	std::cout << b << "\n";
 	std::cout << A << "\n";
 
 	for (int step = 0; step < time_steps; ++step)
 	{
-		FLP duration = time_elapsed / time_steps;
+		double duration = time_elapsed / time_steps;
 
-		CSR_Matrix LHS = A + M / duration;
-		Vector RHS = b + M / duration * v_prev;
+		SparseMatrixRowMajor LHS = A + M / duration;
+		ColVector RHS = b + M / duration * v_prev;
 
-		BiCGSTAB_iLUT_Solver s(LHS);
+		SolverBiCGSTAB s(LHS);
 		v_curr = s.solve(RHS);
 
 		// Convergence criterion
 		indicator = (v_curr - v_prev).norm();
 
 		// Another indicator for debugging only
-		FLP max = *std::max_element(std::begin(v_curr), std::end(v_curr)),
+		double max = *std::max_element(std::begin(v_curr), std::end(v_curr)),
 			min = *std::min_element(std::begin(v_curr), std::end(v_curr));
-		FLP range = max - min;
+		double range = max - min;
 
 		std::cout
 			<< "Iteration #" << iteration++ << "\n"
@@ -249,7 +249,7 @@ int demo_quadrature()
 	TriangularMesh original(t);
 
 	// Demo function
-	Function f = [](const Point& p)->FLP {
+	Function f = [](const Point& p)->double {
 		return p.x();
 	};
 
@@ -305,12 +305,12 @@ int seminar()
 	TriangularMesh mesh(T);
 
 	// Function
-	auto f = [](const Point& p) -> FLP {
+	auto f = [](const Point& p) -> double {
 		return 1 - M_2_PI * p.p();
 	};
 
 	// Compute centroid/simpsons/3V and iteratively perform mid-point rule
-	std::vector<FLP> approximation;
+	vector<double> approximation;
 	for (size_t i = 0; i <= 10; ++i)
 	{
 		approximation.push_back(mesh.integrate(f,
@@ -324,7 +324,7 @@ int seminar()
 	// Output results
 	for (size_t i = 0; i < approximation.size(); ++i)
 	{
-		FLP e = std::abs(approximation[i] - (M_PI_2 - 1));
+		double e = std::abs(approximation[i] - (M_PI_2 - 1));
 		std::cout << "Refinement " << i << ": "
 			<< approximation[i] << " & "
 			<< e << " & "
@@ -337,7 +337,7 @@ int seminar()
 int convergence()
 {
 	// Files to loop through
-	std::vector<std::string> paths = {
+	vector<string> paths = {
 		"icosahedron.csm",
 		"icosahedron.csm.r1",
 		"icosahedron.csm.r2",
@@ -347,22 +347,22 @@ int convergence()
 	};
 
 	// The function u(x,y) = x y
-	auto u = [](const Point& p) -> FLP
+	auto u = [](const Point& p) -> double
 	{
 		return pow(p.x(), 2) + pow(p.y(), 2);
 	};
 
 	// Laplace-Beltrami of u(x,y,z) = x y
-	/*auto f = [](const Point& p) -> FLP {
-		FLP x = p.x(), y = p.y(), z = p.z();
+	/*auto f = [](const Point& p) -> double {
+		double x = p.x(), y = p.y(), z = p.z();
 		return x - 2 * x * x * x + y - 2 * x * y - 4 * x * x * y + 6 * x * x * x * y
 			- 4 * x * y * y - 2 * y * y * y + 6 * x * y * y * y
 			- 2 * x * y * z - 2 * x * z * z - 2 * y * z * z + 6 * x * y * z * z;
 	};*/
 
-	auto f = [](const Point& p) -> FLP {
-		FLP x = p.x(), y = p.y(), z = p.z();
-		FLP l = 4 - 10 * pow(x, 2) - 10 * pow(y, 2) - (
+	auto f = [](const Point& p) -> double {
+		double x = p.x(), y = p.y(), z = p.z();
+		double l = 4 - 10 * pow(x, 2) - 10 * pow(y, 2) - (
 			x * (x * (2 - 6 * pow(x, 2) - 2 * pow(y, 2)) + y * (-4 * x * y)) +
 			y * (x * (-4 * x * y) + y * (2 - 2 * pow(x, 2) - 6 * pow(y, 2))) +
 			z * (x * (-4 * x * z) + y * (-4 * y * z) + z * (-2 * pow(x, 2) - 2 * pow(y, 2)))
@@ -374,32 +374,32 @@ int convergence()
 	auto ttt = 4;
 
 	// Calculate errors for x = A^{-1}b for each mesh
-	std::vector<FLP> L2E;
+	vector<double> L2E;
 	for (auto& path : paths)
 	{
-		FLP error;
+		double error;
 
 		// Construct mesh and linear system
 		TriangularMesh mesh(path);
-		CSR_Matrix A;
-		Vector b;
+		SparseMatrixRowMajor A;
+		ColVector b;
 		mesh.fill(A);
 		mesh.fill(b, f);
 
 		// Solve the linear system
-		BiCGSTAB_iLUT_Solver s(A);
-		Vector x = s.solve(b);
+		SolverBiCGSTAB s(A);
+		ColVector x = s.solve(b);
 
 		// Evaluate the exact solution at the given vertices
 		auto vertices = mesh.vertices();
-		std::vector<FLP> us;
+		vector<double> us;
 		std::transform(vertices.cbegin(), vertices.cend(),
 			std::back_inserter(us), u);
 
 		// Calculate the ell2-norm of the residual
-		FLP norm = 0;
-		FLP norm_max = 0;
-		std::vector<FLP> e(us.size());
+		double norm = 0;
+		double norm_max = 0;
+		vector<double> e(us.size());
 		for (size_t k = 0; k < us.size(); ++k)
 		{
 			e[k] = us[k] - x[k];
@@ -418,13 +418,13 @@ int convergence()
 		L2E.push_back(error);
 
 		// Output colored polyhedral
-		std::string output_name;
+		string output_name;
 		{
-			std::stringstream sst;
+			stringstream sst;
 			sst << path << ".sol.obj";
 			output_name = sst.str();
 		}
-		std::vector<FLP> solution;
+		vector<double> solution;
 		solution.reserve(x.size());
 		for (int k = 0; k < x.size(); ++k)
 		{
@@ -441,21 +441,21 @@ int convergence()
 	return 0;
 }
 
-int precompute_weights(const std::string& path)
+int precompute_weights(const string& path)
 {
 	TriangularMesh mesh(path);
 	// TODO
 	return 0;
 }
 
-int refine(const std::string& path)
+int refine(const string& path)
 {
 	TriangularMesh m(path);
 	for (unsigned k = 1; k <= 5; ++k)
 	{
-		std::stringstream sst;
+		stringstream sst;
 		sst << path << "." << k << ".csm";
-		std::string name = sst.str();
+		string name = sst.str();
 		m.refine();
 		m.save(name);
 	}
@@ -471,11 +471,11 @@ int test_obj()
 
 	// Obtain vertices and color linearly
 	auto vs = m.vertices();
-	std::vector<FLP> xs;
+	vector<double> xs;
 
 	for (auto& v : vs)
 	{
-		FLP x = v.x();
+		double x = v.x();
 		xs.push_back(x);
 	}
 
@@ -488,7 +488,7 @@ int test_obj()
 int research_a()
 {
 	// Set mesh, equation, refinement levels
-	std::string name = "icosahedron.csm";
+	string name = "icosahedron.csm";
 	const int scenario = 0;
 	const int refinements = 6;
 
@@ -522,22 +522,22 @@ int research_a()
 		// The desired steady-state solution u = x^2 + y^2 - 2/3
 		// The external term                 f = -Lapl u
 		// The initial condition             g = 0
-		u_inf_func = [](const Point& p) -> FLP
+		u_inf_func = [](const Point& p) -> double
 		{
-			FLP x = p.x(), y = p.y(), z = p.z();
-			return pow(x, 2) + pow(y, 2) - FLP(2) / 3;
+			double x = p.x(), y = p.y(), z = p.z();
+			return pow(x, 2) + pow(y, 2) - double(2) / 3;
 		};
-		f_func = [](const Point& p) -> FLP {
-			FLP x = p.x(), y = p.y(), z = p.z();
-			FLP l = 4 - 10 * pow(x, 2) - 10 * pow(y, 2) - (
+		f_func = [](const Point& p) -> double {
+			double x = p.x(), y = p.y(), z = p.z();
+			double l = 4 - 10 * pow(x, 2) - 10 * pow(y, 2) - (
 				x * (x * (2 - 6 * pow(x, 2) - 2 * pow(y, 2)) + y * (-4 * x * y)) +
 				y * (x * (-4 * x * y) + y * (2 - 2 * pow(x, 2) - 6 * pow(y, 2))) +
 				z * (x * (-4 * x * z) + y * (-4 * y * z) + z * (-2 * pow(x, 2) - 2 * pow(y, 2)))
 				);
 			return -l;
 		};
-		g_func = [](const Point& p) -> FLP {
-			FLP x = p.x(), y = p.y(), z = p.z();
+		g_func = [](const Point& p) -> double {
+			double x = p.x(), y = p.y(), z = p.z();
 			return 0;
 		};
 	}
@@ -546,17 +546,17 @@ int research_a()
 		// The desired steady-state solution u = 2
 		// The external term                 f = 0
 		// The initial condition             g = 2 + z
-		u_inf_func = [](const Point& p) -> FLP
+		u_inf_func = [](const Point& p) -> double
 		{
-			FLP x = p.x(), y = p.y(), z = p.z();
+			double x = p.x(), y = p.y(), z = p.z();
 			return 2;
 		};
-		f_func = [](const Point& p) -> FLP {
-			FLP x = p.x(), y = p.y(), z = p.z();
+		f_func = [](const Point& p) -> double {
+			double x = p.x(), y = p.y(), z = p.z();
 			return 0;
 		};
-		g_func = [](const Point& p) -> FLP {
-			FLP x = p.x(), y = p.y(), z = p.z();
+		g_func = [](const Point& p) -> double {
+			double x = p.x(), y = p.y(), z = p.z();
 			return 2 + z;
 		};
 	}
@@ -568,40 +568,40 @@ int research_a()
 		const auto vs = m.vertices();
 
 		// Initialize the scalar field at t=0 and infinity
-		Vector u_init(vs.size());
-		Vector u_inf(vs.size());
+		ColVector u_init(vs.size());
+		ColVector u_inf(vs.size());
 		std::transform(vs.begin(), vs.end(), u_init.begin(), g_func);
 		std::transform(vs.begin(), vs.end(), u_inf.begin(), u_inf_func);
 
 		// Build the linear system
-		CSR_Matrix A, M;
-		Vector F;
+		SparseMatrixRowMajor A, M;
+		ColVector F;
 		m.fill(A, M);
 		m.fill(F, f_func);
 
 		// Perform time-stepping
 		const int time_steps = 200;
-		const FLP time_elapsed = 10;
+		const double time_elapsed = 10;
 		int iteration = 0;
-		FLP indicator = 1;
-		Vector u_prev = u_init;
-		Vector u_curr;
+		double indicator = 1;
+		ColVector u_prev = u_init;
+		ColVector u_curr;
 		for (int step = 0; step < time_steps; ++step, u_prev = u_curr)
 		{
-			FLP duration = time_elapsed / time_steps;
+			double duration = time_elapsed / time_steps;
 
-			CSR_Matrix LHS = A + M / duration;
-			Vector RHS = F + M * u_prev / duration;
+			SparseMatrixRowMajor LHS = A + M / duration;
+			ColVector RHS = F + M * u_prev / duration;
 
-			BiCGSTAB_iLUT_Solver s(LHS);
+			SolverBiCGSTAB s(LHS);
 			u_curr = s.solve(RHS);
 		}
 
 		// Report the L2-error by comparing the linearly weighted approximation
 		// to the exact steady-state solution
-		std::vector<FLP> u;
+		vector<double> u;
 		std::transform(u_curr.begin(), u_curr.end(), std::back_inserter(u),
-			[](auto& u) -> FLP { return FLP(u); }
+			[](auto& u) -> double { return double(u); }
 		);
 
 		indicator = m.lebesgue(u, u_inf_func);
@@ -626,8 +626,8 @@ int research_b()
 
 	for (size_t k = 0; k <= 7; ++k, m.refine())
 	{
-		std::vector<FLP> values(m.vertices().size(), 1);
-		FLP integral = m.integrate(values);
+		vector<double> values(m.vertices().size(), 1);
+		double integral = m.integrate(values);
 
 		std::cout << "I_" << k << " = " << integral << "\n";
 	}
@@ -641,7 +641,7 @@ int research_c(int l, int m, bool silent)
 	const int levels = 6;
 
 	// Set name of mesh file to load
-	std::string name = "icosahedron.csm";
+	string name = "icosahedron.csm";
 
 	// Load mesh for steady state solver
 	TriangularMesh mesh;
@@ -665,7 +665,7 @@ int research_c(int l, int m, bool silent)
 
 	// Set up iterative refinement and the solver
 	SteadyStateSolver solver;
-	std::vector<FLP> errors(levels + 1);
+	vector<double> errors(levels + 1);
 	for (int level = 0; level <= levels; ++level, mesh.refine())
 	{
 		// Output updated mesh information
@@ -694,18 +694,18 @@ int research_c(int l, int m, bool silent)
 		// When l = 0, u is not zero-averaged
 		// When l > 0, u is zero-averged
 
-		Function u = [l, m](const Point& p) -> FLP {
-			return cartosphere_Y_real(l, m, p.p(), p.a());
+		Function u = [l, m](const Point& p) -> double {
+			return cs_y(l, m, p.p(), p.a());
 		};
 
-		Function f = [l, m](const Point& p) -> FLP {
-			return l * (l + 1) * cartosphere_Y_real(l, m, p.p(), p.a());
+		Function f = [l, m](const Point& p) -> double {
+			return l * (l + 1) * cs_y(l, m, p.p(), p.a());
 		};
 
 		// Debug the system
-		std::string debug_name;
+		string debug_name;
 		{
-			std::stringstream sst;
+			stringstream sst;
 			sst << "system_" << l
 				<< (m < 0 ? "_m" : "_") << std::abs(m)
 				<< "_" << level << ".m";
@@ -715,10 +715,10 @@ int research_c(int l, int m, bool silent)
 
 		// Solve the system
 		solver.solve(f);
-		std::vector<FLP> solution = solver.get();
+		vector<double> solution = solver.get();
 
 		// Gauge the error
-		FLP error = mesh.lebesgue(solution, u);
+		double error = mesh.lebesgue(solution, u);
 		errors[level] = error;
 
 		if (!silent)
@@ -766,7 +766,7 @@ int research_d()
 		std::cout
 			<< "D(" << D.x() << ", " << D.y() << ", " << D.z() << ")\n";
 
-		FLP d = Arc(D, A).length();
+		double d = Arc(D, A).length();
 
 		std::cout << "d = " << d << "\n";
 
@@ -834,30 +834,30 @@ int research_d()
 	TriangularMesh m("icosahedron.csm.5.csm");
 	// m.format("icosahedron.csm.5.csm.obj");
 
-	std::vector<Point> v = m.vertices();
-	std::vector<FLP> a;
-	std::vector<FLP> t(101, 0);
+	vector<Point> v = m.vertices();
+	vector<double> a;
+	vector<double> t(101, 0);
 	for (int k = 0; k < t.size(); ++k)
 	{
 		t[k] = 0.1 * k;
 	}
 	
-	std::vector<Point> p;
+	vector<Point> p;
 	for (int k = -180; k < 180; ++k)
 	{
-		p.emplace_back(M_PI_2+FLP(1e-6), deg2rad(k));
+		p.emplace_back(M_PI_2+double(1e-6), cs_deg2rad(k));
 	}
 	
 	TimeDependentSolver s;
 	s.set(m);
-	s.set([](const Point& x) -> FLP { return 0; });
-	s.initialize([](const Point& x) -> FLP { return 2 + x.z(); });
+	s.set([](const Point& x) -> double { return 0; });
+	s.initialize([](const Point& x) -> double { return 2 + x.z(); });
 	for (size_t k = 0; k + 1 < t.size(); ++k)
 	{
-		FLP duration = t[k + 1] - t[k];
+		double duration = t[k + 1] - t[k];
 		s.advance(duration);
-		std::vector<FL3> u = s.velocity(p);
-		std::vector<Point> q = p;
+		vector<FL3> u = s.velocity(p);
+		vector<Point> q = p;
 		for (size_t i = 0; i < p.size(); ++i)
 		{
 			p[i].move(duration * u[i]);
@@ -866,12 +866,12 @@ int research_d()
 		// std::cout << p[1].x() << " " << p[1].y() << " " << p[1].z() << ";\n";
 	}
 
-	std::vector<FLP> ps;
+	vector<double> ps;
 
 	for (size_t i = 0; i < p.size(); ++i)
 	{
 		ps.push_back(p[i].p());
-		// std::cout << "p[" << i << "] = (" << rad2deg(p[i].p()) << ", " << rad2deg(p[i].a()) << ")\n";
+		// std::cout << "p[" << i << "] = (" << cs_rad2deg(p[i].p()) << ", " << cs_rad2deg(p[i].a()) << ")\n";
 	}
 
 	double sum = std::accumulate(ps.begin(), ps.end(), 0.0);
@@ -880,7 +880,7 @@ int research_d()
 	double sq_sum = std::inner_product(ps.begin(), ps.end(), ps.begin(), 0.0);
 	double stdev = std::sqrt(sq_sum / ps.size() - mean * mean);
 
-	std::cout << rad2deg(mean) << " +/- " << rad2deg(stdev) << "\n";
+	std::cout << cs_rad2deg(mean) << " +/- " << cs_rad2deg(stdev) << "\n";
 
 	return 0;
 }
@@ -901,10 +901,10 @@ int research_f()
 	}
 	std::cout << "Mesh is ready!\n" << std::endl;
 
-	const FLP time_initial = 1e-4;
-	const FLP time_ratio = 1.01;
-	const FLP dist_tolerance = 1e-7;
-	const FLP time_max = 50;
+	const double time_initial = 1e-4;
+	const double time_ratio = 1.01;
+	const double dist_tolerance = 1e-7;
+	const double time_max = 50;
 
 	TimeDependentSolver solver;
 	size_t levels = 6;
@@ -923,39 +923,39 @@ int research_f()
 			<< ", min " << stats.areaElementMin << ")\n"
 			<< "    Max diameter: " << stats.diameterElementMax << "\n\n";
 		
-		std::vector<Point> p;
+		vector<Point> p;
 		for (int k = -180; k < 180; ++k)
 		{
-			p.emplace_back(M_PI_2, deg2rad(k));
+			p.emplace_back(M_PI_2, cs_deg2rad(k));
 		}
-		std::vector<Point> targets;
+		vector<Point> targets;
 		for (int k = -180; k < 180; ++k)
 		{
-			targets.emplace_back(acos(-0.25), deg2rad(k));
+			targets.emplace_back(acos(-0.25), cs_deg2rad(k));
 		}
 
 		// Update solver
 		TimeDependentSolver solver;
 		solver.set(mesh);
-		solver.set([](const Point& x) -> FLP { return 0; });
-		solver.initialize([](const Point& x) -> FLP { return 2 + x.z(); });
+		solver.set([](const Point& x) -> double { return 0; });
+		solver.initialize([](const Point& x) -> double { return 2 + x.z(); });
 
 		size_t step = 0;
-		FLP cumulative = 0;
-		FLP duration = time_initial;
-		FLP dist_max = std::numeric_limits<FLP>::max();
-		FLP vertex_change = std::numeric_limits<FLP>::max();
+		double cumulative = 0;
+		double duration = time_initial;
+		double dist_max = std::numeric_limits<double>::max();
+		double vertex_change = std::numeric_limits<double>::max();
 		solver.advance(duration/2);
 		while (cumulative < time_max && vertex_change > 1e-6)
 		{
-			std::vector<FL3> u = solver.velocity(p);
-			std::vector<Point> q = p;
+			vector<FL3> u = solver.velocity(p);
+			vector<Point> q = p;
 			dist_max = 0;
 			for (size_t i = 0; i < p.size(); ++i)
 			{
 				auto q = p[i];
 				p[i].move(duration * u[i]);
-				FLP dist = u[i].norm2();
+				double dist = u[i].norm2();
 				if (dist > dist_max)
 				{
 					dist_max = dist;
@@ -975,12 +975,12 @@ int research_f()
 			// std::cout << vertex_change << '\n';
 		}
 
-		std::vector<FLP> ps;
+		vector<double> ps;
 	
 		for (size_t i = 0; i < p.size(); ++i)
 		{
 			ps.push_back(distance(p[i], targets[i]));
-			// std::cout << "p[" << i << "] = (" << rad2deg(p[i].p()) << ", " << rad2deg(p[i].a()) << ")\n";
+			// std::cout << "p[" << i << "] = (" << cs_rad2deg(p[i].p()) << ", " << cs_rad2deg(p[i].a()) << ")\n";
 		}
 	
 		double sum = std::accumulate(ps.begin(), ps.end(), 0.0);
@@ -995,13 +995,13 @@ int research_f()
 	return 0;
 }
 
-int research_g(const std::string &folder)
+int research_g(const string &folder)
 {
 	std::cout << "Initializing from directory " << folder << "\n";
 
 	ShapeFile file;
 
-	std::string message;
+	string message;
 	if (!file.open(folder, message))
 	{
 		std::cout << "Error: " << message << "\n";

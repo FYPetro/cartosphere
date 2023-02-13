@@ -1,38 +1,53 @@
 
 #include "cartosphere/functions.hpp"
 
-FLP
-cartosphere_Y_real(int l, int m, FLP z, FLP a)
-{
-	FLP r;
-#if defined(IS_WINDOWS)
-	r = std::sph_legendre(l, std::abs(m), z);
+#ifdef APPLE_LIKE
+#include <boost/math/special_functions/spheric_harmonic.hpp>
+using boost::math::spherical_harmonic_r;
+using boost::math::spherical_harmonic_i;
+#endif
 
+double
+cs_y(int l, int m, double theta, double phi)
+{
+	double r;
+#ifdef APPLE_LIKE
+	if (m >= 0)
+	{
+		r = spherical_harmonic_r(l, m, theta, phi);
+	}
+	else
+	{
+		r = spherical_harmonic_i(l, -m, theta, phi);
+	}
 	if (m != 0)
 	{
-		r *= std::sqrt(2) * std::pow(-1, m);
-
+		r *= M_SQRT2;
+	}
+#else
+	r = std::sph_legendre(l, abs(m), theta);
+	if (m != 0)
+	{
+		// Remove the Condon-Shortley phase and provide real normlization
+		r *= (m % 2) ? (-M_SQRT2) : M_SQRT2;
+		// Attach the azimuthal factor
 		if (m > 0)
 		{
-			r *= cos(m * a);
+			r *= cos(m * phi);
 		}
 		else
 		{
-			r *= sin(m * a);
+			r *= sin((-m) * phi);
 		}
 	}
-#elif defined(APPLE_LIKE)
-
-#else
-
 #endif
 	return r;
 }
 
-FLP
-cartosphere_azview(FLP p, FLP a, FLP pv, FLP av)
+double
+cs_azview(double p, double a, double pv, double av)
 {
-	FLP v, t, b;
+	double v, t, b;
 
 	if (pv == 0)
 	{

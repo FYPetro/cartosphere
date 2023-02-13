@@ -24,7 +24,7 @@ int
 runBenchmark();
 
 int
-runDemo(const std::string&, const std::vector<std::string>&);
+runDemo(const string&, const vector<string>&);
 
 /* **************************** MAIN ENTRY POINT **************************** */
 int
@@ -41,7 +41,7 @@ main(int argc, char* argv[])
 	demoCmd.add_argument("scenario")
 		.help("Specify which demo to run")
 		.nargs(nargs_pattern::at_least_one)
-		.default_value(std::vector{ std::string{"list"} })
+		.default_value(vector{ string{"list"} })
 #if defined(APPLE_LIKE)
 		.metavar("SCENARIO...")
 #endif
@@ -73,7 +73,7 @@ main(int argc, char* argv[])
 	vizCmd.add_argument("-i", "--input-format")
 		.help("Input format")
 		.nargs(1)
-		.default_value(std::string{ "shapefile" })
+		.default_value(string{ "shapefile" })
 #if defined(APPLE_LIKE)
 		.metavar("INFMT")
 #endif
@@ -81,7 +81,7 @@ main(int argc, char* argv[])
 	vizCmd.add_argument("-o", "--output-format")
 		.help("Output format")
 		.nargs(1)
-		.default_value(std::string{ "matlab" })
+		.default_value(string{ "matlab" })
 #if defined(APPLE_LIKE)
 		.metavar("OUTFMT")
 #endif
@@ -113,7 +113,7 @@ main(int argc, char* argv[])
 	transformCmd.add_argument("-i", "--input-format")
 		.help("Input format")
 		.nargs(1)
-		.default_value(std::string{ "shapefile" })
+		.default_value(string{ "shapefile" })
 #if defined(APPLE_LIKE)
 		.metavar("INFMT")
 #endif
@@ -154,7 +154,7 @@ main(int argc, char* argv[])
 	// Priotize demo over all other operating modes
 	if (program.is_subcommand_used("demo"))
 	{
-		auto demoArgs = demoCmd.get<std::vector<std::string>>("scenario");
+		auto demoArgs = demoCmd.get<vector<string>>("scenario");
 		auto scenario = demoArgs.front();
 		demoArgs.erase(demoArgs.begin());
 
@@ -181,13 +181,13 @@ main(int argc, char* argv[])
 	// Visualize a file
 	if (program.is_subcommand_used("viz"))
 	{
-		auto inputPath = vizCmd.get<std::string>("input");
-		auto inputFormat = vizCmd.get<std::string>("--input-format");
+		auto inputPath = vizCmd.get<string>("input");
+		auto inputFormat = vizCmd.get<string>("--input-format");
 		std::cout << "Input path: " << inputPath
 			<< " (format: " << inputFormat << ")\n";
 
-		auto outputPath = vizCmd.get<std::string>("output");
-		auto outputFormat = vizCmd.get<std::string>("--output-format");
+		auto outputPath = vizCmd.get<string>("output");
+		auto outputFormat = vizCmd.get<string>("--output-format");
 		std::cout << "Output path: " << outputPath
 			<< " (format: " << outputFormat << ")\n";
 
@@ -195,7 +195,7 @@ main(int argc, char* argv[])
 		if (inputFormat == "shapefile")
 		{
 			ShapeFile shapefile;
-			std::string message;
+			string message;
 			std::cout << "Initializing shapefile from " << inputPath << "...\n";
 			if (!shapefile.open(inputPath, message))
 			{
@@ -222,13 +222,13 @@ main(int argc, char* argv[])
 
 	if (program.is_subcommand_used("transform"))
 	{
-		auto inputPath = transformCmd.get<std::string>("input");
-		auto inputFormat = transformCmd.get<std::string>("--input-format");
+		auto inputPath = transformCmd.get<string>("input");
+		auto inputFormat = transformCmd.get<string>("--input-format");
 		std::cout << "Input path: " << inputPath
 			<< " (format: " << inputFormat << ")\n";
 
-		auto outputPath = transformCmd.get<std::string>("output");
-		auto outputFormat = transformCmd.get<std::string>("--output-format");
+		auto outputPath = transformCmd.get<string>("output");
+		auto outputFormat = transformCmd.get<string>("--output-format");
 		std::cout << "Output path: " << outputPath
 			<< " (format: " << outputFormat << ")\n";
 		
@@ -254,7 +254,7 @@ main(int argc, char* argv[])
 		// Check if a mesh is specified. If so, use the FEM approach.
 		if (transformCmd.is_used("--mesh"))
 		{
-			auto meshPath = transformCmd.get<std::string>("--mesh");
+			auto meshPath = transformCmd.get<string>("--mesh");
 			std::cout << "Mesh specified: " << meshPath << "\n";
 			std::cout << "Invoking FEM implementation...\n";
 			FiniteElementGlobe solver;
@@ -461,8 +461,8 @@ runBenchmark()
 				for (int k = 0; k < 360; ++k)
 				{
 					double x = 0;
-					double y = sin(deg2rad(k));
-					double z = cos(deg2rad(k));
+					double y = sin(cs_deg2rad(k));
+					double z = cos(cs_deg2rad(k));
 					initial_points[k] = Cartosphere::Point(x, y, z);
 				}
 				initial_condition = [](const Cartosphere::Point& P) {
@@ -475,9 +475,9 @@ runBenchmark()
 			{
 				for (int k = 0; k < 360; ++k)
 				{
-					double x = sin(deg2rad(k));
+					double x = sin(cs_deg2rad(k));
 					double y = 0;
-					double z = cos(deg2rad(k));
+					double z = cos(cs_deg2rad(k));
 					initial_points[k] = Cartosphere::Point(x, y, z);
 				}
 				initial_condition = [](const Cartosphere::Point& P) {
@@ -490,8 +490,8 @@ runBenchmark()
 			{
 				for (int k = 0; k < 360; ++k)
 				{
-					double x = cos(deg2rad(k));
-					double y = sin(deg2rad(k));
+					double x = cos(cs_deg2rad(k));
+					double y = sin(cs_deg2rad(k));
 					double z = 0;
 					initial_points[k] = Cartosphere::Point(x, y, z);
 				}
@@ -516,7 +516,7 @@ runBenchmark()
 			for (int k = 0; k < initial_points.size(); ++k)
 			{
 				double error = distance(points[k], initial_points[k]);
-				caseError = max(caseError, error);
+				caseError = std::max(caseError, error);
 			}
 			std::cout << std::setw(11) << caseError << " | ";
 			std::cout.copyfmt(oldCoutState);
@@ -531,7 +531,7 @@ runBenchmark()
 				std::cout.copyfmt(oldCoutState);
 			}
 
-			maxError = max(maxError, caseError);
+			maxError = std::max(maxError, caseError);
 		}
 		std::cout << std::setw(11) << maxError << " |\n";
 		std::cout.copyfmt(oldCoutState);
@@ -540,7 +540,7 @@ runBenchmark()
 }
 
 int
-runDemo(const std::string& name, const std::vector<std::string>& args)
+runDemo(const string& name, const vector<string>& args)
 {
 	if (name == "default")
 		return demo();

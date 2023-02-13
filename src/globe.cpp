@@ -1,27 +1,27 @@
 
-#include "cartosphere/globe.hpp"
 #include "cartosphere/functions.hpp"
 
+#include "cartosphere/globe.hpp"
 using Cartosphere::Globe;
 using Cartosphere::Polygon;
 
-Globe::Globe(const std::string& path)
+Globe::Globe(const string& path)
 {
-	std::vector<std::string> lines;
-	std::ifstream ifs(path);
+	vector<string> lines;
+	ifstream ifs(path);
 	if (!ifs.is_open())
 		return;
 
 	// Fill in the following items
-	std::vector<std::string> names;
-	std::vector<FLP> values;
-	std::vector<Polygon> polygons;
+	vector<string> names;
+	vector<double> values;
+	vector<Polygon> polygons;
 
 	// Read then parse the file line by line
-	std::string line;
-	std::string block;
-	std::string token;
-	std::istringstream sst;
+	string line;
+	string block;
+	string token;
+	istringstream sst;
 	Polygon polygon;
 	while (!ifs.eof())
 	{
@@ -56,33 +56,33 @@ Globe::Globe(const std::string& path)
 			sst.str(line.substr(token.size()));
 			if (token == "NAME")
 			{
-				std::string name;
+				string name;
 				sst >> name;
 				names.push_back(name);
 			}
 			else if (token == "VALUE")
 			{
-				FLP value;
+				double value;
 				sst >> value;
 				values.push_back(value);
 			}
 			else if (token == "PAR")
 			{
-				FLP polar, azimuth;
+				double polar, azimuth;
 				sst >> polar >> azimuth;
 				polygon.emplace_back(polar, azimuth);
 			}
 			else if (token == "PAD")
 			{
-				FLP polar, azimuth;
+				double polar, azimuth;
 				sst >> polar >> azimuth;
-				polar = deg2rad(polar);
-				azimuth = deg2rad(polar);
+				polar = cs_deg2rad(polar);
+				azimuth = cs_deg2rad(polar);
 				polygon.emplace_back(polar, azimuth);
 			}
 			else if (token == "XYZ")
 			{
-				FLP x, y, z;
+				double x, y, z;
 				sst >> x >> y >> z;
 				polygon.emplace_back(x, y, z);
 			}
@@ -93,8 +93,8 @@ Globe::Globe(const std::string& path)
 	_m.load("icosahedron.5.csm");
 
 	// Find if vertex is in polygon.
-	// std::vector<Point> v = _m.vertices();
-	// std::vector<FLP> init(0, v.size());
+	// vector<Point> v = _m.vertices();
+	// vector<double> init(0, v.size());
 	// for (int i = 0; i < v.size(); ++i)
 	// {
 	// 	for (int j = 0; j < polygons.size(); ++j)
@@ -112,7 +112,7 @@ void Globe::run()
 	// Also nothing to see here.
 }
 
-void Globe::format(const std::string& path)
+void Globe::format(const string& path)
 {
 	// Nothing to see here.
 }

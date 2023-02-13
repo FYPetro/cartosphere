@@ -1,11 +1,8 @@
 
 #include "cartosphere/shapefile.hpp"
 using Cartosphere::ShapeFile;
-using std::shared_ptr;
-using std::string;
-using std::vector;
 
-#include "cartosphere/utility.hpp"
+#include "cartosphere/functions.hpp"
 
 #include <filesystem>
 namespace filesystem = std::filesystem;
@@ -134,7 +131,7 @@ ShapeFile::open(const string &folder, string &error)
 
 		case PolygonType:
 		{
-			ptr = std::make_shared<Polygon>();
+			ptr = make_shared<Polygon>();
 			Polygon& polygon = *static_cast<Polygon*>(ptr.get());
 			polygon.type = recordShapeType;
 

@@ -12,7 +12,7 @@ Cartosphere::Preimage::toImage() const
 	Image image;
 
 	// Find the magnitude of the projection onto the xy-axis
-	FLP projection = sin(p);
+	double projection = sin(p);
 
 	// Decompose into the three components
 	image.x = projection * cos(a);
@@ -32,7 +32,7 @@ Cartosphere::Image::to_preimage() const
 
 	preimage.p = acos(z);
 
-	if (abs(x) + abs(y) > EPS)
+	if (abs(x) + abs(y) > DoubleEpsilon)
 	{
 		preimage.a = atan2(y, x);
 	}
@@ -44,28 +44,28 @@ Cartosphere::Image::to_preimage() const
 	return preimage;
 }
 
-FLP
+double
 Cartosphere::distance(
 	const Cartosphere::Image& a, const Cartosphere::Image& b)
 {
 	Cartosphere::Preimage pa = a.to_preimage();
 	Cartosphere::Preimage pb = b.to_preimage();
-	FLP value = cos(pa.p) * cos(pb.p) +
+	double value = cos(pa.p) * cos(pb.p) +
 		sin(pa.p) * sin(pb.p) * cos(pa.a - pb.a);
 	return acos(value);
 }
 
-FLP
+double
 Cartosphere::angle(const Cartosphere::Image& a,
 	const Cartosphere::Image& b, const Cartosphere::Image& c)
 {
 	// The sides of a spherical triangle
-	FLP BC = distance(b, c),		
+	double BC = distance(b, c),		
 		CA = distance(c, a),
 		AB = distance(a, b);
 	
 	// Find the angle a-b-c, see Todhunter 1863
-	if (AB < EPS || BC < EPS)
+	if (AB < DoubleEpsilon || BC < DoubleEpsilon)
 	{
 		return M_PI_2;
 	}
@@ -101,11 +101,11 @@ Cartosphere::Point::move(FL3 displacement)
 	set(arc.local(displacement.norm2()));
 }
 
-FLP
+double
 Cartosphere::Point::azimuth(const Point& other) const
 {
-	FLP t = sin(a() - other.a()) * sin(other.p());
-	FLP b = cos(other.p()) * sin(p())
+	double t = sin(a() - other.a()) * sin(other.p());
+	double b = cos(other.p()) * sin(p())
 		- sin(other.p()) * cos(p()) * cos(a() - other.a());
 
 	return atan2(t, b);
@@ -137,7 +137,7 @@ Cartosphere::Triangle::orientation() const
 	FL3 BC = B.image() - C.image();
 	FL3 OC = C.image();
 	// Obtain mixed product
-	FLP product = dot(cross(AB, BC), OC);
+	double product = dot(cross(AB, BC), OC);
 	if (product > 0)
 	{
 		return 1;
@@ -152,26 +152,26 @@ Cartosphere::Triangle::orientation() const
 	}
 }
 
-FLP
+double
 Cartosphere::Triangle::area() const
 {
 	// Form three arcs
 	Arc BC(B, C), CA(C, A), AB(A, B);
 	// Extract length of each arc
-	FLP a = BC.length();
-	FLP b = CA.length();
-	FLP c = AB.length();
+	double a = BC.length();
+	double b = CA.length();
+	double c = AB.length();
 	// Use the spherical law of cosines to calculate three angles
-	FLP A = acos((cos(a) - cos(b) * cos(c)) / (sin(b) * sin(c)));
-	FLP B = acos((cos(b) - cos(c) * cos(a)) / (sin(c) * sin(a)));
-	FLP C = acos((cos(c) - cos(a) * cos(b)) / (sin(a) * sin(b)));
+	double A = acos((cos(a) - cos(b) * cos(c)) / (sin(b) * sin(c)));
+	double B = acos((cos(b) - cos(c) * cos(a)) / (sin(c) * sin(a)));
+	double C = acos((cos(c) - cos(a) * cos(b)) / (sin(a) * sin(b)));
 	// Calculate the spherical excess
-	FLP excess = A + B + C - M_PI;
+	double excess = A + B + C - M_PI;
 	// Area is equal to the spherical excess
 	return excess;
 }
 
-FLP
+double
 Cartosphere::Triangle::areaEuclidean() const
 {
 	// Form vector AB, AC
@@ -179,7 +179,7 @@ Cartosphere::Triangle::areaEuclidean() const
 	FL3 AC = C.image() - A.image();
 	// Calculate the area as half of the magnitude of AB x AC
 	FL3 product = cross(AB, AC);
-	return FLP(0.5) * product.norm2();
+	return double(0.5) * product.norm2();
 }
 
 FL3
@@ -193,7 +193,7 @@ Cartosphere::Triangle::barycentric(const Point& p) const
 	Arc c(A, B);
 	t.z = c.distance(p) / c.distance(C);
 
-	FLP sum = t.x + t.y + t.z;
+	double sum = t.x + t.y + t.z;
 
 	return t / sum;
 }
@@ -213,7 +213,7 @@ Cartosphere::Triangle::contains(const Point& p) const
 		&& Arc(C, A).encloses(p);
 }
 
-FLP
+double
 Cartosphere::Triangle::diameter() const
 {
 	// Form vector AB, AC
@@ -222,8 +222,8 @@ Cartosphere::Triangle::diameter() const
 	// The oriented unit normal to the planar triangle
 	FL3 n = normalize(cross(AB, AC));
 	// The distance from the plane ABC to O
-	FLP d = dot(A.image(), n);
-	return FLP(2) * acos(d);
+	double d = dot(A.image(), n);
+	return double(2) * acos(d);
 }
 
 Cartosphere::Cap
@@ -243,9 +243,9 @@ Cartosphere::Triangle::element(size_t index) const
 		// Construct f such that f(A)=1, f(B)=0, f(C)=0
 		Arc arc(B, C);
 		Point pole = arc.pole();
-		FLP height = M_PI_2 - distance(pole, A);
+		double height = M_PI_2 - distance(pole, A);
 		// The support of this function is supposed to be this triangle
-		f = [height, pole](const Cartosphere::Point& x) -> FLP {
+		f = [height, pole](const Cartosphere::Point& x) -> double {
 			return (M_PI_2 - distance(pole, x)) / height;
 		};
 	}
@@ -255,9 +255,9 @@ Cartosphere::Triangle::element(size_t index) const
 		// Construct f such that f(A)=0, f(B)=1, f(C)=0
 		Arc arc(C, A);
 		Point pole = arc.pole();
-		FLP height = M_PI_2 - distance(pole, B);
+		double height = M_PI_2 - distance(pole, B);
 		// The support of this function is supposed to be this triangle
-		f = [height, pole](const Cartosphere::Point& x) -> FLP {
+		f = [height, pole](const Cartosphere::Point& x) -> double {
 			return (M_PI_2 - distance(pole, x)) / height;
 		};
 	}
@@ -267,15 +267,15 @@ Cartosphere::Triangle::element(size_t index) const
 		// Construct f such that f(A)=0, f(B)=0, f(C)=1
 		Arc arc(A, B);
 		Point pole = arc.pole();
-		FLP height = M_PI_2 - distance(pole, C);
+		double height = M_PI_2 - distance(pole, C);
 		// The support of this function is supposed to be this triangle
-		f = [height, pole](const Cartosphere::Point& x) -> FLP {
+		f = [height, pole](const Cartosphere::Point& x) -> double {
 			return (M_PI_2 - distance(pole, x)) / height;
 		};
 	}
 	break;
 	default:
-		f = [](const Cartosphere::Point& x) -> FLP {
+		f = [](const Cartosphere::Point& x) -> double {
 			return 0;
 		};
 	}
@@ -293,7 +293,7 @@ Cartosphere::Triangle::gradient(size_t index) const
 		Point Ap = Arc(B, C).pole();
 		Arc arc(A, Ap);
 		gradient = arc.tangent(0);
-		FLP scalar = FLP(1) / (M_PI_2 - arc.length());
+		double scalar = double(1) / (M_PI_2 - arc.length());
 		gradient *= scalar;
 	}
 	break;
@@ -302,7 +302,7 @@ Cartosphere::Triangle::gradient(size_t index) const
 		Point Bp = Arc(C, A).pole();
 		Arc arc(B, Bp);
 		gradient = arc.tangent(0);
-		FLP scalar = FLP(1) / (M_PI_2 - arc.length());
+		double scalar = double(1) / (M_PI_2 - arc.length());
 		gradient *= scalar;
 	}
 	break;
@@ -311,7 +311,7 @@ Cartosphere::Triangle::gradient(size_t index) const
 		Point Cp = Arc(A, B).pole();
 		Arc arc(C, Cp);
 		gradient = arc.tangent(0);
-		FLP scalar = FLP(1) / (M_PI_2 - arc.length());
+		double scalar = double(1) / (M_PI_2 - arc.length());
 		gradient *= scalar;
 	}
 	break;
@@ -334,7 +334,7 @@ Cartosphere::Triangle::gradient(size_t index, const Point &p) const
 		Point Ap = Arc(B, C).pole();
 		Arc arc(p, Ap);
 		gradient = arc.tangent(0);
-		FLP scalar = FLP(1) / (M_PI_2 - Arc(A, Ap).length());
+		double scalar = double(1) / (M_PI_2 - Arc(A, Ap).length());
 		gradient *= scalar;
 	}
 	break;
@@ -343,7 +343,7 @@ Cartosphere::Triangle::gradient(size_t index, const Point &p) const
 		Point Bp = Arc(C, A).pole();
 		Arc arc(p, Bp);
 		gradient = arc.tangent(0);
-		FLP scalar = FLP(1) / (M_PI_2 - Arc(B, Bp).length());
+		double scalar = double(1) / (M_PI_2 - Arc(B, Bp).length());
 		gradient *= scalar;
 	}
 	break;
@@ -352,7 +352,7 @@ Cartosphere::Triangle::gradient(size_t index, const Point &p) const
 		Point Cp = Arc(A, B).pole();
 		Arc arc(p, Cp);
 		gradient = arc.tangent(0);
-		FLP scalar = FLP(1) / (M_PI_2 - Arc(C, Cp).length());
+		double scalar = double(1) / (M_PI_2 - Arc(C, Cp).length());
 		gradient *= scalar;
 	}
 	break;
@@ -364,10 +364,10 @@ Cartosphere::Triangle::gradient(size_t index, const Point &p) const
 	return gradient;
 }
 
-FLP
+double
 Cartosphere::Triangle::integrate(const Function& f, Integrator intr) const
 {
-	FLP integral = 0;
+	double integral = 0;
 	switch (intr)
 	{
 	case Integrator::Centroid:
@@ -442,10 +442,10 @@ Cartosphere::Triangle::integrate(const Function& f, Integrator intr) const
 	return integral;
 }
 
-FLP
+double
 Cartosphere::Polygon::area() const
 {
-	FLP sum = 0;
+	double sum = 0;
 
 	// Accumulate the sum of angles
 	const size_t n = _V.size();
@@ -493,18 +493,18 @@ Cartosphere::TriangularMesh::Tree::_choose(Node::Pointer n, size_t level)
 {
 	// Based on the R-tree, not the R*-tree
 	// This is because the overlap enlargement might be difficult to compute
-	Node::Pointer iter = std::make_shared<Node>(_root);
+	Node::Pointer iter = make_shared<Node>(_root);
 
 	while (!iter->isLeaf())
 	{
-		typedef std::tuple<Node::Pointer, FLP, FLP> PointerWithAreas;
+		typedef std::tuple<Node::Pointer, double, double> PointerWithAreas;
 		
-		std::vector<PointerWithAreas> areas;
+		vector<PointerWithAreas> areas;
 		std::transform(iter->begin(), iter->end(), std::back_inserter(areas),
 			[n](const Node::Pointer& a) {
-				FLP before = a->cap().radius();
-				//FLP after = a->cap().combine(n->cap()).radius();
-				FLP after = 0;
+				double before = a->cap().radius();
+				//double after = a->cap().combine(n->cap()).radius();
+				double after = 0;
 				return std::make_tuple(a, after - before, before);
 			}
 		);
@@ -542,12 +542,12 @@ Cartosphere::TriangularMesh::Tree::_reinsert(Node::Pointer n)
 {
 	auto& cap = n->cap();
 
-	typedef std::pair<Node::Pointer, FLP> PointerWithDistance;
-	std::vector<PointerWithDistance> dist;
+	typedef std::pair<Node::Pointer, double> PointerWithDistance;
+	vector<PointerWithDistance> dist;
 
 	std::transform(n->begin(), n->end(), std::back_inserter(dist),
 		[&cap](Node::Pointer n) {
-			FLP d = distance(cap.apex(), n->cap().apex());
+			double d = distance(cap.apex(), n->cap().apex());
 			return std::make_pair(n, d);
 		}
 	);
@@ -586,12 +586,12 @@ Cartosphere::TriangularMesh::Tree::_split(Node::Pointer n)
 
 }
 
-FLP
+double
 Cartosphere::TriangularMesh::integrate(
-	const std::vector<FLP>& values,
+	const vector<double>& values,
 	Quadrature rule, Triangle::Integrator intr) const
 {
-	FLP integral = 0;
+	double integral = 0;
 
 	// The discrete values are for each dual polygon
 	if (rule == Quadrature::DualAreaWeighted)
@@ -602,8 +602,8 @@ Cartosphere::TriangularMesh::integrate(
 			// spherical polygon by storing its
 			//  1. dual vertices
 			//  2. azimuth of its dual vertex relative to v.
-			std::vector<std::pair<Point, FLP>> dual;
-			std::vector<Point> vertices;
+			vector<std::pair<Point, double>> dual;
+			vector<Point> vertices;
 
 			// For each vertex, construct its dual spherical polygon
 			for (size_t i = 0; i < _V.size(); ++i)
@@ -614,7 +614,7 @@ Cartosphere::TriangularMesh::integrate(
 				std::transform(fs.begin(), fs.end(), std::back_inserter(dual),
 					[this, v](size_t k) {
 						Point centroid = _vt[k].centroid();
-						FLP azimuth = v.azimuth(centroid);
+						double azimuth = v.azimuth(centroid);
 						return std::make_pair(centroid, azimuth);
 					}
 				);
@@ -623,8 +623,8 @@ Cartosphere::TriangularMesh::integrate(
 				struct AzimuthSorter
 				{
 					inline bool operator()(
-						const std::pair<Point, FLP>& a,
-						const std::pair<Point, FLP>& b) const
+						const std::pair<Point, double>& a,
+						const std::pair<Point, double>& b) const
 					{
 						return a.second < b.second;
 					}
@@ -641,7 +641,7 @@ Cartosphere::TriangularMesh::integrate(
 				// Spherical excess is the area
 				// Only works if the azimuths all lie within the principal interval
 				Polygon poly(vertices);
-				FLP area = poly.area();
+				double area = poly.area();
 
 				// Accumulate the integral
 				integral += pow(abs(values[i]), 2) * area;
@@ -693,12 +693,12 @@ Cartosphere::TriangularMesh::integrate(
 	return integral;
 }
 
-FLP
+double
 Cartosphere::TriangularMesh::lebesgue(
-	const std::vector<FLP>& weights, const Function& func,
+	const vector<double>& weights, const Function& func,
 	Triangle::Integrator intr) const
 {
-	FLP integral = 0;
+	double integral = 0;
 
 	// Integrate error in each triangle
 	for (size_t i = 0; i < _vt.size(); ++i)
@@ -736,7 +736,7 @@ Cartosphere::TriangularMesh::lebesgue(
 		integral += t.integrate(f, intr);
 	}
 
-	return pow(integral, 1 / FLP(2));
+	return pow(integral, 1 / double(2));
 }
 
 void
@@ -754,10 +754,10 @@ Cartosphere::TriangularMesh::clear()
 	_bParseSuccess = false;
 }
 
-FLP
+double
 Cartosphere::TriangularMesh::area() const
 {
-	FLP area = (FLP)0.0;
+	double area = 0;
 	for (auto& simplex : _vt)
 	{
 		area += simplex.area();
@@ -765,10 +765,10 @@ Cartosphere::TriangularMesh::area() const
 	return area;
 }
 
-FLP
+double
 Cartosphere::TriangularMesh::areaEuclidean() const
 {
-	FLP area = (FLP)0.0;
+	double area = 0;
 	for (auto& simplex : _vt)
 	{
 		area += simplex.areaEuclidean();
@@ -801,17 +801,17 @@ Cartosphere::TriangularMesh::load(const Triangle& t)
 }
 
 bool
-Cartosphere::TriangularMesh::load(const std::string& path)
+Cartosphere::TriangularMesh::load(const string& path)
 {
 	if (_bLoadSuccess || _bParseSuccess) clear();
 
 	// Opens given path
-	std::ifstream ifs(path);
+	ifstream ifs(path);
 	if (!ifs.is_open())
 	{
-		std::string message;
+		string message;
 		{
-			std::stringstream sst;
+			stringstream sst;
 			sst << "Could not load path " << path;
 			message = sst.str();
 		}
@@ -822,14 +822,14 @@ Cartosphere::TriangularMesh::load(const std::string& path)
 	// Temporary state variables
 	size_t lineNumber = 0;
 	size_t lineParsed = 0;
-	std::vector<size_t> specs;
-	FLP coords[4];
+	vector<size_t> specs;
+	double coords[4];
 	// Temporary state flags
 	size_t format = 0;
 
 	// Start parsing file line by line
-	std::string line;
-	std::istringstream iss;
+	string line;
+	istringstream iss;
 	while (std::getline(ifs, line))
 	{
 		// Increment line number and skip empty lines
@@ -841,7 +841,7 @@ Cartosphere::TriangularMesh::load(const std::string& path)
 		// Skip comment lines and strip inline comments
 		if (line[0] == '#') continue;
 		auto indexofPound = line.find_first_of('#');
-		if (indexofPound != std::string::npos)
+		if (indexofPound != string::npos)
 		{
 			line.erase(indexofPound);
 		}
@@ -855,9 +855,9 @@ Cartosphere::TriangularMesh::load(const std::string& path)
 			iss >> size;
 			if (iss.fail() || size == 0)
 			{
-				std::string message;
+				string message;
 				{
-					std::stringstream sst;
+					stringstream sst;
 					sst << "Error in Line " << lineNumber
 						<< ": Number of points is missing or zero";
 					message = sst.str();
@@ -870,9 +870,9 @@ Cartosphere::TriangularMesh::load(const std::string& path)
 			iss >> size;
 			if (iss.fail() || size == 0)
 			{
-				std::string message;
+				string message;
 				{
-					std::stringstream sst;
+					stringstream sst;
 					sst << "Error in Line " << lineNumber
 						<< ": Number of edges is missing or zero";
 					message = sst.str();
@@ -885,9 +885,9 @@ Cartosphere::TriangularMesh::load(const std::string& path)
 			iss >> size;
 			if (iss.fail() || size == 0)
 			{
-				std::string message;
+				string message;
 				{
-					std::stringstream sst;
+					stringstream sst;
 					sst << "Error in Line " << lineNumber
 						<< ": Number of triangles is missing or zero";
 					message = sst.str();
@@ -904,9 +904,9 @@ Cartosphere::TriangularMesh::load(const std::string& path)
 			}
 			else if (format != 0)
 			{
-				std::string message;
+				string message;
 				{
-					std::stringstream sst;
+					stringstream sst;
 					sst << "Error in Line " << lineNumber
 						<< ": File format ID " << format << " is unrecognized";
 					message = sst.str();
@@ -924,9 +924,9 @@ Cartosphere::TriangularMesh::load(const std::string& path)
 				iss >> coords[pos];
 				if (iss.fail())
 				{
-					std::string message;
+					string message;
 					{
-						std::stringstream sst;
+						stringstream sst;
 						sst << "Error in Line " << lineNumber
 							<< ": Missing coordinate " << pos;
 						message = sst.str();
@@ -940,7 +940,7 @@ Cartosphere::TriangularMesh::load(const std::string& path)
 			if (iss.fail())
 			{
 				// Spherical coordinates in degrees
-				Preimage pi(deg2rad(coords[0]), deg2rad(coords[1]));
+				Preimage pi(cs_deg2rad(coords[0]), cs_deg2rad(coords[1]));
 				_V.emplace_back(pi);
 			}
 			else
@@ -953,9 +953,9 @@ Cartosphere::TriangularMesh::load(const std::string& path)
 			iss >> coords[3];
 			if (!iss.fail())
 			{
-				std::string message;
+				string message;
 				{
-					std::stringstream sst;
+					stringstream sst;
 					sst << "Warning in Line " << lineNumber
 						<< ": Extra arguments are dropped";
 					message = sst.str();
@@ -971,9 +971,9 @@ Cartosphere::TriangularMesh::load(const std::string& path)
 			iss >> edge.second;
 			if (iss.fail())
 			{
-				std::string message;
+				string message;
 				{
-					std::stringstream sst;
+					stringstream sst;
 					sst << "Error in Line " << lineNumber
 						<< ": Edge specification missing point(s) ";
 					message = sst.str();
@@ -986,9 +986,9 @@ Cartosphere::TriangularMesh::load(const std::string& path)
 			iss >> edge.first;
 			if (!iss.fail())
 			{
-				std::string message;
+				string message;
 				{
-					std::stringstream sst;
+					stringstream sst;
 					sst << "Warning in Line " << lineNumber
 						<< ": Extra arguments are dropped";
 					message = sst.str();
@@ -1007,9 +1007,9 @@ Cartosphere::TriangularMesh::load(const std::string& path)
 				iss >> orientation[pos];
 				if (iss.fail() || orientation[0] == '\0')
 				{
-					std::string message;
+					string message;
 					{
-						std::stringstream sst;
+						stringstream sst;
 						sst << "Error in Line " << lineNumber
 							<< ": Argument " << pos
 							<< " is missing an orientation";
@@ -1020,9 +1020,9 @@ Cartosphere::TriangularMesh::load(const std::string& path)
 				iss >> indices[pos];
 				if (iss.fail() || orientation[0] == '\0')
 				{
-					std::string message;
+					string message;
 					{
-						std::stringstream sst;
+						stringstream sst;
 						sst << "Error in Line " << lineNumber
 							<< ": Argument " << pos
 							<< " is not formatted correctly";
@@ -1040,9 +1040,9 @@ Cartosphere::TriangularMesh::load(const std::string& path)
 			iss >> orientation[0];
 			if (!iss.fail())
 			{
-				std::string message;
+				string message;
 				{
-					std::stringstream sst;
+					stringstream sst;
 					sst << "Warning in Line " << lineNumber
 						<< ": Extra arguments are dropped";
 					message = sst.str();
@@ -1061,9 +1061,9 @@ Cartosphere::TriangularMesh::load(const std::string& path)
 }
 
 bool
-Cartosphere::TriangularMesh::save(const std::string& path) const
+Cartosphere::TriangularMesh::save(const string& path) const
 {
-	std::ofstream ofs(path);
+	ofstream ofs(path);
 
 	if (!ofs.is_open())
 	{
@@ -1079,8 +1079,8 @@ Cartosphere::TriangularMesh::save(const std::string& path) const
 
 	for (auto& point : _V)
 	{
-		ofs << rad2deg(point.p()) << " "
-			<< rad2deg(point.a()) << "\n";
+		ofs << cs_rad2deg(point.p()) << " "
+			<< cs_rad2deg(point.a()) << "\n";
 	}
 
 	ofs << "\n"
@@ -1109,8 +1109,8 @@ Cartosphere::TriangularMesh::save(const std::string& path) const
 }
 
 bool
-Cartosphere::TriangularMesh::format(const std::string& path,
-	const std::vector<FLP>& values) const
+Cartosphere::TriangularMesh::format(const string& path,
+	const vector<double>& values) const
 {
 	// Summary of Logic:
 	//   1. Mark all used edges
@@ -1121,11 +1121,11 @@ Cartosphere::TriangularMesh::format(const std::string& path,
 	//   5. Format Wavefront OBJ output file
 
 	// Export to specified path
-	std::ofstream ofs(path);
+	ofstream ofs(path);
 	if (!ofs.is_open()) return false;
 
 	// Mark all edges that are part of some triangle
-	std::vector<bool> edgeUsages(_E.size(), false);
+	vector<bool> edgeUsages(_E.size(), false);
 	for (auto& triangle : _F)
 	{
 		edgeUsages[std::get<0>(triangle).first] = true;
@@ -1134,20 +1134,20 @@ Cartosphere::TriangularMesh::format(const std::string& path,
 	}
 
 	// Initialize container for obj vertices and smoothing groups
-	std::vector<Image> vs;
-	std::vector<int> cs;
-	std::vector<std::vector<std::vector<size_t>>> sgs;
-	std::vector<std::string> materials;
-	std::vector<size_t> list;
+	vector<Image> vs;
+	vector<int> cs;
+	vector<vector<vector<size_t>>> sgs;
+	vector<string> materials;
+	vector<size_t> list;
 
 	// [Color] Subdivide [0,1] into 256 colors
-	std::vector<FLP> table;
+	vector<double> table;
 	if (!values.empty())
 	{
 		table.resize(256);
 		for (size_t k = 0; k < table.size(); ++k)
 		{
-			table[k] = FLP(1) * k / table.size();
+			table[k] = double(1) * k / table.size();
 		}
 	}
 
@@ -1155,13 +1155,13 @@ Cartosphere::TriangularMesh::format(const std::string& path,
 	{
 		// Preparation for vertices at certain UV detail level
 		const size_t uv = 64;
-		const FLP radius = 0.999;
+		const double radius = 0.999;
 
 		// Vertex: north pole
 		vs.emplace_back(0, 0, radius);
 
 		// Vertex: all points but the poles
-		FLP x, y, z, a, p;
+		double x, y, z, a, p;
 		for (size_t k = 1; k < uv; ++k)
 		{
 			p = M_PI * k / uv;
@@ -1224,9 +1224,9 @@ Cartosphere::TriangularMesh::format(const std::string& path,
 	// Push vertices and edges for each arc used
 	{
 		// Desired length and width of each segment
-		const FLP length = 0.1;
-		const FLP width = 0.001;
-		const FLP radius = 1.001;
+		const double length = 0.1;
+		const double width = 0.001;
+		const double radius = 1.001;
 
 		// Loop through all edges
 		for (size_t i = 0; i < _E.size(); ++i)
@@ -1241,7 +1241,7 @@ Cartosphere::TriangularMesh::format(const std::string& path,
 			Arc arc(a, b);
 
 			// Calculate optimal number of segments to divide into
-			FLP span = arc.span();
+			double span = arc.span();
 			size_t segments =
 				static_cast<size_t>(std::ceil(span / length));
 
@@ -1249,7 +1249,7 @@ Cartosphere::TriangularMesh::format(const std::string& path,
 			size_t offset = vs.size();
 			for (size_t s = 0; s <= segments; ++s)
 			{
-				FLP u = span * (1.0 * s / segments);
+				double u = span * (1.0 * s / segments);
 				vs.push_back(arc.local(u, -width) * radius);
 				vs.push_back(arc.local(u, width) * radius);
 			}
@@ -1378,38 +1378,38 @@ Cartosphere::TriangularMesh::format(const std::string& path,
 
 bool
 Cartosphere::TriangularMesh::formatPoly(
-	const std::string& path, const std::vector<FLP>& values) const
+	const string& path, const vector<double>& values) const
 {
 	// Summary of Logic:
 	//   1. Generate polygonal faces
 	//   2. Format Wavefront OBJ output file
 
 	// Export to specified path
-	std::ofstream ofs(path);
+	ofstream ofs(path);
 	if (!ofs.is_open()) return false;
 
 	// Initialize container for obj vertices and smoothing groups
-	std::vector<Image> vs;
-	std::vector<size_t> vcs;
-	std::vector<std::vector<std::vector<size_t>>> sgs;
-	std::vector<std::string> materials;
-	std::vector<size_t> list;
+	vector<Image> vs;
+	vector<size_t> vcs;
+	vector<vector<vector<size_t>>> sgs;
+	vector<string> materials;
+	vector<size_t> list;
 
 	// [Color] Subdivide [0,1] into 256 colors
-	std::vector<FLP> cs;
+	vector<double> cs;
 	if (!values.empty())
 	{
 		cs.resize(256);
 		for (size_t k = 0; k < cs.size(); ++k)
 		{
-			cs[k] = FLP(1) * k / (cs.size());
+			cs[k] = double(1) * k / (cs.size());
 		}
 	}
 
 	// Quantify the range
-	FLP min = *std::min_element(values.cbegin(), values.cend()),
-		max = *std::max_element(values.cbegin(), values.cend());
-	FLP range = max - min;
+	double min = *std::min_element(values.cbegin(), values.cend());
+	double max = *std::max_element(values.cbegin(), values.cend());
+	double range = max - min;
 
 	// Push new smoothing group and new material for all mesh triangles
 	sgs.emplace_back();
@@ -1425,7 +1425,7 @@ Cartosphere::TriangularMesh::formatPoly(
 		{
 			s.push_back(vs.size() + 1);
 			vs.push_back(_V[fv].image());
-			vcs.push_back(size_t(1 + FLP(255) * (values[fv] - min) / range));
+			vcs.push_back(size_t(1 + double(255) * (values[fv] - min) / range));
 		}
 	}
 
@@ -1549,8 +1549,8 @@ Cartosphere::TriangularMesh::refine()
 
 	// Assemble new list of triangles
 	size_t myMidpoints[3];
-	std::vector<DirectedEdge> myEdges;
-	std::vector<DirectedEdgeTriplet> myTriangles;
+	vector<DirectedEdge> myEdges;
+	vector<DirectedEdgeTriplet> myTriangles;
 	myEdges.reserve(12);
 	myTriangles.reserve(4);
 	for (auto& triangle : triangles)
@@ -1683,7 +1683,7 @@ Cartosphere::TriangularMesh::refine(size_t division)
 }
 
 void
-Cartosphere::TriangularMesh::fill(CSR_Matrix& A, Triangle::Integrator intr) const
+Cartosphere::TriangularMesh::fill(SparseMatrixRowMajor& A, Triangle::Integrator intr) const
 {
 	auto stat = statistics();
 
@@ -1693,7 +1693,7 @@ Cartosphere::TriangularMesh::fill(CSR_Matrix& A, Triangle::Integrator intr) cons
 
 	// Preparation!
 	// 1. Need to get the poles (E-loop)
-	std::vector<Cartosphere::Point> poles;
+	vector<Cartosphere::Point> poles;
 	poles.reserve(stat.E);
 
 	// E-loop
@@ -1707,7 +1707,7 @@ Cartosphere::TriangularMesh::fill(CSR_Matrix& A, Triangle::Integrator intr) cons
 	}
 
 	// 2. Need to get the magnitude of all gradient vectors (T-loop)
-	std::vector<FLP> magnitudes;
+	vector<double> magnitudes;
 	magnitudes.reserve(3 * stat.F);
 	Point pole, vertex;
 
@@ -1754,7 +1754,7 @@ Cartosphere::TriangularMesh::fill(CSR_Matrix& A, Triangle::Integrator intr) cons
 	// 3. Need to numerically construct the local stiffness matrices
 	// The inner product of gradient vectors has been converted to a spherical
 	// trigonometry problem, but we need to use quadratures on spherical triangles.
-	auto L = new FLP [stat.F][3][3]();
+	auto L = new double [stat.F][3][3]();
 
 	// T-loop.
 	for (size_t k = 0; k < stat.F; ++k)
@@ -1763,7 +1763,7 @@ Cartosphere::TriangularMesh::fill(CSR_Matrix& A, Triangle::Integrator intr) cons
 		const auto& triangle = _vt[k];
 
 		// Compute the diagonal entries
-		// FLP area = triangle.area();
+		// double area = triangle.area();
 		// local[0][0] = area * pow(magnitudes[3 * k + 0], 2);
 		// local[1][1] = area * pow(magnitudes[3 * k + 1], 2);
 		// local[2][2] = area * pow(magnitudes[3 * k + 2], 2);
@@ -1782,7 +1782,7 @@ Cartosphere::TriangularMesh::fill(CSR_Matrix& A, Triangle::Integrator intr) cons
 			poleAB.flip();
 		
 		// Numerically integrate the inner product of gradient of functions
-		auto unit = [](const Point& x)->FLP { return 1; };
+		auto unit = [](const Point& x)->double { return 1; };
 		local[0][0] = 
 			triangle.integrate(unit, intr) * magnitudes[3 * k + 0] * magnitudes[3 * k + 0];
 
@@ -1793,19 +1793,19 @@ Cartosphere::TriangularMesh::fill(CSR_Matrix& A, Triangle::Integrator intr) cons
 			triangle.integrate(unit, intr) * magnitudes[3 * k + 2] * magnitudes[3 * k + 2];
 
 		// Off-diagonal entries
-		auto iAB = [&poleBC, &poleCA](const Point &x)->FLP {
+		auto iAB = [&poleBC, &poleCA](const Point &x)->double {
 			return cos(angle(poleCA.image(), x.image(), poleBC.image()));
 		};
 		local[1][0] = local[0][1] =
 			triangle.integrate(iAB, intr) * magnitudes[3 * k + 0] * magnitudes[3 * k + 1];
 
-		auto iCA = [&poleBC, &poleAB](const Point& x)->FLP {
+		auto iCA = [&poleBC, &poleAB](const Point& x)->double {
 			return cos(angle(poleBC.image(), x.image(), poleAB.image()));
 		};
 		local[2][0] = local[0][2] =
 			triangle.integrate(iCA, intr) * magnitudes[3 * k + 0] * magnitudes[3 * k + 2];
 
-		auto iBC = [&poleAB, &poleCA](const Point& x)->FLP {
+		auto iBC = [&poleAB, &poleCA](const Point& x)->double {
 			return cos(angle(poleAB.image(), x.image(), poleCA.image()));
 		};
 		local[2][1] = local[1][2] =
@@ -1814,7 +1814,7 @@ Cartosphere::TriangularMesh::fill(CSR_Matrix& A, Triangle::Integrator intr) cons
 
 	// 4. Calculate the adjacency of vertices from the list of undirected edges
 	// by populating the zero-valued entries of the global stiffness matrix
-	std::vector<size_t> rows, cols;
+	vector<size_t> rows, cols;
 	
 	// V-loop: diagonal entries
 	for (size_t i = 0; i < stat.V; ++i)
@@ -1833,15 +1833,15 @@ Cartosphere::TriangularMesh::fill(CSR_Matrix& A, Triangle::Integrator intr) cons
 	}
 
 	// 5. Assemble the global stiffness matrix from the local stiffness matrix
-	std::vector<Entry> entries;
+	vector<SparseMatrixEntry> entries;
 	for (size_t k = 0; k < rows.size(); ++k)
 	{
-		FLP value = 0;
+		double value = 0;
 		
 		// Calculate the common support
 		const auto& support1 = _VF[rows[k]];
 		const auto& support2 = _VF[cols[k]];
-		std::vector<size_t> support;
+		vector<size_t> support;
 		std::set_intersection(
 			support1.cbegin(), support1.cend(),
 			support2.cbegin(), support2.cend(),
@@ -1857,8 +1857,8 @@ Cartosphere::TriangularMesh::fill(CSR_Matrix& A, Triangle::Integrator intr) cons
 			value += L[index][i][j];
 		}
 		
-		Entry e;
-		FLP v = e.value();
+		SparseMatrixEntry e;
+		double v = e.value();
 		// Unfortunately, the value() field is private.
 		entries.emplace_back((int)rows[k], (int)cols[k], value);
 	}
@@ -1869,7 +1869,7 @@ Cartosphere::TriangularMesh::fill(CSR_Matrix& A, Triangle::Integrator intr) cons
 }
 
 void
-Cartosphere::TriangularMesh::fill(CSR_Matrix& A, CSR_Matrix& M, Triangle::Integrator intr) const
+Cartosphere::TriangularMesh::fill(SparseMatrixRowMajor& A, SparseMatrixRowMajor& M, Triangle::Integrator intr) const
 {
 	// 1. Build the gradient inner matrix
 	fill(A, intr);
@@ -1882,7 +1882,7 @@ Cartosphere::TriangularMesh::fill(CSR_Matrix& A, CSR_Matrix& M, Triangle::Integr
 	M.resize(N, N);
 
 	// 3. Need to numerically construct the local stiffness matrices
-	auto L = new FLP[stat.F][3][3]();
+	auto L = new double[stat.F][3][3]();
 
 	// T-loop.
 	for (size_t k = 0; k < stat.F; ++k)
@@ -1896,7 +1896,7 @@ Cartosphere::TriangularMesh::fill(CSR_Matrix& A, CSR_Matrix& M, Triangle::Integr
 			{
 				Function f = triangle.element(i);
 				Function g = triangle.element(j);
-				Function inner = [&f, &g](const Point& p) -> FLP {
+				Function inner = [&f, &g](const Point& p) -> double {
 					return f(p) * g(p);
 				};
 				L[k][i][j] = triangle.integrate(inner, intr);
@@ -1906,7 +1906,7 @@ Cartosphere::TriangularMesh::fill(CSR_Matrix& A, CSR_Matrix& M, Triangle::Integr
 
 	// 4. Calculate the adjacency of vertices from the list of undirected edges
 	// by populating the zero-valued entries of the global stiffness matrix
-	std::vector<size_t> rows, cols;
+	vector<size_t> rows, cols;
 
 	// V-loop: diagonal entries
 	for (size_t i = 0; i < stat.V; ++i)
@@ -1925,15 +1925,15 @@ Cartosphere::TriangularMesh::fill(CSR_Matrix& A, CSR_Matrix& M, Triangle::Integr
 	}
 
 	// 5. Assemble the global stiffness matrix from the local stiffness matrix
-	std::vector<Entry> entries;
+	vector<SparseMatrixEntry> entries;
 	for (size_t k = 0; k < rows.size(); ++k)
 	{
-		FLP value = 0;
+		double value = 0;
 
 		// Calculate the common support
 		const auto& support1 = _VF[rows[k]];
 		const auto& support2 = _VF[cols[k]];
-		std::vector<size_t> support;
+		vector<size_t> support;
 		std::set_intersection(
 			support1.cbegin(), support1.cend(),
 			support2.cbegin(), support2.cend(),
@@ -1949,8 +1949,8 @@ Cartosphere::TriangularMesh::fill(CSR_Matrix& A, CSR_Matrix& M, Triangle::Integr
 			value += L[index][i][j];
 		}
 
-		Entry e;
-		FLP v = e.value();
+		SparseMatrixEntry e;
+		double v = e.value();
 		// Unfortunately, the value() field is private.
 		entries.emplace_back((int)rows[k], (int)cols[k], value);
 	}
@@ -1961,7 +1961,7 @@ Cartosphere::TriangularMesh::fill(CSR_Matrix& A, CSR_Matrix& M, Triangle::Integr
 }
 
 void
-Cartosphere::TriangularMesh::fill(Vector& b, Function f,
+Cartosphere::TriangularMesh::fill(ColVector& b, Function f,
 	Triangle::Integrator intr) const
 {
 	Stats stat = statistics();
@@ -1978,7 +1978,7 @@ Cartosphere::TriangularMesh::fill(Vector& b, Function f,
 			// For each face, obtain the correct element
 			size_t vid = std::find(_FV[star[k]].cbegin(), _FV[star[k]].cend(), i) - _FV[star[k]].cbegin();
 			auto g = _vt[star[k]].element(vid);
-			auto h = [f, g](const Point& p)->FLP { return f(p) * g(p); };
+			auto h = [f, g](const Point& p)->double { return f(p) * g(p); };
 			b[i] += _vt[star[k]].integrate(h, intr);
 
 			// Debug
@@ -1997,19 +1997,19 @@ Cartosphere::TriangularMesh::fill(Vector& b, Function f,
 void
 Cartosphere::TriangularMesh::reportAreas()
 {
-	FLP area = 0;
-	FLP totalArea = 0;
+	double area = 0;
+	double totalArea = 0;
 
 	for (auto& triangle : _vt)
 	{
 		area = triangle.areaEuclidean();
 		totalArea += area;
-		std::string message;
+		string message;
 		{
 			auto& A = triangle.A.image();
 			auto& B = triangle.B.image();
 			auto& C = triangle.C.image();
-			std::stringstream sst;
+			stringstream sst;
 			sst << "Area: " << area
 				<< " | A(" << A.x << ", " << A.y << ", " << A.z << ") "
 				<< " B(" << B.x << ", " << B.y << ", " << B.z << ") "
@@ -2019,22 +2019,22 @@ Cartosphere::TriangularMesh::reportAreas()
 		_vInfo.push_back(message);
 	}
 
-	std::string message;
+	string message;
 	{
-		std::stringstream sst;
+		stringstream sst;
 		sst << "Total Area: " << totalArea;
 		message = sst.str();
 	}
 	_vInfo.push_back(message);
 }
 
-FLP
+double
 Cartosphere::TriangularMesh::interpolate(const Point& p) const
 {
 	size_t i = _lookup(p);
 	FL3 c = _vt[i].barycentric(p);
 	FL3 v(_a[_FV[i][0]], _a[_FV[i][1]], _a[_FV[i][2]]);
-	FLP value = dot(c, v);
+	double value = dot(c, v);
 	return value;
 }
 
@@ -2075,7 +2075,7 @@ Cartosphere::TriangularMesh::gradient(const Point& p) const
 }
 
 void
-Cartosphere::TriangularMesh::set(const std::vector<FLP>& values)
+Cartosphere::TriangularMesh::set(const vector<double>& values)
 {
 	_a = values;
 	// Initialize an empty gradient field, one vector for each vertex
@@ -2098,11 +2098,11 @@ Cartosphere::TriangularMesh::set(const std::vector<FLP>& values)
 	}
 }
 
-FLP
+double
 Cartosphere::TriangularMesh::integrate(const Function& f,
 	Quadrature rule, Triangle::Integrator intr) const
 {
-	FLP result = 0;
+	double result = 0;
 	switch (rule)
 	{
 	case Quadrature::AreaWeighted:
@@ -2129,17 +2129,17 @@ Cartosphere::TriangularMesh::statistics() const
 	s.F = _F.size();
 
 	// Report element statistics
-	s.areaElementMax = std::numeric_limits<FLP>::min();
-	s.areaElementMin = std::numeric_limits<FLP>::max();
-	s.diameterElementMax = std::numeric_limits<FLP>::min();
+	s.areaElementMax = DoubleMinimum;
+	s.areaElementMin = DoubleMaximum;
+	s.diameterElementMax = DoubleMinimum;
 
 	for (auto& triangle : _vt)
 	{
-		FLP area = triangle.area();
+		double area = triangle.area();
 		s.areaElementMax = std::max(s.areaElementMax, area);
 		s.areaElementMin = std::min(s.areaElementMin, area);
 
-		FLP diameter = triangle.diameter();
+		double diameter = triangle.diameter();
 		s.diameterElementMax = std::max(s.diameterElementMax, diameter);
 	}
 	s.areaElementDisparity = s.areaElementMax / s.areaElementMin;
@@ -2181,9 +2181,9 @@ Cartosphere::TriangularMesh::_populate()
 			pointIndex[2] == pointIndex[3] || pointIndex[3] != pointIndex[4] ||
 			pointIndex[4] == pointIndex[5] || pointIndex[5] != pointIndex[0])
 		{
-			std::string message;
+			string message;
 			{
-				std::stringstream sst;
+				stringstream sst;
 				sst << "Error in Face #" << index
 					<< ": Edges do not form a valid simplex";
 				message = sst.str();
@@ -2225,13 +2225,13 @@ Cartosphere::TriangularMesh::_populate()
 }
 
 void
-Cartosphere::TriangularMesh::_gradient(const std::vector<FLP>& a)
+Cartosphere::TriangularMesh::_gradient(const vector<double>& a)
 {
 	_grad.resize(_V.size());
 
 	for (int i = 0; i < _FV.size(); ++i)
 	{
-		std::vector<size_t> V = _FV[i];
+		vector<size_t> V = _FV[i];
 		for (int j = 0; j < 3; ++j)
 		{
 			_grad[V[j]] += a[i] * _vt[i].gradient(j);
