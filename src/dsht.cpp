@@ -1,16 +1,13 @@
 
 #include "cartosphere/dsht.hpp"
 
-#include <xmmintrin.h>
-
-#include <omp.h>
-
 #include "cartosphere/utility.hpp"
 
 #include "cartosphere/functions.hpp"
 
-#define GLOG_NO_ABBREVIATED_SEVERITIES
-#include <glog/logging.h>
+#include <xmmintrin.h>
+
+#include <omp.h>
 
 int
 cs_index2(int B, int l, int m)
@@ -263,6 +260,10 @@ cs_ids2ht(int B, const double* harmonics, double* data, const double* ws2,
 	}
 
 	// Turn coefficients into data
+	if (FLAGS_minloglevel == 0)
+	{
+		LOG(INFO) << "cs_ids2ht invokes cs_ids2ht_execute";
+	}
 	cs_ids2ht_execute(B, pad, data, many_idct, many_idst);
 }
 
@@ -321,6 +322,10 @@ cs_ids2ht_dp(int B, const double* harmonics, double* partials, const double* ws2
 	}
 
 	// Turn coefficients into partials
+	if (FLAGS_minloglevel == 0)
+	{
+		LOG(INFO) << "cs_ids2ht_dp invokes cs_ids2ht_execute";
+	}
 	cs_ids2ht_execute(B, pad, partials, many_idct, many_idst);
 }
 
@@ -353,9 +358,9 @@ cs_ids2ht_da(int B, const double* harmonics, double* partials, const double* ws2
 		for (int m = 0; m < B; ++m, ++amj)
 		{
 			// Compute element-wise product between...
-			// 1: ROW m of UPPER TRIANGLE of HARMONICS
-			// 2: ROW m of UPPER TRIANGLE rePlmCosFile for x_{j}
-			auto row1 = harmonics + (B * m);
+			// 1: ROW B-m of LOWER TRIANGLE of HARMONICS, shifted by m
+			// 2: ROW   m of UPPER TRIANGLE rePlmCosFile for x_{j}
+			auto row1 = harmonics + (B * (B - m)) - m;
 			auto row2 = rePlmCos + (2 * B - m + 1) * m / 2;
 			for (int l = m; l < B; ++l)
 			{
@@ -367,14 +372,14 @@ cs_ids2ht_da(int B, const double* harmonics, double* partials, const double* ws2
 		for (int m = 1; m < B; ++m, ++bmj)
 		{
 			// Compute element-wise product between...
-			// 1: ROW B-m of LOWER TRIANGLE of HARMONICS, shifted by m
-			// 2: ROW   m of UPPER TRIANGLE rePlmCosFile for x_{j}
-			auto row1 = harmonics + (B * (B - m)) - m;
+			// 1: ROW m of UPPER TRIANGLE of HARMONICS
+			// 2: ROW m of UPPER TRIANGLE rePlmCosFile for x_{j}
+			auto row1 = harmonics + (B * m);
 			auto row2 = rePlmCos + (2 * B - m + 1) * m / 2;
 			for (int l = m; l < B; ++l)
 			{
-				// Extra m due to partial derivative w.r.t. phi
-				*bmj += m * row1[l] * row2[l - m];
+				// Extra -m due to partial derivative w.r.t. phi
+				*bmj += (-m) * row1[l] * row2[l - m];
 			}
 		}
 		// Zero out the final sine coefficient
@@ -382,6 +387,10 @@ cs_ids2ht_da(int B, const double* harmonics, double* partials, const double* ws2
 	}
 
 	// Turn coefficients into partials
+	if (FLAGS_minloglevel == 0)
+	{
+		LOG(INFO) << "cs_ids2ht_da invokes cs_ids2ht_execute";
+	}
 	cs_ids2ht_execute(B, pad, partials, many_idct, many_idst);
 }
 
@@ -576,33 +585,32 @@ cs_ids2ht_execute(int B, fftw_real* pad, fftw_real* data,
 
 	if (FLAGS_minloglevel == 0)
 	{
-		stringstream sst;
-		sst << "synthesized data\n";
+		LOG(INFO) << "Synthesized Data";
 		for (int j = 0; j < N; ++j)
 		{
-			for (int k = 0; k < N; ++k)
-			{
-				sst << "  u_{" << j << "," << k << "} = " << data[N * j + k];
-			}
-			sst << "\n";
+			LOG(INFO) << "\t"
+				<< "b_{" << j << ",:} = "
+				<< Eigen::Map<RowVector>(data + (N * j), N).format(OctaveFmt);
 		}
-		sst << "\n";
 	}
 }
 
 double*
 cs_make_ws2(int B)
 {
+	// Allocate workspace
+	double* const ws2 = new double [cs_ws2_size(B)];
+	cs_make_ws2(B, ws2);
+	return ws2;
+}
+
+void
+cs_make_ws2(int B, double* ws2)
+{
 	int N = 2 * B;
 
 	// Prepare for logging
 	Eigen::IOFormat OctaveFmt(Eigen::StreamPrecision, 0, ", ", ";\n", "", "", "[", "]");
-
-	// Allocate workspace
-	double* const ws2 = new double
-		[(4 + 3 * N
-			+ (N - 2) * N
-			+ N * B * (B + 1) / 2 * 3)];
 
 	// Segmentize the workspace into multiple blocks
 	double* const blocks[8] = {
@@ -827,7 +835,7 @@ cs_make_ws2(int B)
 			double* ptr = trigs + ((B - 1) * N + k);
 			for (int m = 1; m < B; ++m, ptr += N)
 			{
-				*ptr = cos(m * phi);
+				*ptr = sin(m * phi);
 			}
 		}
 	}
@@ -916,22 +924,23 @@ cs_make_ws2(int B)
 		{
 			for (int l = std::max(1, m); l < B; ++l, ++target)
 			{
-				// Separate treatment for when l=m
-				if (l == m)
-				{
-					// q_{l,l}/q_{l,l-1} = sqrt(1+delta(l-1)) sqrt(2l)/y
-					double e_l_lm1 = sqrt(1 + (m == 1)) * sqrt(2 * l);
-					*target = e_l_lm1 / y_j * rP[cs_index2_assoc(B, l, l - 1)]
-						+ l * x_j / pow(y_j, 2) * rP[cs_index2_assoc(B, l, l)];
-				}
-				else
+				if (l > m)
 				{
 					// q_{l,m}/q_{l-1,m} = sqrt((2l+1)/(2l-1)*(l-m)/(l+m))
 					// d_{l-1,m} = (l+m) q_{l,m}/q_{l-1,m}
 					//           = sqrt((2l+1)/(2l-1)*(l-m)*(l+m))
 					double d_lm1_m = sqrt((l + 0.5) / (l - 0.5) * ((l - m) * (l + m)));
-					*target = (x_j * rP[cs_index2_assoc(B, l, m)]
+					*target = (x_j * l * rP[cs_index2_assoc(B, l, m)]
 						- d_lm1_m * rP[cs_index2_assoc(B, l - 1, m)]) / y_j;
+				}
+				// Separate treatment for when l=m
+				else
+				{
+					// q_{l,l}/q_{l,l-1} = sqrt(1+delta(l-1))/sqrt(2l)
+					// e_{l,l-1} = q_{l,l}/q_{l,l-1} (2l) (-1)^{l-1}
+					double e_l_lm1 = sqrt((1.0 + (l == 1)) * (2 * l));
+					*target = e_l_lm1 * rP[cs_index2_assoc(B, l, l - 1)]
+						- l * x_j / y_j * rP[cs_index2_assoc(B, l, l)];
 				}
 			}
 		}
@@ -957,14 +966,20 @@ cs_make_ws2(int B)
 			LOG(INFO) << sst.str();
 		}
 	}
-
-	return ws2;
 }
 
 void
 cs_free_ws2(double *ws2)
 {
 	free(ws2);
+}
+
+int
+cs_ws2_size(int B)
+{
+	// See cs_make_ws2
+	int N = 2 * B;
+	return (4 + 3 * N + (N - 2) * N + N * B * (B + 1) / 2 * 3);
 }
 
 double*

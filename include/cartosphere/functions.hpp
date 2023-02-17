@@ -46,11 +46,11 @@ double cs_azview(double p, double a, double pv, double av);
 
 // Convert degrees to radians
 template <typename T>
-constexpr double cs_deg2rad(T angle) { return (angle * (double)M_PI / (double)180); }
+constexpr double cs_deg2rad(T angle) { return (angle * M_PI / 180); }
 
 // Convert radians to degrees
 template <typename T>
-constexpr double cs_rad2deg(T angle) { return (angle * (double)M_1_PI * (double)180); }
+constexpr double cs_rad2deg(T angle) { return (angle * M_1_PI * 180); }
 
 // Trim from start (in place)
 static inline void ltrim(string& s) {

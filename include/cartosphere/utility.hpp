@@ -49,6 +49,10 @@ using std::istringstream;
 #include <iostream>
 #include <iomanip>
 
+// Filesystem
+#include <filesystem>
+using std::filesystem::path;
+
 // Timing
 #include <chrono>
 using std::chrono::steady_clock;
@@ -89,5 +93,10 @@ using SolverBiCGSTAB = Eigen::BiCGSTAB<
 #include <numeric>
 #include <algorithm>
 #include <functional>
+
+// Use glog to debug things
+// Windows output: %APPDATA%/../Local/Temp
+#define GLOG_NO_ABBREVIATED_SEVERITIES
+#include <glog/logging.h>
 
 #endif // !__UTILITY_HPP__

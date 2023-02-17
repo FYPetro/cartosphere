@@ -98,7 +98,10 @@ void
 Cartosphere::Point::move(FL3 displacement)
 {
 	Cartosphere::Arc arc(*this, displacement);
-	set(arc.local(displacement.norm2()));
+	if (!arc.is_degenerate())
+	{
+		set(arc.local(displacement.norm2()));
+	}
 }
 
 double

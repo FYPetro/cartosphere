@@ -194,6 +194,11 @@ namespace Cartosphere
 		{ _populate(); }
 
 	public:
+		// Is this arc degenerate?
+		bool is_degenerate() const
+		{
+			return _n.anynan();
+		}
 		// Return the signed distance of a point to the arc
 		double distance(const Point& p) const
 		{

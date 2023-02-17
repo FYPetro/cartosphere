@@ -14,9 +14,29 @@ namespace Cartosphere
 	class SolverWrapper
 	{
 	public:
+		// A snapshot of the solver at various timesteps
+		struct Snapshot
+		{
+			// [time_begin, time_final]
+			double time_begin;
+			double time_final;
+			// Length of interval
+			double duration;
+			// Extreme velocity and distance
+			double max_speed;
+			double max_distance;
+			// Points and velocity fields
+			vector<Cartosphere::Point> points;
+		};
+
+	public:
 		// Transform a vector of points, timestepping from the solver
 		void transform(vector<Cartosphere::Point>& points)
 		{
+			// Start on clean slate
+			history.clear();
+			Snapshot status;
+
 			int iteration = 0;
 			double timeElapsed = 0;
 
@@ -52,6 +72,18 @@ namespace Cartosphere
 					}
 				}
 
+				// DO OUR OWN THING
+				status.time_begin = timeElapsed;
+				status.time_final = timeElapsed + timestep;
+				status.duration = timestep;
+				status.max_speed = maxDistance / timestep;
+				status.max_distance = maxDistance;
+				if (recordTrajectory)
+				{
+					status.points = previousPoints;
+				}
+				history.push_back(status);
+
 				// Prepare for next iteration
 				++iteration;
 				advance_solver(timeElapsed, timestep);
@@ -59,7 +91,7 @@ namespace Cartosphere
 				timestep *= ratioTimestep;
 
 				// Judge loop criterions
-				notExpired = true;
+				notExpired = timeElapsed < 10;
 				notConvergent = maxDistance > epsDistance;
 
 				// std::cout << "Iteration #" << iteration << "\n"
@@ -68,12 +100,29 @@ namespace Cartosphere
 			}
 
 			// std::cout << "Iteration stopped.\n";
+			status.time_begin = timeElapsed;
+			status.time_final = std::numeric_limits<double>::infinity();
+			status.duration = std::numeric_limits<double>::infinity();
+			status.max_speed = 0;
+			status.max_distance = 0;
+			if (recordTrajectory)
+			{
+				status.points = points;
+			}
+			history.push_back(status);
 		}
 
 	protected:
+		// A list of all snapshots
+		vector<Snapshot> history;
+
 		// Initial condition, defaults the zero function
-		Cartosphere::Function initFunction =
-			[](const Cartosphere::Point& x) { return 0; };
+		Cartosphere::Function initFunction = [](const Cartosphere::Point& x) {
+			return 0;
+		};
+
+		// Record trajectory?
+		bool recordTrajectory = false;
 
 		// Initial timestep size
 		double firstTimestep = 1e-2;
@@ -91,15 +140,89 @@ namespace Cartosphere
 			(reinterpret_cast<DerivedType*>(this))->advance_solver(time, delta);
 		}
 
-		// Advance solver
+		// Compute velocity at given points
 		void velocity(const vector<Cartosphere::Point>& points, vector<FL3>& velocities) const
 		{
 			return (reinterpret_cast<const DerivedType*>(this))->velocity(points, velocities);
 		}
 
+		// Output a report
+		void format_matlab(const string& prefix) const
+		{
+			ofstream ofs;
+			
+			// Prepare file names
+			string file_name = prefix + ".m";
+			string data_name = prefix + "_data.m";
+
+			// Prepare for logging
+			Eigen::IOFormat OctaveFmt(Eigen::StreamPrecision, 0, ", ", ";\n", "", "", "[", "]");
+
+			// Prepare the prefix_data.m file
+			ofs.open(data_name);
+			{
+				for (int i = 0; i < history.size(); ++i)
+				{
+					auto& snapshot = history[i];
+
+					size_t N = snapshot.points.size();
+					ofs << "points(:,:," << (i + 1) << ") = [\n";
+					for (size_t j = 0; j < N; ++j)
+					{
+						ofs << " " << snapshot.points[j].x()
+							<< " " << snapshot.points[j].y()
+							<< " " << snapshot.points[j].z();
+						if (j + 1 == N)
+						{
+							ofs << "]";
+						}
+						ofs << "; % snapshot " << i << " point " << j << "\n";
+					}
+				}
+			}
+			ofs.close();
+
+			// Prepare the prefix.m file
+			ofs.open(file_name);
+			{
+				ofs << "%% Loading data\n"
+					<< "clear points\n"
+					<< prefix << "_data" << "\n\n";
+
+				ofs << "%% Drawing trajectories\n"
+					<< "sphere;axis equal tight\n"
+					<< "xlabel('x');ylabel('y');zlabel('z')\n\n"
+					<< "hold on\n"
+					<< "for i = 1:size(points,1)\n"
+					<< "\t" << "trajectory = squeeze(points(i,:,:))';\n"
+					<< "\t" << "XYZ = num2cell(trajectory,1);\n"
+					<< "\t" << "plot3(XYZ{:});\n"
+					<< "end\n"
+					<< "hold off\n\n";
+
+				ofs << "%% Summary\n";
+				for (size_t i = 0; i + 1 < history.size(); ++i)
+				{
+					auto& snapshot = history[i];
+
+					ofs << "% Iter " << i
+						<< " t=[" << snapshot.time_begin << "," << snapshot.time_final << "]"
+						<< " max_speed=" << snapshot.max_speed
+						<< " max_distance=" << snapshot.max_distance
+						<< "\n";
+				}
+			}
+			ofs.close();
+		}
+
+	public:
 		// Get/Set func_ic
 		Cartosphere::Function get_initial_condition() const { return initFunction; }
 		void set_initial_condition(const Cartosphere::Function& f) { initFunction = f; }
+
+		// Enable/Disable snapshot
+		void enable_snapshot() { recordTrajectory = true; }
+		void disable_snapshot() { recordTrajectory = false; }
 
 		// Get/Set firstTimeStep
 		double get_first_timestep() const { return firstTimestep; }
@@ -119,11 +242,16 @@ namespace Cartosphere
 	{
 	public:
 		// Default constructor
-		SpectralGlobe() : B(0), N(0) {}
+		SpectralGlobe() {}
+
+		~SpectralGlobe() { cleanup(); }
 
 	public:
 		// Initialize solver
 		void initialize_solver();
+
+		// Cleanup dynamic allocated data
+		void cleanup();
 
 		// Advance solver
 		void advance_solver(double time, double delta);
@@ -141,19 +269,26 @@ namespace Cartosphere
 		vector<double> init_hats;
 		vector<double> time_hats;
 
-		// Temporary allocations for S2 transformations
-		double* ws2;
-		fftw_real* ipad;
-		fftw_plan idct, idst;
-
-		// Gradient field at cell centers (theta_j^*,phi_k^*)
+		// Partials and gradient at time t
 		vector<double> time_dp;
 		vector<double> time_da;
 		vector<FL3> time_grad;
 
+		// Pole data
+		double time_data_north = 0;
+		double time_data_south = 0;
+		FL3 time_grad_north = { 0, 0, 0 };
+		FL3 time_grad_south = { 0, 0, 0 };
+
+		// Allocations for S2 transformations
+		vector<double> ws2;
+		fftw_real* ipad = nullptr;
+		fftw_plan idct = NULL;
+		fftw_plan idst = NULL;
+
 		// Bandlimit and data size
-		int B;
-		int N;
+		int B = 0;
+		int N = 0;
 
 	public:
 		// Get/Set bandlimit: must be a whole power of 2 and even

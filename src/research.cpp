@@ -1,8 +1,8 @@
 
+// GLOG introduces Arc through winapifamily.h, polluting the Cartosphere::Arc here
 #include "cartosphere/research.hpp"
 using Cartosphere::Function;
 using Cartosphere::Point;
-using Cartosphere::Arc;
 using Cartosphere::Triangle;
 using Cartosphere::TriangularMesh;
 using Cartosphere::SteadyStateSolver;
@@ -761,16 +761,16 @@ int research_d()
 			<< "v<" << v.x << ", " << v.y << ", " << v.z << ">\n"
 			<< "w<" << w.x << ", " << w.y << ", " << w.z << ">\n";
 
-		auto D = Arc(B, C).midpoint();
+		auto D = Cartosphere::Arc(B, C).midpoint();
 
 		std::cout
 			<< "D(" << D.x() << ", " << D.y() << ", " << D.z() << ")\n";
 
-		double d = Arc(D, A).length();
+		double d = Cartosphere::Arc(D, A).length();
 
 		std::cout << "d = " << d << "\n";
 
-		FL3 t = Arc(D, A).tangent(0);
+		FL3 t = Cartosphere::Arc(D, A).tangent(0);
 
 		std::cout
 			<< "t<" << t.x << ", " << t.y << ", " << t.z << ">\n";
@@ -794,7 +794,7 @@ int research_d()
 		Point A(M_PI / 3, M_PI / 3);
 		Triangle ABC(A, B, C);
 
-		auto D = Arc(C, A).midpoint();
+		auto D = Cartosphere::Arc(C, A).midpoint();
 
 		FL3 g = ABC.gradient(1);
 
@@ -809,7 +809,7 @@ int research_d()
 		Point B(M_PI / 3, M_PI / 3);
 		Triangle ABC(A, B, C);
 
-		auto D = Arc(A, B).midpoint();
+		auto D = Cartosphere::Arc(A, B).midpoint();
 
 		FL3 g = ABC.gradient(2);
 

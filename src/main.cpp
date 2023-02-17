@@ -286,7 +286,8 @@ runBenchmark()
 	std::cout << "[STARTING BENCHMARK]\n"
 		<< "#1: Discrete Real S2-Fourier Transforms\n"
 		<< "\n"
-		<< "  hat(l,m)=1/(1+l+|m|), gone through cs_ids2ht then cs_fds2ht.\n"
+		<< "  hat(l,m)=1/(1+l+|m|) for m>=0,\n"
+		<< "          -1/(1+l+|m|) for m<0, thru cs_ids2ht then cs_fds2ht.\n"
 		<< "  Max error is the largest absolute error among all harmonics.\n"
 		<< "\n"
 		<< "  | ## |  BW  | algorithm | makews (s) | ids2ht (s) | fds2ht (s) |  max error  |\n"
@@ -338,7 +339,16 @@ runBenchmark()
 		{
 			for (int m = -l; m <= l; ++m)
 			{
-				coeffs[cs_index2(B, l, m)] = 1.0 / (l + abs(m) + 1);
+				auto& hat = coeffs[cs_index2(B, l, m)];
+				hat = 1.0 / (l + abs(m) + 1);
+				if ((l + m) % 2)
+				{
+					hat *= -1;
+				}
+				if (m < 0)
+				{
+					hat *= -1;
+				}
 			}
 		}
 		memcpy(hats, coeffs.data(), B * B * sizeof(double));
@@ -448,6 +458,7 @@ runBenchmark()
 		// Initialize the spherical cartogram
 		SpectralGlobe globe;
 		globe.set_bandlimit(B);
+		globe.enable_snapshot();
 
 		// Construct the three cases
 		vector<Cartosphere::Point> initial_points(360);
@@ -457,6 +468,10 @@ runBenchmark()
 		double maxError = 0;
 		for (int j = 0; j < 3; ++j)
 		{
+			if (FLAGS_minloglevel == 0)
+			{
+				LOG(INFO) << "BANDLIMIT " << B << " CASE " << j;
+			}
 			// Points: x=0
 			// Initial condition: 2+x
 			if (j == 1)
@@ -523,11 +538,21 @@ runBenchmark()
 
 			// Perform the spherical cartogram transformation
 			auto begin = steady_clock::now();
+			globe.set_eps_distance(-1);
+			globe.set_first_timestep(0.001);
+			globe.set_ratio_timestep(1.1);
 			globe.set_initial_condition(initial_condition);
 			globe.initialize_solver();
 			auto points = initial_points;
 			globe.transform(points);
 			auto end = steady_clock::now();
+
+			// Print to debug
+			{
+				stringstream sst;
+				sst << "bandlimit_" << B << "_case_" << j;
+				globe.format_matlab(sst.str());
+			}
 
 			auto elapsed = (double)
 				(duration_cast<milliseconds>(end - begin).count()) / 1000;

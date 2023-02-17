@@ -58,6 +58,11 @@ void cs_ids2ht_execute(int B, fftw_real* pad, fftw_real* data,
 // No current plan to work with odd bandlimits, because that's just odd!
 double* cs_make_ws2(int B);
 
+void cs_make_ws2(int B, double* ws2);
+
+// Returns the size of the workspace
+int cs_ws2_size(int B);
+
 // Fetch
 double* cs_ws2_rePlmCosRank(int B, int l, int m, double* ws2);
 const double* cs_ws2_rePlmCosRank(int B, int l, int m, const double* ws2);

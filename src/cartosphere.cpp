@@ -9,54 +9,81 @@ using Cartosphere::FiniteElementGlobe;
 void
 SpectralGlobe::initialize_solver()
 {
-	// If the non-zero bandlimit is new
-	if (N != 2 * B && B > 0)
+	// B is treated as the NEW bandlimit
+	// N is treated as twice the OLD bandlimit
+	int n = B * 2;
+
+	// If B==0, deallocate, reset
+	// If B!=0 and n==N, reset, initialize
+	// If B!=0 and n!=N, deallocate, allocate, reset, initialize
+	if (B == 0 || n != N)
 	{
-		N = 2 * B;
-		// Resize existing
+		// Deallocate
+		cleanup();
+	}
+	if (n != N)
+	{
+		N = n;
+		// Resize
 		init_data.resize(N * N);
 		time_data.resize(N * N);
 		init_hats.resize(B * B);
 		time_hats.resize(B * B);
 		time_dp.resize(N * N);
-		time_da.resize(N * N);
+		time_da.resize(N* N);
 		time_grad.resize(N * N);
-		// Free old dynamic allocations
-		delete[] ws2;
-		fftw_free(ipad);
-		fftw_destroy_plan(idct); fftw_destroy_plan(idst);
-		// Allocate new stuff
-		ws2 = cs_make_ws2(B);
-		ipad = fftw_alloc_real(N * N * 2);
-		cs_ids2ht_plans(B, ipad, &idct, &idst);
+		// Allocate
+		if (B > 0)
+		{
+			ws2.resize(cs_ws2_size(B));
+			ipad = fftw_alloc_real(N * N * 2);
+			cs_ids2ht_plans(B, ipad, &idct, &idst);
+		}
 	}
-
-	// Clear data and hats
-	if (N > 0)
+	
+	// Reset
+	history.clear();
+	time_data_north = time_data_south = 0;
+	time_grad_north = time_grad_south = { 0, 0, 0 };
+	
+	// Initialize
+	if (B > 0)
 	{
-		// Data and hats storage
-		memset(init_data.data(), 0, N * N * sizeof(double));
-		memset(time_data.data(), 0, N * N * sizeof(double));
-		memset(init_hats.data(), 0, B * B * sizeof(double));
-		memset(time_hats.data(), 0, B * B * sizeof(double));
-		
 		// Sample initial condition
 		double phi, theta;
 		for (int j = 0; j < N; ++j)
 		{
-			theta = M_PI / N * (j + .5);
+			theta = M_PI / N * (j + 0.5);
 			for (int k = 0; k < N; ++k)
 			{
-				phi = M_PI / B * (k + .5);
+				phi = M_PI / B * (k + 0.5);
 				Point P(theta, phi);
 				init_data[N * j + k] = initFunction(P);
 			}
 		}
 
 		// Compute initial Fourier coefficients
-		cs_fds2ht(B, init_data.data(), init_hats.data(), ws2);
+		cs_fds2ht(B, init_data.data(), init_hats.data(), ws2.data());
+
 		// Update initial data and gradient
 		advance_solver(0, 0);
+	}
+}
+
+void
+SpectralGlobe::cleanup()
+{
+	if (ipad != nullptr)
+	{
+		fftw_free(ipad);
+	}
+	if (idct != NULL)
+	{
+		fftw_destroy_plan(idct);
+	}
+	if (idst != NULL)
+	{
+		fftw_destroy_plan(idst);
 	}
 }
 
@@ -66,6 +93,11 @@ SpectralGlobe::advance_solver(double time, double delta)
 	// Interval: [0, t]
 	double t = time + delta;
 
+	double* H = time_hats.data();
+	double* D = time_data.data();
+	double* P[2] = { time_dp.data(), time_da.data() };
+	double* W = ws2.data();
+	
 	// Compute decayed coefficients
 	{
 		int l, m, i;
@@ -75,17 +107,17 @@ SpectralGlobe::advance_solver(double time, double delta)
 			for (m = -l; m <= l; ++m)
 			{
 				i = cs_index2(B, l, m);
-				time_hats[i] = init_hats[i] * exp((-omega) * t);
+				H[i] = init_hats[i] * exp((-omega) * t);
 			}
 		}
 	}
 
 	// Compute homogenized data
-	cs_ids2ht(B, time_hats.data(), time_data.data(), ws2, ipad, idct, idst);
+	cs_ids2ht(B, H, D, W, ipad, idct, idst);
 
 	// Compute a velocity field at each grid cell corner
-	cs_ids2ht_dp(B, time_hats.data(), time_dp.data(), ws2, ipad, idct, idst);
-	cs_ids2ht_da(B, time_hats.data(), time_da.data(), ws2, ipad, idct, idst);
+	cs_ids2ht_dp(B, H, P[0], W, ipad, idct, idst);
+	cs_ids2ht_da(B, H, P[1], W, ipad, idct, idst);
 	{
 		int i = 0;
 		double theta, phi;
@@ -103,41 +135,76 @@ SpectralGlobe::advance_solver(double time, double delta)
 				sin_phi = sin(phi);
 				// Convert gradient!
 				auto& grad = time_grad[i];
-				grad.x = time_dp[i] * cos_theta * cos_phi - time_da[i] * sin_phi;
-				grad.y = time_dp[i] * cos_theta * sin_phi - time_da[i] * cos_phi;
-				grad.z = time_dp[i] * (-sin_theta);
+				grad.x = P[0][i] * cos_theta * cos_phi - P[1][i] * sin_phi / sin_theta;
+				grad.y = P[0][i] * cos_theta * sin_phi + P[1][i] * cos_phi / sin_theta;
+				grad.z = P[0][i] * (-sin_theta);
 			}
 		}
 	}
+
+	// Compute D and velocities at the poles
+	time_data_north = 0;
+	time_data_south = 0;
+	for (int l = 0; l < B; ++l)
+	{
+		double q_l = sqrt((2 * l + 1) / (4 * M_PI));
+		double q_hat_l = q_l * time_hats[cs_index2(B, l, 0)];
+		time_data_north += q_hat_l;
+		time_data_south += ((l % 2) ? -1 : 1) * q_hat_l;
+	}
+	time_grad_north = { 0, 0, 0 };
+	time_grad_south = { 0, 0, 0 };
+	{
+		double phi, cos_phi, sin_phi;
+		for (int k = 0; k < N; ++k)
+		{
+			phi = M_PI / B * (k + 0.5);
+			cos_phi = cos(phi);
+			sin_phi = sin(phi);
+			time_grad_north.x += P[0][k] * cos_phi - P[1][k] * sin_phi;
+			time_grad_north.y += P[0][k] * sin_phi + P[1][k] * cos_phi;
+			time_grad_south.x += -P[0][N * (N - 1) + k] * cos_phi - P[1][N * (N - 1) + k] * sin_phi;
+			time_grad_south.y += -P[0][N * (N - 1) + k] * sin_phi + P[1][N * (N - 1) + k] * cos_phi;
+		}
+	}
+	time_grad_north /= N;
+	time_grad_south /= N;
 }
 
 void
 SpectralGlobe::velocity(const vector<Point>& points, vector<FL3>& velocities) const
 {
-	// Compute data and velocities at the poles
-	double data_north = 0;
-	double data_south = 0;
-	for (int l = 0; l < B; ++l)
+	// Prepare for logging
+	Eigen::IOFormat OctaveFmt(Eigen::StreamPrecision, 0, ", ", ";\n", "", "", "[", "]");
+
+	if (FLAGS_minloglevel == 0)
 	{
-		double q_l = sqrt((2 * l + 1) / (4 * M_PI));
-		double q_hat_l = q_l * time_hats[cs_index2(B, l, 0)];
-		data_north += q_hat_l;
-		data_south += ((l % 2) ? -1 : 1) * q_hat_l;
+		LOG(INFO) << "SpectralGlobe::velocity partial_theta\n"
+			<< Eigen::Map<const MatrixRowMajor>(time_dp.data(), N, N).format(OctaveFmt);
+		LOG(INFO) << "SpectralGlobe::velocity partial_phi\n"
+			<< Eigen::Map<const MatrixRowMajor>(time_da.data(), N, N).format(OctaveFmt);
 	}
-	FL3 grad_north{ 0, 0, 0 };
-	FL3 grad_south{ 0, 0, 0 };
+
+	if (FLAGS_minloglevel == 0)
 	{
-		double phi, diff;
-		for (int k = 0; k < N; ++k)
+		stringstream sst;
+		sst << "SpectralGlobe::velocity time_grad\n"
+			<< "  NORTH: [" << time_grad_north.x << ", "
+			<< time_grad_north.y << ", " << time_grad_north.z << "]\n"
+			<< "  SOUTH: [" << time_grad_south.x << ", "
+			<< time_grad_south.y << ", " << time_grad_south.z << "]\n";
+		for (int j = 0; j < N; ++j)
 		{
-			phi = M_PI / B * (k + 0.5);
-			diff = (time_data[k] - data_north);
-			grad_north.x += diff * cos(phi);
-			grad_north.y += diff * sin(phi);
-			diff = (time_data[k] - data_south);
-			grad_south.x += diff * cos(phi);
-			grad_south.y += diff * sin(phi);
+			sst << "  ";
+			for (int k = 0; k < N; ++k)
+			{
+				auto& g = time_grad[j * N + k];
+				sst << "(" << j << "," << k << ") = "
+					<< "[" << g.x << ", " << g.y << ", " << g.z << "] ";
+			}
+			sst << "\n";
 		}
+		LOG(INFO) << sst.str();
 	}
 
 	// Calculate the j, k index of the cell that contains each point
@@ -164,14 +231,14 @@ SpectralGlobe::velocity(const vector<Point>& points, vector<FL3>& velocities) co
 		j_frac -= j_n;
 		k_frac -= k_w;
 
-		// Obtain data and gradient on the northern side
+		// Obtain D and gradient on the northern side
 		double data_n;
 		FL3 grad_n;
 		if (j_n == -1)
 		{
 			// The northern edge is degenerate; it is the north pole
-			data_n = data_north;
-			grad_n = grad_north;
+			data_n = time_data_north;
+			grad_n = time_grad_north;
 			// Scale j_frac from [0.5,1] to [0,1]
 			j_frac = 2 * j_frac - 1;
 		}
@@ -190,8 +257,8 @@ SpectralGlobe::velocity(const vector<Point>& points, vector<FL3>& velocities) co
 		if (j_s == N)
 		{
 			// The southern edge is degenerate; it is the north pole
-			data_s = data_south;
-			grad_s = grad_south;
+			data_s = time_data_south;
+			grad_s = time_grad_south;
 			// Scale j_frac from [0,0.5] to [0,1]
 			j_frac = 2 * j_frac;
 		}
@@ -209,7 +276,7 @@ SpectralGlobe::velocity(const vector<Point>& points, vector<FL3>& velocities) co
 		FL3 grad = (1 - j_frac) * grad_n + j_frac * grad_s;
 
 		// Compute the velocity
-		velocities[i] = grad * (-1 / data);
+		velocities[i] = -grad / data;
 	}
 }
 
