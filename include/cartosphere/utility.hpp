@@ -30,6 +30,12 @@ static const double DoubleEpsilon = std::numeric_limits<double>::epsilon();
 static const double DoubleMinimum = std::numeric_limits<double>::min();
 static const double DoubleMaximum = std::numeric_limits<double>::max();
 
+// OpenMP Number of threads
+#ifdef _OPENMP
+#include <omp.h>
+static const int ThreadsMaximum = omp_get_max_threads();
+#endif
+
 // Commonly used templates
 #include <vector>
 using std::vector;

@@ -4,7 +4,10 @@
   "description": "Spherical cartogram generating library.",
   "dependencies": [
     "glog",
-    "fftw3",
+    {
+      "name": "fftw3",
+      "features": ["threads"]
+    },
     "eigen3",
     {
       "name": "argparse",

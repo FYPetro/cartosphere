@@ -5,10 +5,6 @@
 
 #include "cartosphere/functions.hpp"
 
-#include <xmmintrin.h>
-
-#include <omp.h>
-
 int
 cs_index2(int B, int l, int m)
 {
@@ -79,82 +75,83 @@ cs_fds2ht(int B, const double* data, double* harmonics, const double* ws2)
 		LOG(INFO) << "W\n" << W.format(OctaveFmt);
 	}
 
-	// For each degree and order
-#pragma omp parallel for if (B >= 128 || FLAGS_minloglevel > 0)
-	for (int l = 0; l < B; ++l)
+	// For each degree and order, compute the fourier
+#pragma omp parallel for if(B >= 128 && FLAGS_minloglevel > 0) num_threads(ThreadsMaximum)
+	for (int task = 0; task < B * B; ++task)
 	{
-		for (int m = -l; m <= l; ++m)
+		// Split tasks into proper degrees and orders
+		int l = (int)sqrt(task);
+		int m = task - l * l - l;
+
+		// W .* P
+		auto rank = cs_ws2_rePlmCosRank(B, l, abs(m), ws2);
+
+		Eigen::Map<const RowArray> P(rank, N);
+		if (FLAGS_minloglevel == 0)
 		{
-			// W .* P
-			auto rank = cs_ws2_rePlmCosRank(B, l, abs(m), ws2);
+			stringstream sst;
+			sst << "P_{" << l << "," << m << "} = "
+				<< P.format(OctaveFmt);
+			LOG(INFO) << sst.str();
+		}
 
-			Eigen::Map<const RowArray> P(rank, N);
+		RowVector WP = (W * P).matrix();
+		if (FLAGS_minloglevel == 0)
+		{
+			stringstream sst;
+			sst << "                W.*P = "
+				<< WP.format(OctaveFmt);
+			LOG(INFO) << sst.str();
+		}
+
+		// (W .* P) * M
+		RowVector WPM = WP * M;
+		if (FLAGS_minloglevel == 0)
+		{
+			stringstream sst;
+			sst << "            (W.*P)*M = "
+				<< WPM.format(OctaveFmt);
+			LOG(INFO) << sst.str();
+		}
+
+		// ((W .* P) * M) .* T
+		if (m != 0)
+		{
+			int offset;
+			// Compute the offset of the azimuthal trigs in ws2
+			if (m > 0)
+			{
+				offset = N * (m - 1);
+			}
+			else
+			{
+				offset = N * (B - m - 2);
+			}
+
+			Eigen::Map<const RowArray> T(trigs + offset, N);
 			if (FLAGS_minloglevel == 0)
 			{
 				stringstream sst;
-				sst << "P_{" << l << "," << m << "} = "
-					<< P.format(OctaveFmt);
+				sst << "                   T = "
+					<< T.format(OctaveFmt);
 				LOG(INFO) << sst.str();
 			}
 
-			RowVector WP = (W * P).matrix();
-			if (FLAGS_minloglevel == 0)
-			{
-				stringstream sst;
-				sst << "                W.*P = "
-					<< WP.format(OctaveFmt);
-				LOG(INFO) << sst.str();
-			}
+			WPM.array() *= T.array();
 
-			// (W .* P) * M
-			RowVector WPM = WP * M;
 			if (FLAGS_minloglevel == 0)
 			{
 				stringstream sst;
-				sst << "            (W.*P)*M = "
+				sst << "       ((W.*P)*M).*T = "
 					<< WPM.format(OctaveFmt);
 				LOG(INFO) << sst.str();
 			}
-
-			// ((W .* P) * M) .* T
-			if (m != 0)
-			{
-				int offset;
-				// Compute the offset of the azimuthal trigs in ws2
-				if (m > 0)
-				{
-					offset = N * (m - 1);
-				}
-				else
-				{
-					offset = N * (B - m - 2);
-				}
-
-				Eigen::Map<const RowArray> T(trigs + offset, N);
-				if (FLAGS_minloglevel == 0)
-				{
-					stringstream sst;
-					sst << "                   T = "
-						<< T.format(OctaveFmt);
-					LOG(INFO) << sst.str();
-				}
-
-				WPM.array() *= T.array();
-
-				if (FLAGS_minloglevel == 0)
-				{
-					stringstream sst;
-					sst << "       ((W.*P)*M).*T = "
-						<< WPM.format(OctaveFmt);
-					LOG(INFO) << sst.str();
-				}
-			}
-
-			// sum((W .* P) * M) .* T)
-			harmonics[cs_index2(B, l, m)] = WPM.sum();
 		}
+
+		// sum((W .* P) * M) .* T)
+		harmonics[cs_index2(B, l, m)] = WPM.sum();
 	}
-	
+
 	if (FLAGS_minloglevel == 0)
 	{
 		stringstream sst;
@@ -655,6 +652,9 @@ cs_make_ws2(int B, double* ws2)
 	
 	// [Block 0] Bandlimit
 	blocks[0][0] = B;
+	blocks[0][1] = B;
+	blocks[0][2] = B;
+	blocks[0][3] = B;
 
 	// [Block 1-2] Generate weights by solving, for 0 <= l < N = 2B,
 	// \sum_{j=1}^{N}(P_{l}(cos(theta_{j})))w_{j}=(2pi/B)delta_{0,l}
@@ -669,7 +669,7 @@ cs_make_ws2(int B, double* ws2)
 		}
 
 		// Compute weights form Legendre coefficients up to degree 2B-1
-#pragma omp parallel for if (B >= 128)
+#pragma omp parallel for if (B >= 128)// num_threads(ThreadsMaximum)
 		for (int l = 0; l < N; ++l)
 		{
 			double* target = tempCosPls + (N * l);
@@ -685,7 +685,10 @@ cs_make_ws2(int B, double* ws2)
 		memset(b.data(), 0, N * sizeof(double));
 		b[0] = 2 * M_PI / B;
 		
+		// Temporarily enable multithreaded Eigen
+		Eigen::setNbThreads(ThreadsMaximum);
 		ColVector u = A.partialPivLu().solve(b); // PartialPivLU suffices
+		Eigen::setNbThreads(1);
 		memcpy(w, u.data(), N * sizeof(double));
 	}
 	
@@ -771,7 +774,7 @@ cs_make_ws2(int B, double* ws2)
 		}
 
 		// Populate horizontally: P_{l-1}^{m} & P_{l}^{m} => P_{l+1}^{m}
-#pragma omp parallel for if (B >= 128)
+#pragma omp parallel for if (B >= 128)// num_threads(ThreadsMaximum)
 		for (int m = 1; m < B - 1; ++m)
 		{
 			// Pointer to ~P_{l-1,m}
@@ -870,7 +873,7 @@ cs_make_ws2(int B, double* ws2)
 			}
 		}
 		// For each j, fetch from N-striding pointers
-#pragma omp parallel for if (B >= 128)
+#pragma omp parallel for if (B >= 128)// num_threads(ThreadsMaximum)
 		for (int j = 0; j < N; ++j)
 		{
 			auto target = cs_ws2_rePlmCosFile(B, j, ws2);
@@ -907,7 +910,7 @@ cs_make_ws2(int B, double* ws2)
 	}
 
 	// [Block 7] Blocks for derivatives
-#pragma omp parallel for if (B >= 128)
+#pragma omp parallel for if (B >= 128)// num_threads(ThreadsMaximum)
 	for (int j = 0; j < N; ++j)
 	{
 		double* rP = cs_ws2_rePlmCosFile(B, j, ws2);

@@ -36,6 +36,7 @@ SpectralGlobe::initialize_solver()
 		if (B > 0)
 		{
 			ws2.resize(cs_ws2_size(B));
+			cs_make_ws2(B, ws2.data());
 			ipad = fftw_alloc_real(N * N * 2);
 			cs_ids2ht_plans(B, ipad, &idct, &idst);
 		}
@@ -76,14 +77,17 @@ SpectralGlobe::cleanup()
 	if (ipad != nullptr)
 	{
 		fftw_free(ipad);
+		ipad = nullptr;
 	}
 	if (idct != NULL)
 	{
 		fftw_destroy_plan(idct);
+		idct = NULL;
 	}
 	if (idst != NULL)
 	{
 		fftw_destroy_plan(idst);
+		idst = NULL;
 	}
 }
 
@@ -103,11 +107,11 @@ SpectralGlobe::advance_solver(double time, double delta)
 		int l, m, i;
 		for (l = 0; l < B; ++l)
 		{
-			double omega = l * (l + 1);
+			int eigenvalue = -l * (l + 1);
 			for (m = -l; m <= l; ++m)
 			{
 				i = cs_index2(B, l, m);
-				H[i] = init_hats[i] * exp((-omega) * t);
+				H[i] = init_hats[i] * exp(eigenvalue * t);
 			}
 		}
 	}
@@ -156,15 +160,17 @@ SpectralGlobe::advance_solver(double time, double delta)
 	time_grad_south = { 0, 0, 0 };
 	{
 		double phi, cos_phi, sin_phi;
+		double sin_theta = sin(M_PI / N * 0.5);
+		int offset = N * (N - 1);
 		for (int k = 0; k < N; ++k)
 		{
 			phi = M_PI / B * (k + 0.5);
 			cos_phi = cos(phi);
 			sin_phi = sin(phi);
-			time_grad_north.x += P[0][k] * cos_phi - P[1][k] * sin_phi;
-			time_grad_north.y += P[0][k] * sin_phi + P[1][k] * cos_phi;
-			time_grad_south.x += -P[0][N * (N - 1) + k] * cos_phi - P[1][N * (N - 1) + k] * sin_phi;
-			time_grad_south.y += -P[0][N * (N - 1) + k] * sin_phi + P[1][N * (N - 1) + k] * cos_phi;
+			time_grad_north.x += P[0][k] * cos_phi - P[1][k] * sin_phi / sin_theta;
+			time_grad_north.y += P[0][k] * sin_phi + P[1][k] * cos_phi / sin_theta;
+			time_grad_south.x += -P[0][offset + k] * cos_phi - P[1][offset + k] * sin_phi / sin_theta;
+			time_grad_south.y += -P[0][offset + k] * sin_phi + P[1][offset + k] * cos_phi / sin_theta;
 		}
 	}
 	time_grad_north /= N;

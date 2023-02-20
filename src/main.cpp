@@ -30,8 +30,19 @@ runDemo(const string&, const vector<string>&);
 int
 main(int argc, char* argv[])
 {
+	// Initializes Google Logging, providing only the program name
 	google::InitGoogleLogging(*argv);
 
+#ifdef _OPENMP
+	// Configure Open MP to be single-threaded by default
+	omp_set_num_threads(1);
+	// Configure Eigen to be single-threaded by default
+	Eigen::setNbThreads(1);
+	// Before calling any FFTW routines, the following must be called
+	fftw_init_threads();
+#endif
+
+	// Create an argument parser
 	ArgumentParser program("cartosphere", "0.1.0-dev");
 
 	// Demonstrative scenarios
@@ -378,6 +389,7 @@ runBenchmark()
 			fftw_destroy_plan(many_idct);
 			fftw_destroy_plan(many_idst);
 			fftw_free(pad);
+			fftw_cleanup();
 			auto end = steady_clock::now();
 
 			auto elapsed = (double)
@@ -435,9 +447,11 @@ runBenchmark()
 		<< "  CX: x=0, f=2+x; CY: y=0, f=2+y; CZ: z=0, f=2+z;\n"
 		<< "  Max error is the largest absolute error among all points.\n"
 		<< "\n"
-		<< "  | ## |  BW  |  error z=0  |  error x=0  |  error y=0  |  time (s)  |  max error  |\n"
+		<< "  | ## |  BW  | avg err z=0 | avg err x=0 | avg err y=0 |  time (s)  |  max error  |\n"
 		<< "  | --:| ----:|:-----------:| -----------:| -----------:|:----------:| -----------:|\n";
-	for (int i = 0; i < 9; ++i)
+
+	SpectralGlobe globe;
+	for (int i = 0; i < 7; ++i)
 	{
 		int B = (int)pow(2, i + 1);
 		if (FLAGS_minloglevel == 0)
@@ -446,23 +460,22 @@ runBenchmark()
 		}
 
 		// Force logging output for a certain B
-		// FLAGS_minloglevel = B != 4;
+		// FLAGS_minloglevel = B != 32;
 		
 		// Print row headers
 		std::cout << "  "
 			<< "| " << std::setw(2) << (i + 1) << " "
 			<< "| " << std::setw(4) << B << " "
-			<< "| ";
+			<< "| " << std::flush;
 		std::cout.copyfmt(oldCoutState);
 		
 		// Initialize the spherical cartogram
-		SpectralGlobe globe;
 		globe.set_bandlimit(B);
-		globe.enable_snapshot();
+		// globe.enable_snapshot();
 
 		// Construct the three cases
-		vector<Cartosphere::Point> initial_points(360);
-		vector<Cartosphere::Point> exact_location(360);
+		vector<Cartosphere::Point> initial_points(1);
+		vector<Cartosphere::Point> exact_location(initial_points.size());
 		double target_angle = std::acos(-0.25);
 		Cartosphere::Function initial_condition;
 		double maxError = 0;
@@ -477,7 +490,7 @@ runBenchmark()
 			if (j == 1)
 			{
 				double x, y, z;
-				for (int k = 0; k < 360; ++k)
+				for (int k = 0; k < initial_points.size(); ++k)
 				{
 					x = 0;
 					y = cos(cs_deg2rad(k));
@@ -498,7 +511,7 @@ runBenchmark()
 			else if (j == 2)
 			{
 				double x, y, z;
-				for (int k = 0; k < 360; ++k)
+				for (int k = 0; k < initial_points.size(); ++k)
 				{
 					x = sin(cs_deg2rad(k));
 					y = 0;
@@ -519,7 +532,7 @@ runBenchmark()
 			else
 			{
 				double x, y, z;
-				for (int k = 0; k < 360; ++k)
+				for (int k = 0; k < initial_points.size(); ++k)
 				{
 					x = cos(cs_deg2rad(k));
 					y = sin(cs_deg2rad(k));
@@ -538,9 +551,10 @@ runBenchmark()
 
 			// Perform the spherical cartogram transformation
 			auto begin = steady_clock::now();
-			globe.set_eps_distance(-1);
-			globe.set_first_timestep(0.001);
-			globe.set_ratio_timestep(1.1);
+			globe.set_eps_distance(0);
+			globe.set_first_timestep(1e-5);
+			globe.set_ratio_timestep(1.01);
+			// globe.enable_time_adaptivity();
 			globe.set_initial_condition(initial_condition);
 			globe.initialize_solver();
 			auto points = initial_points;
@@ -558,13 +572,16 @@ runBenchmark()
 				(duration_cast<milliseconds>(end - begin).count()) / 1000;
 
 			// Error calculation
-			double caseError = 0;
+			double caseMaxError = 0;
+			double caseAvgError = 0;
 			for (int k = 0; k < points.size(); ++k)
 			{
 				double error = distance(points[k], exact_location[k]);
-				caseError = std::max(caseError, error);
+				caseMaxError = std::max(caseMaxError, error);
+				caseAvgError += error;
 			}
-			std::cout << std::setw(11) << caseError << " | ";
+			caseAvgError /= points.size();
+			std::cout << std::setw(11) << caseAvgError << " | " << std::flush;
 			std::cout.copyfmt(oldCoutState);
 
 			// Print duration for only the z=0 test because it is presumed
@@ -577,11 +594,12 @@ runBenchmark()
 				std::cout.copyfmt(oldCoutState);
 			}
 
-			maxError = std::max(maxError, caseError);
+			maxError = std::max(maxError, caseMaxError);
 		}
-		std::cout << std::setw(11) << maxError << " |\n";
+		std::cout << std::setw(11) << maxError << " |\n" << std::flush;
 		std::cout.copyfmt(oldCoutState);
 	}
+
 	return 0;
 }
 

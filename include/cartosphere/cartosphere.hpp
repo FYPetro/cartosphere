@@ -52,8 +52,10 @@ namespace Cartosphere
 			vector<FL3> velocities(points.size());
 			while (notExpired && notConvergent)
 			{
-				// Compute velocity field
 				previousPoints = points;
+
+				// Compute velocity field
+				advance_solver(timeElapsed, timestep);
 				velocity(points, velocities);
 
 				// Use velocity field to perform time step.
@@ -86,9 +88,15 @@ namespace Cartosphere
 
 				// Prepare for next iteration
 				++iteration;
-				advance_solver(timeElapsed, timestep);
 				timeElapsed += timestep;
-				timestep *= ratioTimestep;
+				if (timeAdaptivity)
+				{
+					timestep = firstTimestep * exp(2 * timeElapsed);
+				}
+				else
+				{
+					timestep *= ratioTimestep;
+				}
 
 				// Judge loop criterions
 				notExpired = timeElapsed < 10;
@@ -123,6 +131,9 @@ namespace Cartosphere
 
 		// Record trajectory?
 		bool recordTrajectory = false;
+
+		// Adaptively compute time?
+		bool timeAdaptivity = false;
 
 		// Initial timestep size
 		double firstTimestep = 1e-2;
@@ -160,6 +171,7 @@ namespace Cartosphere
 
 			// Prepare the prefix_data.m file
 			ofs.open(data_name);
+			if (recordTrajectory)
 			{
 				for (int i = 0; i < history.size(); ++i)
 				{
@@ -200,16 +212,18 @@ namespace Cartosphere
 					<< "end\n"
 					<< "hold off\n\n";
 
-				ofs << "%% Summary\n";
+				ofs << "%% Summary\n"
+					<< "% Iterations\n";
 				for (size_t i = 0; i + 1 < history.size(); ++i)
 				{
 					auto& snapshot = history[i];
 
-					ofs << "% Iter " << i
-						<< " t=[" << snapshot.time_begin << "," << snapshot.time_final << "]"
-						<< " max_speed=" << snapshot.max_speed
-						<< " max_distance=" << snapshot.max_distance
-						<< "\n";
+					ofs << "t(" << (i + 1) << ", 1:2) = ["
+						<< snapshot.time_begin << ", " << snapshot.time_final << "]; \n"
+						<< "v(" << (i + 1) << ",1) = "
+						<< snapshot.max_speed << ";\n"
+						<< "d(" << (i + 1) << ",1) = "
+						<< snapshot.max_distance << ";\n";
 				}
 			}
 			ofs.close();
@@ -224,6 +238,10 @@ namespace Cartosphere
 		void enable_snapshot() { recordTrajectory = true; }
 		void disable_snapshot() { recordTrajectory = false; }
 
+		// Enable/Disable adaptivity
+		void enable_time_adaptivity() { timeAdaptivity = true; }
+		void disable_time_adaptivity() { timeAdaptivity = false; }
+
 		// Get/Set firstTimeStep
 		double get_first_timestep() const { return firstTimestep; }
 		void set_first_timestep(double t) { if (t > 0) firstTimestep = t; }
@@ -234,7 +252,7 @@ namespace Cartosphere
 
 		// Get/Set epsDistance
 		double get_eps_distance() const { return epsDistance; }
-		void set_eps_distance(double e) { if (e > 0) epsDistance = e; }
+		void set_eps_distance(double e) { if (e >= 0) epsDistance = e; }
 	};
 
 	// Spectral cartogram generator
