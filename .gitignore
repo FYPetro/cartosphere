@@ -12,6 +12,8 @@ cartosphere-*.tar.gz
 # macOS binaries
 src/cartosphere
 Build/
+*.o
+*.d
 
 # Visual Studio
 Debug/

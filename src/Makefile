@@ -5,20 +5,28 @@ INCLUDE = -I$(ROOT_DIR)/include \
 	-I/usr/local/opt/llvm/include \
 	$(FFTWINC) $(EIGENINC)
 
-CPPFLAGS = -g -std=c++17 -O3 -fopenmp $(INCLUDE)
+SRC_FILES := $(wildcard *.cpp)
+
+OBJ_FILES := $(patsubst %.cpp,%.o,$(SRC_FILES))
+
+CPPFLAGS = -g -O2 -std=c++17 -fopenmp $(INCLUDE)
 
 LDFLAGS = -L/usr/local/opt/llvm/lib \
-	$(FFTWLIB) -lfftw3 \
+	$(FFTWLIB) -lfftw3 -lfftw3_omp -lm \
 	$(LOCALIB) -lglog
 
 all: cartosphere
 
-cartosphere: main.cpp functions.cpp mesh.cpp solver.cpp research.cpp globe.cpp shapefile.cpp dsht.cpp cartosphere.cpp
+cartosphere: $(OBJ_FILES)
+	$(CXX) $(CPPFLAGS) $(LDFLAGS) -o $@ $^
+
+%.o: %.cpp
 	pwd
-	$(CXX) $(CPPFLAGS) -o $@ $+ $(LDFLAGS)
+	$(CXX) -c $(CPPFLAGS) -o $@ $+
 
 clean:
 	-rm cartosphere
+	-rm *.o
 
 install:
 	install -d $(prefix)/bin

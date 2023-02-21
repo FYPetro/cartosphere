@@ -76,7 +76,7 @@ cs_fds2ht(int B, const double* data, double* harmonics, const double* ws2)
 	}
 
 	// For each degree and order, compute the fourier
-#pragma omp parallel for if(B >= 128 && FLAGS_minloglevel > 0) num_threads(ThreadsMaximum)
+#pragma omp parallel for if (B >= 128 && FLAGS_minloglevel > 0) num_threads(ThreadsMaximum)
 	for (int task = 0; task < B * B; ++task)
 	{
 		// Split tasks into proper degrees and orders
@@ -232,11 +232,11 @@ cs_ids2ht(int B, const double* harmonics, double* data, const double* ws2,
 			// Compute element-wise product between...
 			// 1: ROW m of UPPER TRIANGLE of HARMONICS
 			// 2: ROW m of UPPER TRIANGLE rePlmCosFile for x_{j}
-			auto row1 = harmonics + (B * m);
-			auto row2 = rePlmCos + (2 * B - m + 1) * m / 2;
+			auto row1 = harmonics + cs_index2(B, m, m);
+			auto row2 = rePlmCos + cs_index2_assoc(B, m, m);
 			for (int l = m; l < B; ++l)
 			{
-				*amj += row1[l] * row2[l - m];
+				*amj += row1[l - m] * row2[l - m];
 			}
 		}
 		// Compute the sine coefficients
@@ -245,11 +245,11 @@ cs_ids2ht(int B, const double* harmonics, double* data, const double* ws2,
 			// Compute element-wise product between...
 			// 1: ROW B-m of LOWER TRIANGLE of HARMONICS, shifted by m
 			// 2: ROW   m of UPPER TRIANGLE rePlmCosFile for x_{j}
-			auto row1 = harmonics + (B * (B - m)) - m;
-			auto row2 = rePlmCos + (2 * B - m + 1) * m / 2;
+			auto row1 = harmonics + cs_index2(B, m, -m);
+			auto row2 = rePlmCos + cs_index2_assoc(B, m, m);
 			for (int l = m; l < B; ++l)
 			{
-				*bmj += row1[l] * row2[l - m];
+				*bmj += row1[l - m] * row2[l - m];
 			}
 		}
 		// Zero out the final sine coefficient
@@ -294,11 +294,11 @@ cs_ids2ht_dp(int B, const double* harmonics, double* partials, const double* ws2
 			// Compute element-wise product between...
 			// 1: ROW m of UPPER TRIANGLE of HARMONICS
 			// 2: ROW m of UPPER TRIANGLE drePlmCosFile for x_{j}
-			auto row1 = harmonics + (B * m);
+			auto row1 = harmonics + cs_index2(B, m, m);
 			auto row2 = drePlmCos + cs_index2_assoc(B, m, m);
 			for (int l = m; l < B; ++l)
 			{
-				*amj += row1[l] * row2[l - m];
+				*amj += row1[l - m] * row2[l - m];
 			}
 		}
 		// Compute the sine coefficients
@@ -307,11 +307,11 @@ cs_ids2ht_dp(int B, const double* harmonics, double* partials, const double* ws2
 			// Compute element-wise product between...
 			// 1: ROW B-m of LOWER TRIANGLE of HARMONICS, shifted by m
 			// 2: ROW   m of UPPER TRIANGLE drePlmCosFile for x_{j}
-			auto row1 = harmonics + (B * (B - m)) - m;
+			auto row1 = harmonics + cs_index2(B, m, -m);
 			auto row2 = drePlmCos + cs_index2_assoc(B, m, m);
 			for (int l = m; l < B; ++l)
 			{
-				*bmj += row1[l] * row2[l - m];
+				*bmj += row1[l - m] * row2[l - m];
 			}
 		}
 		// Zero out the final sine coefficient
@@ -352,17 +352,19 @@ cs_ids2ht_da(int B, const double* harmonics, double* partials, const double* ws2
 		// Unlike the polar derivatives, the derivatives aren't needed here!
 		auto rePlmCos = cs_ws2_rePlmCosFile(B, j, ws2);
 		// Compute the cosine coefficients
-		for (int m = 0; m < B; ++m, ++amj)
+		// Note that in this partial derivative, nothing contributes to a_{0}
+		*amj++ = 0;
+		for (int m = 1; m < B; ++m, ++amj)
 		{
 			// Compute element-wise product between...
 			// 1: ROW B-m of LOWER TRIANGLE of HARMONICS, shifted by m
 			// 2: ROW   m of UPPER TRIANGLE rePlmCosFile for x_{j}
-			auto row1 = harmonics + (B * (B - m)) - m;
-			auto row2 = rePlmCos + (2 * B - m + 1) * m / 2;
+			auto row1 = harmonics + cs_index2(B, m, -m);
+			auto row2 = rePlmCos + cs_index2_assoc(B, m, m);
 			for (int l = m; l < B; ++l)
 			{
 				// Extra m due to partial derivative w.r.t. phi
-				*amj += m * row1[l] * row2[l - m];
+				*amj += m * row1[l - m] * row2[l - m];
 			}
 		}
 		// Compute the sine coefficients
@@ -371,12 +373,12 @@ cs_ids2ht_da(int B, const double* harmonics, double* partials, const double* ws2
 			// Compute element-wise product between...
 			// 1: ROW m of UPPER TRIANGLE of HARMONICS
 			// 2: ROW m of UPPER TRIANGLE rePlmCosFile for x_{j}
-			auto row1 = harmonics + (B * m);
-			auto row2 = rePlmCos + (2 * B - m + 1) * m / 2;
+			auto row1 = harmonics + cs_index2(B, m, m);
+			auto row2 = rePlmCos + cs_index2_assoc(B, m, m);
 			for (int l = m; l < B; ++l)
 			{
 				// Extra -m due to partial derivative w.r.t. phi
-				*bmj += (-m) * row1[l] * row2[l - m];
+				*bmj += (-m) * row1[l - m] * row2[l - m];
 			}
 		}
 		// Zero out the final sine coefficient
@@ -652,9 +654,9 @@ cs_make_ws2(int B, double* ws2)
 	
 	// [Block 0] Bandlimit
 	blocks[0][0] = B;
-	blocks[0][1] = B;
-	blocks[0][2] = B;
-	blocks[0][3] = B;
+	blocks[0][1] = 0xE;
+	blocks[0][2] = 0xE;
+	blocks[0][3] = 0xF;
 
 	// [Block 1-2] Generate weights by solving, for 0 <= l < N = 2B,
 	// \sum_{j=1}^{N}(P_{l}(cos(theta_{j})))w_{j}=(2pi/B)delta_{0,l}
@@ -669,7 +671,7 @@ cs_make_ws2(int B, double* ws2)
 		}
 
 		// Compute weights form Legendre coefficients up to degree 2B-1
-#pragma omp parallel for if (B >= 128)// num_threads(ThreadsMaximum)
+#pragma omp parallel for if (B >= 128) num_threads(ThreadsMaximum)
 		for (int l = 0; l < N; ++l)
 		{
 			double* target = tempCosPls + (N * l);
@@ -686,9 +688,13 @@ cs_make_ws2(int B, double* ws2)
 		b[0] = 2 * M_PI / B;
 		
 		// Temporarily enable multithreaded Eigen
+#ifdef _OPENMP
 		Eigen::setNbThreads(ThreadsMaximum);
+#endif
 		ColVector u = A.partialPivLu().solve(b); // PartialPivLU suffices
+#ifdef _OPENMP
 		Eigen::setNbThreads(1);
+#endif
 		memcpy(w, u.data(), N * sizeof(double));
 	}
 	
@@ -774,7 +780,7 @@ cs_make_ws2(int B, double* ws2)
 		}
 
 		// Populate horizontally: P_{l-1}^{m} & P_{l}^{m} => P_{l+1}^{m}
-#pragma omp parallel for if (B >= 128)// num_threads(ThreadsMaximum)
+#pragma omp parallel for if (B >= 128) num_threads(ThreadsMaximum)
 		for (int m = 1; m < B - 1; ++m)
 		{
 			// Pointer to ~P_{l-1,m}
@@ -873,7 +879,7 @@ cs_make_ws2(int B, double* ws2)
 			}
 		}
 		// For each j, fetch from N-striding pointers
-#pragma omp parallel for if (B >= 128)// num_threads(ThreadsMaximum)
+#pragma omp parallel for if (B >= 128) num_threads(ThreadsMaximum)
 		for (int j = 0; j < N; ++j)
 		{
 			auto target = cs_ws2_rePlmCosFile(B, j, ws2);
@@ -910,7 +916,7 @@ cs_make_ws2(int B, double* ws2)
 	}
 
 	// [Block 7] Blocks for derivatives
-#pragma omp parallel for if (B >= 128)// num_threads(ThreadsMaximum)
+#pragma omp parallel for if (B >= 128) num_threads(ThreadsMaximum)
 	for (int j = 0; j < N; ++j)
 	{
 		double* rP = cs_ws2_rePlmCosFile(B, j, ws2);
