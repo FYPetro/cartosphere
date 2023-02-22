@@ -31,7 +31,6 @@ SpectralGlobe::initialize_solver()
 		time_hats.resize(B * B);
 		time_dp.resize(N * N);
 		time_da.resize(N* N);
-		time_grad.resize(N * N);
 		// Allocate
 		if (B > 0)
 		{
@@ -122,29 +121,6 @@ SpectralGlobe::advance_solver(double time, double delta)
 	// Compute a velocity field at each grid cell corner
 	cs_ids2ht_dp(B, H, P[0], W, ipad, idct, idst);
 	cs_ids2ht_da(B, H, P[1], W, ipad, idct, idst);
-	{
-		int i = 0;
-		double theta, phi;
-		double cos_theta, sin_theta, cos_phi, sin_phi;
-		// Turn dp e_theta + da e_phi into cartesian coordinates
-		for (int j = 0; j < N; ++j)
-		{
-			theta = M_PI / N * (j + 0.5);
-			cos_theta = cos(theta);
-			sin_theta = sin(theta);
-			for (int k = 0; k < N; ++k, ++i)
-			{
-				phi = M_PI / B * (k + 0.5);
-				cos_phi = cos(phi);
-				sin_phi = sin(phi);
-				// Convert gradient!
-				auto& grad = time_grad[i];
-				grad.x = P[0][i] * cos_theta * cos_phi - P[1][i] * sin_phi / sin_theta;
-				grad.y = P[0][i] * cos_theta * sin_phi + P[1][i] * cos_phi / sin_theta;
-				grad.z = P[0][i] * (-sin_theta);
-			}
-		}
-	}
 
 	// Compute data and velocities at the poles
 	time_data_north = 0;
@@ -196,20 +172,9 @@ SpectralGlobe::velocity(const vector<Point>& points, vector<FL3>& velocities) co
 		stringstream sst;
 		sst << "SpectralGlobe::velocity time_grad\n"
 			<< "  NORTH: [" << time_grad_north.x << ", "
-			<< time_grad_north.y << ", " << time_grad_north.z << "]\n"
+			<< time_grad_north.y << ", " << time_grad_north.z << "]" << "\n"
 			<< "  SOUTH: [" << time_grad_south.x << ", "
-			<< time_grad_south.y << ", " << time_grad_south.z << "]\n";
-		for (int j = 0; j < N; ++j)
-		{
-			sst << "  ";
-			for (int k = 0; k < N; ++k)
-			{
-				auto& g = time_grad[j * N + k];
-				sst << "(" << j << "," << k << ") = "
-					<< "[" << g.x << ", " << g.y << ", " << g.z << "] ";
-			}
-			sst << "\n";
-		}
+			<< time_grad_south.y << ", " << time_grad_south.z << "]";
 		LOG(INFO) << sst.str();
 	}
 
@@ -218,7 +183,7 @@ SpectralGlobe::velocity(const vector<Point>& points, vector<FL3>& velocities) co
 	for (int i = 0; i < points.size(); ++i)
 	{
 		const Point& P = points[i];
-		
+
 		// Compute the fractional j, k indices aligned with cell centers
 		double j_frac = P.p() * N * M_1_PI - 0.5;
 		double k_frac = P.a() * B * M_1_PI - 0.5;
@@ -226,61 +191,105 @@ SpectralGlobe::velocity(const vector<Point>& points, vector<FL3>& velocities) co
 		{
 			k_frac += N;
 		}
-		
+
 		// Compute whole j, k indices aligned with cell centers
 		int j_n = (int)floor(j_frac);
 		int j_s = (j_n + 1);
 		int k_w = (int)floor(k_frac) % N;
 		int k_e = (k_w + 1) % N;
-		
+		int NW, NE, SW, SE;
+
 		// Compute remainder coordinates for later bilinear interpolation
 		j_frac -= j_n;
 		k_frac -= k_w;
 
-		// Obtain D and gradient on the northern side
-		double data_n;
-		FL3 grad_n;
+		double data_north, sin_north, dp_north, da_north;
+		// Northern spherical cap
 		if (j_n == -1)
 		{
-			// The northern edge is degenerate; it is the north pole
-			data_n = time_data_north;
-			grad_n = time_grad_north;
+			// Mark using magic numbers that the northern edge is degenerate
+			NW = -1;
+			NE = -1;
+			sin_north = 0;
 			// Scale j_frac from [0.5,1] to [0,1]
 			j_frac = 2 * j_frac - 1;
+			// Pick data from the north pole
+			data_north = time_data_north;
+			// Convert the gradient at the north pole into local coordinates
+			double azimuth = M_PI / B * k_w;
+			// Compute component along unit tangent at the north pole
+			FL3 direction = {cos(azimuth), sin(azimuth), 0};
+			dp_north = dot(time_grad_north, direction);
+			// Compute component along unit normal at the north pole
+			direction = {-sin(azimuth), cos(azimuth), 0};
+			da_north = dot(time_grad_north, direction);
 		}
+		// Northern edge is non-degenerate
 		else
 		{
-			// The northern edge is part of a latitude circle
-			data_n = (1 - k_frac) * time_data[N * j_n + k_w]
-				+ k_frac * time_data[N * j_n + k_e];
-			grad_n = (1 - k_frac) * time_grad[N * j_n + k_w]
-				+ k_frac * time_grad[N * j_n + k_e];
+			// Compute the index of the northwest and northeast nodes
+			NW = N * j_n + k_w;
+			NE = N * j_n + k_e;
+			sin_north = sin(M_PI / N * (j_n + 0.5));
+			// Perform linear interpolation along the northern edge
+			data_north = (1 - k_frac) * time_data[NW] + k_frac * time_data[NE];
+			dp_north = (1 - k_frac) * time_dp[NW] + k_frac * time_dp[NE];
+			da_north = (1 - k_frac) * time_da[NW] + k_frac * time_da[NE];
 		}
 
-		// Obtain data and gradient on the southern side
-		double data_s;
-		FL3 grad_s;
+		double data_south, sin_south, dp_south, da_south;
+		// Southern spherical cap
 		if (j_s == N)
 		{
-			// The southern edge is degenerate; it is the north pole
-			data_s = time_data_south;
-			grad_s = time_grad_south;
+			// Mark using magic numbers that the southern edge is degenerate
+			SW = -1;
+			SE = -1;
+			sin_south = 0;
 			// Scale j_frac from [0,0.5] to [0,1]
 			j_frac = 2 * j_frac;
+			// Pick data from the south pole
+			data_south = time_data_south;
+			// Convert the gradient at the south pole into local coordinates
+			double azimuth = M_PI / B * k_w;
+			// Compute component along unit tangent at the south pole
+			FL3 direction = {-cos(azimuth), -sin(azimuth), 0};
+			dp_south = dot(time_grad_south, direction);
+			// Compute component along unit normal at the south pole
+			direction = {-sin(azimuth), cos(azimuth), 0};
+			da_south = dot(time_grad_south, direction);
 		}
+		// Southern edge is non-degenerate
 		else
 		{
-			// The southern edge is part of a latitude circle
-			data_s = (1 - k_frac) * time_data[N * j_s + k_w]
-				+ k_frac * time_data[N * j_s + k_e];
-			grad_s = (1 - k_frac) * time_grad[N * j_s + k_w]
-				+ k_frac * time_grad[N * j_s + k_e];
+			// Compute the index of the southwest and southeast nodes
+			SW = N * j_s + k_w;
+			SE = N * j_s + k_e;
+			sin_south = sin(M_PI / N * (j_s + 0.5));
+			// Perform linear interpolation along the southern edge
+			data_south = (1 - k_frac) * time_data[SW] + k_frac * time_data[SE];
+			dp_south = (1 - k_frac) * time_dp[SW] + k_frac * time_dp[SE];
+			da_south = (1 - k_frac) * time_da[SW] + k_frac * time_da[SE];
 		}
 
-		// Perform bilinear interpolation
-		double data = (1 - j_frac) * data_n + j_frac * data_s;
-		FL3 grad = (1 - j_frac) * grad_n + j_frac * grad_s;
+		// Complete the bilinear interpolation for data and gradient components
+		// along the local basis
+		double data = (1 - j_frac) * data_north + j_frac * data_south;
+		double u = (1 - j_frac) * dp_north + j_frac * dp_south;
+		double v = (1 - j_frac) * da_north / sin_north
+			+ j_frac * da_south / sin_south;
 
+		// Turn u e_theta + v e_phi into cartesian coordinates
+		FL3 grad;
+		{
+			double cos_theta = cos(P.p());
+			double sin_theta = sin(P.p());
+			double cos_phi = cos(P.a());
+			double sin_phi = sin(P.a());
+			// Convert gradient!
+			grad.x = u * cos_theta * cos_phi - v * sin_phi;
+			grad.y = u * cos_theta * sin_phi + v * cos_phi;
+			grad.z = u * (-sin_theta);
+		}
 		// Compute the velocity
 		velocities[i] = -grad / data;
 	}

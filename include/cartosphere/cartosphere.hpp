@@ -309,7 +309,6 @@ namespace Cartosphere
 		// Partials and gradient at time t
 		vector<double> time_dp;
 		vector<double> time_da;
-		vector<FL3> time_grad;
 
 		// Pole data
 		double time_data_north = 0;
