@@ -30,9 +30,6 @@ runDemo(const string&, const vector<string>&);
 int
 main(int argc, char* argv[])
 {
-	// Initializes Google Logging, providing only the program name
-	google::InitGoogleLogging(*argv);
-
 #ifdef _OPENMP
 	// Configure Open MP to be single-threaded by default
 	omp_set_num_threads(1);
@@ -44,6 +41,12 @@ main(int argc, char* argv[])
 
 	// Create an argument parser
 	ArgumentParser program("cartosphere", "0.1.0-dev");
+	program.add_argument("--log")
+		.help("Specify path to log output")
+#ifdef APPLE_LIKE
+		.metavar("LOGFILE")
+#endif
+		;
 
 	// Demonstrative scenarios
 	// cartosphere demo [args...]
@@ -53,7 +56,7 @@ main(int argc, char* argv[])
 		.help("Specify which demo to run")
 		.nargs(nargs_pattern::at_least_one)
 		.default_value(vector{ string{"list"} })
-#if defined(APPLE_LIKE)
+#ifdef APPLE_LIKE
 		.metavar("SCENARIO...")
 #endif
 		;
@@ -71,13 +74,13 @@ main(int argc, char* argv[])
 	vizCmd.add_description("Visualize cartographic file");
 	vizCmd.add_argument("input")
 		.help("Path of input file/folder")
-#if defined(APPLE_LIKE)
+#ifdef APPLE_LIKE
 		.metavar("INPUT")
 #endif
 		;
 	vizCmd.add_argument("output")
 		.help("Path to output file/folder")
-#if defined(APPLE_LIKE)
+#ifdef APPLE_LIKE
 		.metavar("OUTPUT")
 #endif
 		;
@@ -85,7 +88,7 @@ main(int argc, char* argv[])
 		.help("Input format")
 		.nargs(1)
 		.default_value(string{ "shapefile" })
-#if defined(APPLE_LIKE)
+#ifdef APPLE_LIKE
 		.metavar("INFMT")
 #endif
 		;
@@ -93,7 +96,7 @@ main(int argc, char* argv[])
 		.help("Output format")
 		.nargs(1)
 		.default_value(string{ "matlab" })
-#if defined(APPLE_LIKE)
+#ifdef APPLE_LIKE
 		.metavar("OUTFMT")
 #endif
 		;
@@ -111,13 +114,13 @@ main(int argc, char* argv[])
 	transformCmd.add_description("Generate a spherical cartogram.");
 	transformCmd.add_argument("input")
 		.help("Path of input file/folder")
-#if defined(APPLE_LIKE)
+#ifdef APPLE_LIKE
 		.metavar("INPUT")
 #endif
 		;
 	transformCmd.add_argument("output")
 		.help("Path to output file/folder")
-#if defined(APPLE_LIKE)
+#ifdef APPLE_LIKE
 		.metavar("OUTPUT")
 #endif
 		;
@@ -125,7 +128,7 @@ main(int argc, char* argv[])
 		.help("Input format")
 		.nargs(1)
 		.default_value(string{ "shapefile" })
-#if defined(APPLE_LIKE)
+#ifdef APPLE_LIKE
 		.metavar("INFMT")
 #endif
 		;
@@ -161,6 +164,25 @@ main(int argc, char* argv[])
 		std::cerr << program;
 		std::exit(1);
 	}
+
+	// Set log file for glog
+	if (program.is_used("--log"))
+	{
+		auto log_dir = program.get<string>("--log");
+		for (int severity = 0; severity < google::NUM_SEVERITIES; ++severity)
+		{
+			auto fpath = path(path(log_dir) / path(*argv).filename());
+			google::SetLogDestination(severity, fpath
+#ifdef IS_WINDOWS
+				.string()
+#endif
+				.c_str()
+			);
+			google::SetLogSymlink(severity, "");
+		}
+	}
+	// Initialize glog
+	google::InitGoogleLogging(*argv);
 
 	// Priotize demo over all other operating modes
 	if (program.is_subcommand_used("demo"))
@@ -310,8 +332,8 @@ runBenchmark()
 	// Bandlimits with default treatment: (0 <= i < 9)
 	//  - 2, 4, 8, 16, 32, 64, 128, 256, 512
 	// Bandlimits with special treatment: (9 <= i)
-	//  - 1024, 2048
-	for (int i = 0; i < 7; ++i)
+	//  - 1024, 2048 (ON-THE-FLY NOT SUPPORTED YET)
+	for (int i = 0; i < 9; ++i)
 	{
 		int B = (int)pow(2, i + 1);
 		if (FLAGS_minloglevel == 0)
@@ -441,7 +463,8 @@ runBenchmark()
 		fftw_free(data);
 	}
 
-	std::cout << "#2: Orientation Test for Fourier-based Cartogram\n"
+	std::cout << "\n"
+		<< "#2: Orientation Test for Fourier-based Cartogram\n"
 		<< "\n"
 		<< "  At various bandlimits, displace the following three circles:\n"
 		<< "  CX: x=0, f=2+x; CY: y=0, f=2+y; CZ: z=0, f=2+z;\n"
@@ -460,7 +483,7 @@ runBenchmark()
 		}
 
 		// Force logging output for a certain B
-		// FLAGS_minloglevel = B != 32;
+		FLAGS_minloglevel = !(B == 2);
 		
 		// Print row headers
 		std::cout << "  "
@@ -562,6 +585,7 @@ runBenchmark()
 			auto end = steady_clock::now();
 
 			// Print to debug
+			if (FLAGS_minloglevel == 0)
 			{
 				stringstream sst;
 				sst << "bandlimit_" << B << "_case_" << j;

@@ -146,7 +146,7 @@ SpectralGlobe::advance_solver(double time, double delta)
 		}
 	}
 
-	// Compute D and velocities at the poles
+	// Compute data and velocities at the poles
 	time_data_north = 0;
 	time_data_south = 0;
 	for (int l = 0; l < B; ++l)

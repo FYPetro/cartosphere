@@ -55,8 +55,27 @@ namespace Cartosphere
 				previousPoints = points;
 
 				// Compute velocity field
-				advance_solver(timeElapsed, timestep);
+				if (iteration > 0)
+				{
+					advance_solver(timeElapsed, 0);
+				}
 				velocity(points, velocities);
+
+				// Debug if dz/dt matches with the theoretical value, provided by
+				// dz/dt = dz/dp dp/dt = -(exp(-2t)sin^2(p))/(2+exp(-2t)cos(p))
+				if (FLAGS_minloglevel == 0)
+				{
+					LOG(INFO) << "Iteration " << iteration;
+					for (size_t i = 0; i < points.size(); ++i)
+					{
+						double t = timeElapsed;
+						double p = points[i].p();
+						double e2t = exp(2 * t);
+						double exact = -pow(sin(p), 2)/(2 * e2t + cos(p));
+						LOG(INFO) << "\t" << "EXACT = " << exact
+							<< " ACTUAL = " << velocities[i].z;
+					}
+				}
 
 				// Use velocity field to perform time step.
 				FL3 travel;
