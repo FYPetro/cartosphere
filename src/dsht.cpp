@@ -219,6 +219,7 @@ cs_ids2ht(int B, const double* harmonics, double* data, const double* ws2,
 	//      | NxB | NxB | NxB | NxB |
 	//      | amj | cos | bmj | sin |
 	//      +-----+-----+-----+-----+
+#pragma omp parallel for if (B >= 128) num_threads(ThreadsMaximum)
 	for (int j = 0; j < N; ++j)
 	{
 		fftw_real* amj = pad + (2 * N * j);
@@ -281,6 +282,7 @@ cs_ids2ht_dp(int B, const double* harmonics, double* partials, const double* ws2
 	// The cs_ids2ht_execute will run two passes of idct & idst, and between
 	// the two passes, the Coefficients will be modified to account for the
 	// southern hemisphere
+#pragma omp parallel for if (B >= 128) num_threads(ThreadsMaximum)
 	for (int j = 0; j < N; ++j)
 	{
 		fftw_real* amj = pad + (2 * N * j);
@@ -343,6 +345,7 @@ cs_ids2ht_da(int B, const double* harmonics, double* partials, const double* ws2
 	// The cs_ids2ht_execute will run two passes of idct & idst, and between
 	// the two passes, the Coefficients will be modified to account for the
 	// southern hemisphere
+#pragma omp parallel for if (B >= 128) num_threads(ThreadsMaximum)
 	for (int j = 0; j < N; ++j)
 	{
 		fftw_real* amj = pad + (2 * N * j);

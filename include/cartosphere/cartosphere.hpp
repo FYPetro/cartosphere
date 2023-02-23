@@ -33,57 +33,47 @@ namespace Cartosphere
 		// Transform a vector of points, timestepping from the solver
 		void transform(vector<Cartosphere::Point>& points)
 		{
-			// Start on clean slate
 			history.clear();
+			
+			// Start with only the initial position recorded
 			Snapshot status;
-
-			int iteration = 0;
-			double timeElapsed = 0;
+			{
+				status.time_begin = 0;
+				status.time_final = 0;
+				status.duration = 0;
+				status.max_speed = 0;
+				status.max_distance = 0;
+				if (recordTrajectory)
+				{
+					status.points = points;
+				}
+			}
+			history.push_back(status);
 
 			// Prepare to loop
+			double timeElapsed = 0;
 			double timestep = firstTimestep;
 			double epsilon = DoubleMaximum;
 			double maxDistance = DoubleMaximum;
-			vector<Cartosphere::Point> previousPoints;
 
 			// Loop while conditions unchange
-			bool notExpired = true;
-			bool notConvergent = true;
+			bool isExpired, isConvergent;
 			vector<FL3> velocities(points.size());
-			while (notExpired && notConvergent)
+			for (int iteration = 0; iteration < maxIterations; ++iteration)
 			{
-				previousPoints = points;
-
 				// Compute velocity field
-				if (iteration > 0)
-				{
-					advance_solver(timeElapsed, 0);
-				}
+				advance_solver(timeElapsed, 0);
 				velocity(points, velocities);
-
-				// Debug if dz/dt matches with the theoretical value, provided by
-				// dz/dt = dz/dp dp/dt = -(exp(-2t)sin^2(p))/(2+exp(-2t)cos(p))
-				if (FLAGS_minloglevel == 0)
-				{
-					LOG(INFO) << "Iteration " << iteration;
-					for (size_t i = 0; i < points.size(); ++i)
-					{
-						double t = timeElapsed;
-						double p = points[i].p();
-						double e2t = exp(2 * t);
-						double exact = -pow(sin(p), 2)/(2 * e2t + cos(p));
-						LOG(INFO) << "\t" << "EXACT = " << exact
-							<< " ACTUAL = " << velocities[i].z;
-					}
-				}
 
 				// Use velocity field to perform time step.
 				FL3 travel;
 				double travelDistance;
+				double slack;
 				maxDistance = 0;
 				for (size_t i = 0; i < points.size(); ++i)
 				{
-					travel = timestep * velocities[i];
+					slack = (1 - exp(-2 * timestep)) / (2 * timestep);
+					travel = timestep * velocities[i] * slack;
 					points[i].move(travel);
 
 					travelDistance = travel.norm2();
@@ -101,12 +91,11 @@ namespace Cartosphere
 				status.max_distance = maxDistance;
 				if (recordTrajectory)
 				{
-					status.points = previousPoints;
+					status.points = points;
 				}
 				history.push_back(status);
 
 				// Prepare for next iteration
-				++iteration;
 				timeElapsed += timestep;
 				if (timeAdaptivity)
 				{
@@ -118,25 +107,15 @@ namespace Cartosphere
 				}
 
 				// Judge loop criterions
-				notExpired = timeElapsed < 10;
-				notConvergent = maxDistance > epsDistance;
-
-				// std::cout << "Iteration #" << iteration << "\n"
-				// 	<< "\t" << "Time Elapsed " << timeElapsed << "\n"
-				// 	<< "\t" << "Max Distance " << maxDistance << "\n";
+				{
+					isExpired = timeElapsed > 100;
+					isConvergent = maxDistance < epsDistance;
+				}
+				if (isExpired || isConvergent)
+				{
+					break;
+				}
 			}
-
-			// std::cout << "Iteration stopped.\n";
-			status.time_begin = timeElapsed;
-			status.time_final = std::numeric_limits<double>::infinity();
-			status.duration = std::numeric_limits<double>::infinity();
-			status.max_speed = 0;
-			status.max_distance = 0;
-			if (recordTrajectory)
-			{
-				status.points = points;
-			}
-			history.push_back(status);
 		}
 
 	protected:
@@ -155,13 +134,16 @@ namespace Cartosphere
 		bool timeAdaptivity = false;
 
 		// Initial timestep size
-		double firstTimestep = 1e-2;
+		double firstTimestep = 1e-3;
 
 		// Timestep size common ratio, defaults to uniform marching
 		double ratioTimestep = 1;
 
 		// Convergence criterion: maximum distance
 		double epsDistance = 1e-6;
+
+		// Convergence criterion: maximum number of iterations
+		double maxIterations = std::numeric_limits<int>::max();
 
 	public:
 		// Advance solver
@@ -272,6 +254,10 @@ namespace Cartosphere
 		// Get/Set epsDistance
 		double get_eps_distance() const { return epsDistance; }
 		void set_eps_distance(double e) { if (e >= 0) epsDistance = e; }
+
+		// Get/Set maxIterations
+		double get_max_iterations() const { return maxIterations; }
+		void set_max_iterations(int i) { if (i >= 0) maxIterations = i; }
 	};
 
 	// Spectral cartogram generator

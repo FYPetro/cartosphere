@@ -37,6 +37,10 @@ main(int argc, char* argv[])
 	Eigen::setNbThreads(1);
 	// Before calling any FFTW routines, the following must be called
 	fftw_init_threads();
+	// Initialize fftw to use maximum number of threads
+	// NO FFTW ROUTINES shall APPEAR WITHIN PRAGMA OMP!
+	// ALSO NO ROUTINES THAT USE FFTW shall APPEAR WITHIN PRAGMA OMP!
+	fftw_plan_with_nthreads(ThreadsMaximum);
 #endif
 
 	// Create an argument parser
@@ -333,7 +337,12 @@ runBenchmark()
 	//  - 2, 4, 8, 16, 32, 64, 128, 256, 512
 	// Bandlimits with special treatment: (9 <= i)
 	//  - 1024, 2048 (ON-THE-FLY NOT SUPPORTED YET)
-	for (int i = 0; i < 9; ++i)
+#ifdef BUILD_RELEASE
+	const int numCases = 9;
+#else
+	const int numCases = 7;
+#endif
+	for (int i = 0; i < numCases; ++i)
 	{
 		int B = (int)pow(2, i + 1);
 		if (FLAGS_minloglevel == 0)
@@ -474,16 +483,13 @@ runBenchmark()
 		<< "  | --:| ----:|:-----------:| -----------:| -----------:|:----------:| -----------:|\n";
 
 	SpectralGlobe globe;
-	for (int i = 0; i < 7; ++i)
+	for (int i = 0; i < numCases; ++i)
 	{
 		int B = (int)pow(2, i + 1);
 		if (FLAGS_minloglevel == 0)
 		{
 			LOG(INFO) << "Benchmark #2: B = " << B;
 		}
-
-		// Force logging output for a certain B
-		FLAGS_minloglevel = !(B == 2);
 		
 		// Print row headers
 		std::cout << "  "
@@ -497,7 +503,7 @@ runBenchmark()
 		// globe.enable_snapshot();
 
 		// Construct the three cases
-		vector<Cartosphere::Point> initial_points(1);
+		vector<Cartosphere::Point> initial_points(360);
 		vector<Cartosphere::Point> exact_location(initial_points.size());
 		double target_angle = std::acos(-0.25);
 		Cartosphere::Function initial_condition;
@@ -572,25 +578,31 @@ runBenchmark()
 				};
 			}
 
-			// Perform the spherical cartogram transformation
+			// Configure and initialize the spectral solver
 			auto begin = steady_clock::now();
-			globe.set_eps_distance(0);
-			globe.set_first_timestep(1e-5);
-			globe.set_ratio_timestep(1.01);
-			// globe.enable_time_adaptivity();
+			globe.set_eps_distance(1e-7);
+			globe.set_first_timestep(1e-2);
+			globe.enable_time_adaptivity();
+			// globe.set_max_iterations(std::numeric_limits<int>::max());
+			// globe.set_ratio_timestep(1);
+			// globe.enable_snapshot();
 			globe.set_initial_condition(initial_condition);
 			globe.initialize_solver();
+
+			// Transform!
 			auto points = initial_points;
 			globe.transform(points);
 			auto end = steady_clock::now();
 
-			// Print to debug
+			// Force logging output for a certain B
+			// FLAGS_minloglevel = !(B == 128);
 			if (FLAGS_minloglevel == 0)
 			{
 				stringstream sst;
 				sst << "bandlimit_" << B << "_case_" << j;
 				globe.format_matlab(sst.str());
 			}
+			// FLAGS_minloglevel = 1;
 
 			auto elapsed = (double)
 				(duration_cast<milliseconds>(end - begin).count()) / 1000;

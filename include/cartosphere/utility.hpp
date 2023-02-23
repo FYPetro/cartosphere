@@ -6,6 +6,11 @@
 // Ref:	https://stackoverflow.com/a/5920028/1377770
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
 	#define IS_WINDOWS
+	#if defined(_DEBUG)
+		#define BUILD_DEBUG
+	#else
+		#define BUILD_RELEASE
+	#endif
 #elif defined(__APPLE__) || defined(__linux__) || defined(__unix__) || defined(_POSIX_VERSION)
 	#define APPLE_LIKE
 #else

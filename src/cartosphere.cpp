@@ -64,9 +64,6 @@ SpectralGlobe::initialize_solver()
 
 		// Compute initial Fourier coefficients
 		cs_fds2ht(B, init_data.data(), init_hats.data(), ws2.data());
-
-		// Update initial data and gradient
-		advance_solver(0, 0);
 	}
 }
 
@@ -102,16 +99,13 @@ SpectralGlobe::advance_solver(double time, double delta)
 	double* W = ws2.data();
 	
 	// Compute decayed coefficients
+	for (int l = 0; l < B; ++l)
 	{
-		int l, m, i;
-		for (l = 0; l < B; ++l)
+		int eigenvalue = -l * (l + 1);
+		for (int m = -l; m <= l; ++m)
 		{
-			int eigenvalue = -l * (l + 1);
-			for (m = -l; m <= l; ++m)
-			{
-				i = cs_index2(B, l, m);
-				H[i] = init_hats[i] * exp(eigenvalue * t);
-			}
+			int i = cs_index2(B, l, m);
+			H[i] = init_hats[i] * exp(eigenvalue * t);
 		}
 	}
 
@@ -127,7 +121,7 @@ SpectralGlobe::advance_solver(double time, double delta)
 	time_data_south = 0;
 	for (int l = 0; l < B; ++l)
 	{
-		double q_l = sqrt((2 * l + 1) / (4 * M_PI));
+		double q_l = sqrt((l + 0.5) / (2 * M_PI));
 		double q_hat_l = q_l * time_hats[cs_index2(B, l, 0)];
 		time_data_north += q_hat_l;
 		time_data_south += ((l % 2) ? -1 : 1) * q_hat_l;
@@ -216,13 +210,13 @@ SpectralGlobe::velocity(const vector<Point>& points, vector<FL3>& velocities) co
 			// Pick data from the north pole
 			data_north = time_data_north;
 			// Convert the gradient at the north pole into local coordinates
-			double azimuth = M_PI / B * k_w;
+			double azimuth = M_PI / B * k_e;
 			// Compute component along unit tangent at the north pole
-			FL3 direction = {cos(azimuth), sin(azimuth), 0};
-			dp_north = dot(time_grad_north, direction);
+			FL3 basis_theta = {cos(azimuth), sin(azimuth), 0};
+			dp_north = dot(time_grad_north, basis_theta);
 			// Compute component along unit normal at the north pole
-			direction = {-sin(azimuth), cos(azimuth), 0};
-			da_north = dot(time_grad_north, direction);
+			FL3 basis_phi = {-sin(azimuth), cos(azimuth), 0};
+			da_north = dot(time_grad_north, basis_phi);
 		}
 		// Northern edge is non-degenerate
 		else
@@ -250,13 +244,13 @@ SpectralGlobe::velocity(const vector<Point>& points, vector<FL3>& velocities) co
 			// Pick data from the south pole
 			data_south = time_data_south;
 			// Convert the gradient at the south pole into local coordinates
-			double azimuth = M_PI / B * k_w;
+			double azimuth = M_PI / B * k_e;
 			// Compute component along unit tangent at the south pole
-			FL3 direction = {-cos(azimuth), -sin(azimuth), 0};
-			dp_south = dot(time_grad_south, direction);
+			FL3 basis_theta = {-cos(azimuth), -sin(azimuth), 0};
+			dp_south = dot(time_grad_south, basis_theta);
 			// Compute component along unit normal at the south pole
-			direction = {-sin(azimuth), cos(azimuth), 0};
-			da_south = dot(time_grad_south, direction);
+			FL3 basis_phi = {-sin(azimuth), cos(azimuth), 0};
+			da_south = dot(time_grad_south, basis_phi);
 		}
 		// Southern edge is non-degenerate
 		else
@@ -275,8 +269,23 @@ SpectralGlobe::velocity(const vector<Point>& points, vector<FL3>& velocities) co
 		// along the local basis
 		double data = (1 - j_frac) * data_north + j_frac * data_south;
 		double u = (1 - j_frac) * dp_north + j_frac * dp_south;
-		double v = (1 - j_frac) * da_north / sin_north
-			+ j_frac * da_south / sin_south;
+		double v = 0;
+		if (sin_north == 0)
+		{
+			v += (1 - j_frac) * da_north;
+		}
+		else
+		{
+			v += (1 - j_frac) * da_north / sin_north;
+		}
+		if (sin_south == 0)
+		{
+			v += j_frac * da_south;
+		}
+		else
+		{
+			v += j_frac * da_south / sin_south;
+		}
 
 		// Turn u e_theta + v e_phi into cartesian coordinates
 		FL3 grad;
