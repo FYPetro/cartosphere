@@ -90,5 +90,7 @@
     </None>
     <None Include="..\vcpkg.json" />
     <None Include="..\README.md" />
+    <None Include="..\CHANGELOG.md" />
+    <None Include="..\LICENSE" />
   </ItemGroup>
 </Project>

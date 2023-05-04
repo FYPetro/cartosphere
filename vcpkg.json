@@ -1,6 +1,6 @@
 {
   "name": "cartosphere",
-  "version-string": "0.1.0-dev",
+  "version-string": "0.0.1",
   "description": "Spherical cartogram generating library.",
   "dependencies": [
     "glog",
@@ -11,7 +11,7 @@
     "eigen3",
     {
       "name": "argparse",
-      "version>=": "2.8"
+      "version>=": "2.9"
     }
   ],
   "builtin-baseline": "136ad069fd2a7e61eeca5e4c48608c1fd3921a70"

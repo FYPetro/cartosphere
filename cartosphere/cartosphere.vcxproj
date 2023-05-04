@@ -181,10 +181,12 @@
     <ClCompile Include="..\src\solver.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\CHANGELOG.md" />
     <None Include="..\data\cartosphere.color.mtl" />
     <None Include="..\data\cartosphere.mtl" />
     <None Include="..\data\icosahedron.csm" />
     <None Include="..\data\octahedron.csm" />
+    <None Include="..\LICENSE" />
     <None Include="..\README.md" />
     <None Include="..\vcpkg.json" />
   </ItemGroup>

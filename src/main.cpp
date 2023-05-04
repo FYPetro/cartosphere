@@ -44,13 +44,10 @@ main(int argc, char* argv[])
 #endif
 
 	// Create an argument parser
-	ArgumentParser program("cartosphere", "0.1.0-dev");
+	ArgumentParser program("cartosphere", "0.0.1");
 	program.add_argument("--log")
 		.help("Specify path to log output")
-#ifdef APPLE_LIKE
-		.metavar("LOGFILE")
-#endif
-		;
+		.metavar("LOGFILE");
 
 	// Demonstrative scenarios
 	// cartosphere demo [args...]
@@ -60,10 +57,7 @@ main(int argc, char* argv[])
 		.help("Specify which demo to run")
 		.nargs(nargs_pattern::at_least_one)
 		.default_value(vector{ string{"list"} })
-#ifdef APPLE_LIKE
-		.metavar("SCENARIO...")
-#endif
-		;
+		.metavar("SCENARIO...");
 	program.add_subparser(demoCmd);
 
 	// Benchmark scenarios
@@ -78,32 +72,20 @@ main(int argc, char* argv[])
 	vizCmd.add_description("Visualize cartographic file");
 	vizCmd.add_argument("input")
 		.help("Path of input file/folder")
-#ifdef APPLE_LIKE
-		.metavar("INPUT")
-#endif
-		;
+		.metavar("INPUT");
 	vizCmd.add_argument("output")
 		.help("Path to output file/folder")
-#ifdef APPLE_LIKE
-		.metavar("OUTPUT")
-#endif
-		;
+		.metavar("OUTPUT");
 	vizCmd.add_argument("-i", "--input-format")
 		.help("Input format")
 		.nargs(1)
 		.default_value(string{ "shapefile" })
-#ifdef APPLE_LIKE
-		.metavar("INFMT")
-#endif
-		;
+		.metavar("INFMT");
 	vizCmd.add_argument("-o", "--output-format")
 		.help("Output format")
 		.nargs(1)
 		.default_value(string{ "matlab" })
-#ifdef APPLE_LIKE
-		.metavar("OUTFMT")
-#endif
-		;
+		.metavar("OUTFMT");
 	program.add_subparser(vizCmd);
 
 	// Add verbosity control
@@ -118,39 +100,24 @@ main(int argc, char* argv[])
 	transformCmd.add_description("Generate a spherical cartogram.");
 	transformCmd.add_argument("input")
 		.help("Path of input file/folder")
-#ifdef APPLE_LIKE
-		.metavar("INPUT")
-#endif
-		;
+		.metavar("INPUT");
 	transformCmd.add_argument("output")
 		.help("Path to output file/folder")
-#ifdef APPLE_LIKE
-		.metavar("OUTPUT")
-#endif
-		;
+		.metavar("OUTPUT");
 	transformCmd.add_argument("-i", "--input-format")
 		.help("Input format")
 		.nargs(1)
 		.default_value(string{ "shapefile" })
-#ifdef APPLE_LIKE
-		.metavar("INFMT")
-#endif
-		;
+		.metavar("INFMT");
 	transformCmd.add_argument("-m", "--mesh")
 		.help("Set background mesh for FEM")
 		.nargs(1)
-#if defined(APPLE_LIKE)
-		.metavar("CSMFILE")
-#endif
-		;
+		.metavar("CSMFILE");
 	transformCmd.add_argument("-b", "--bandlimit")
 		.help("Specify bandlimit for spectral solver")
 		.nargs(1)
 		.default_value(std::int16_t{ 32 })
-#if defined(APPLE_LIKE)
-		.metavar("B")
-#endif
-		;
+		.metavar("B");
 	transformCmd.add_epilog("Specifying -m(esh) will disable -b.");
 	program.add_subparser(transformCmd);
 

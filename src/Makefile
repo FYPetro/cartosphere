@@ -9,7 +9,7 @@ SRC_FILES := $(wildcard *.cpp)
 
 OBJ_FILES := $(patsubst %.cpp,%.o,$(SRC_FILES))
 
-CPPFLAGS = -g -O2 -std=c++17 -fopenmp $(INCLUDE)
+CPPFLAGS = -g -O2 -std=c++17 -fopenmp -D_RELEASE $(INCLUDE)
 
 LDFLAGS = -L/usr/local/opt/llvm/lib \
 	$(FFTWLIB) -lfftw3 -lfftw3_omp -lm \
