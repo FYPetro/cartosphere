@@ -11,7 +11,7 @@
     "eigen3",
     {
       "name": "argparse",
-      "version>=": "2.9"
+      "version>=": "3.0"
     }
   ],
   "builtin-baseline": "136ad069fd2a7e61eeca5e4c48608c1fd3921a70"

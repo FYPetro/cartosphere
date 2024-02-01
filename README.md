@@ -4,7 +4,7 @@ License: `GPL-3.0-or-later`
 
 `Cartosphere` is a `C++17` library that performs cartoglobe transformations natively on the unit sphere.
 Based on [[Li2018](https://dx.doi.org/10.1080/15230406.2017.1408033)],
-this current version `0.0.1` incorporates fixes documented in [Li2023].
+this current version `0.0.1` incorporates fixes documented in [[Li2023](https://www.proquest.com/openview/c8c54aced412bf581997e692f658d3df)].
 The library currently only offers benchmarks,
 and useful interfaces are planned.
 
