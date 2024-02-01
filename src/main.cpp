@@ -26,6 +26,8 @@ runBenchmark();
 int
 runDemo(const string&, const vector<string>&);
 
+int demo_gui();
+
 /* **************************** MAIN ENTRY POINT **************************** */
 int
 main(int argc, char* argv[])
@@ -611,7 +613,10 @@ runDemo(const string& name, const vector<string>& args)
 {
 	if (name == "default")
 		return demo();
-	
+
+	if (name == "gui")
+		return demo_gui();
+
 	if (name == "diffusion")
 		return demo_diffusion();
 
@@ -712,6 +717,7 @@ runDemo(const string& name, const vector<string>& args)
 
 	std::cout << "Available demo SCENARIO:\n"
 		<< "default            [---]\n"
+		<< "gui                [---]\n"
 		<< "diffusion          [---]\n"
 		<< "seminar            [---]\n"
 		<< "quadrature         [---]\n"
@@ -727,5 +733,12 @@ runDemo(const string& name, const vector<string>& args)
 		<< "G SHAPEFILE        [Research G]\n\n"
 		<< "Usage: cartosphere demo SCENARIO [ARGS...]\n"
 		<< "Most demos are subject to cleaning.\n";
+	return 0;
+}
+
+int demo_gui()
+{
+	std::cout << "Placeholder." << std::endl;
+
 	return 0;
 }

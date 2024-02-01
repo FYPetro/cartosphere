@@ -8,6 +8,7 @@ cartosphere-*.tar.gz
 **/*.DS_Store
 **/.vs/
 *.xcworkspace/xcuserdata/*.xcuserdatad/
+*.xcworkspace/project.xcworkspace/
 
 # macOS binaries
 src/cartosphere
